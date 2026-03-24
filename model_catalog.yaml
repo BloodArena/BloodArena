@@ -1,0 +1,71 @@
+api_keys:
+  deepseek: "YOUR_DEEPSEEK_KEY"
+  gemini: "YOUR_GEMINI_KEY"
+  claude: "YOUR_CLAUDE_KEY"
+  gpt: "YOUR_GPT_KEY"
+  openrouter: "YOUR_OPENROUTER_KEY"
+
+providers:
+  deepseek:
+    label: "DeepSeek"
+    base_url: "https://api.deepseek.com/v1"
+    api_key: "${deepseek}"
+    protocol: "openai"
+    models:
+      - "deepseek-chat"
+      - "deepseek-reasoner"
+    default_model: "deepseek-chat"
+
+  gemini:
+    label: "Gemini"
+    base_url: ""
+    api_key: "${gemini}"
+    protocol: "openai"
+    models:
+      - "gemini-3-pro-preview-high"
+      - "gemini-3-pro-preview"
+
+  claude:
+    label: "Claude"
+    base_url: ""
+    api_key: "${claude}"
+    protocol: "claude"
+    models:
+      - "claude-3-5-haiku-20241022"
+      - "claude-3-7-sonnet-20250219"
+
+  gpt:
+    label: "GPT"
+    base_url: ""
+    api_key: "${gpt}"
+    protocol: "openai"
+    models:
+      - "gpt-5.1-2025-11-13"
+      - "gpt-5-chat-2025-08-07"
+
+  openrouter:
+    label: "OpenRouter Free (Own Key)"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key: "${openrouter}"
+    protocol: "openai"
+    headers:
+      HTTP-Referer: "${origin}"
+      X-OpenRouter-Title: "BOTC Singleplayer Demo"
+    models:
+      - "openrouter/free"
+      - "arcee-ai/trinity-large-preview:free"
+      - "qwen/qwen3-4b:free"
+      - "stepfun/step-3.5-flash:free"
+    default_model: "openrouter/free"
+
+  openrouter_proxy:
+    label: "OpenRouter Free (Shared Server Key)"
+    base_url: "${origin}/api/openrouter"
+    api_key_required: false
+    protocol: "openai"
+    models:
+      - "openrouter/free"
+      - "arcee-ai/trinity-large-preview:free"
+      - "qwen/qwen3-4b:free"
+      - "stepfun/step-3.5-flash:free"
+    default_model: "openrouter/free"
