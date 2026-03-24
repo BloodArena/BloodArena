@@ -600,6 +600,35 @@
         color: var(--blood-bright);
       }
 
+      /* TTS controls */
+      .tts-volume-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .tts-volume-row label {
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .tts-volume-row input[type="range"] {
+        flex: 1;
+        accent-color: var(--brass);
+      }
+      .tts-status {
+        min-height: 16px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .tts-status.error {
+        color: var(--blood-bright);
+      }
+      .tts-status.active {
+        color: var(--brass);
+      }
+
       .status {
         padding: 8px 12px;
         border-radius: 12px;
@@ -789,6 +818,40 @@
         border-color: rgba(40, 140, 80, 0.4);
         background: rgba(40, 140, 80, 0.12);
         color: #80b090;
+      }
+
+      /* Token usage display */
+      .token-usage-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .token-usage-table th,
+      .token-usage-table td {
+        padding: 3px 6px;
+        text-align: right;
+        border-bottom: 1px solid rgba(42, 111, 143, 0.15);
+      }
+      .token-usage-table th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: normal;
+      }
+      .token-usage-table th:first-child,
+      .token-usage-table td:first-child {
+        text-align: left;
+      }
+      .token-usage-total {
+        margin-top: 6px;
+        font-size: 13px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .token-usage-total .cost {
+        color: var(--brass);
+        font-weight: bold;
       }
 
       .chat {
@@ -2627,6 +2690,23 @@
           <button class="secondary" id="endBtn">结束游戏</button>
         </div>
       </div>
+
+      <!-- TTS config -->
+      <div class="section">
+        <label class="toggle" style="margin-bottom:8px">
+          <input type="checkbox" id="ttsToggle" />
+          AI 语音播报（mimo-v2-tts）
+        </label>
+        <div class="tts-volume-row">
+          <label>语音音量</label>
+          <input type="range" id="ttsVolumeSlider" min="0" max="1" step="0.05" value="0.8" />
+        </div>
+        <div class="hint" style="margin-top:6px">
+          开启后，AI 玩家发言将自动语音播报，每位 AI 拥有不同音色风格。<br/>
+          请在 model_catalog.yaml 的 api_keys 中填写 <code>mimo</code> 密钥。
+        </div>
+        <div class="tts-status" id="ttsStatus"></div>
+      </div>
     </aside>
 
     <main>
@@ -2675,6 +2755,10 @@
             <div class="section">
               <h2>配置</h2>
               <div class="config-summary" id="configSummaryBox"></div>
+            </div>
+            <div class="section" id="tokenUsageSection" style="display:none">
+              <h2>Token 用量 &amp; 花费</h2>
+              <div id="tokenUsageDisplay"></div>
             </div>
           </div>
 
@@ -3139,6 +3223,7 @@
       let dawnSafetyTimer = null;
       let loadedModelCatalog = null;
       let customProviderMap = {};
+      let catalogApiKeys = {};
       let modelCatalogLoadStatus = { ok: false, message: "尚未加载 model_catalog.yaml" };
       let modelCatalogHealth = [];
       let modelHealthWarned = false;
@@ -3149,6 +3234,83 @@
       let chatRelockTimer = null;
 
       const CHAT_NEAR_BOTTOM_THRESHOLD = 96;
+
+      /* ===== TOKEN USAGE & COST TRACKER ===== */
+      /* Pricing: USD per 1M tokens — [input, output].
+         Add / update entries as needed. Key = model name (or prefix). */
+      const MODEL_PRICING = {
+        /* DeepSeek */
+        "deepseek-chat":        [0.27, 1.10],
+        "deepseek-reasoner":    [0.55, 2.19],
+        /* Gemini */
+        "gemini-3-pro":         [1.25, 10.00],
+        "gemini-3-flash":       [0.10, 0.40],
+        /* Claude */
+        "claude-3-haiku":       [0.25, 1.25],
+        "claude-3-5-haiku":     [0.80, 4.00],
+        "claude-haiku-4-5":     [0.80, 4.00],
+        "claude-3-7-sonnet":    [3.00, 15.00],
+        "claude-sonnet-4":      [3.00, 15.00],
+        "claude-sonnet-4-5":    [3.00, 15.00],
+        "claude-opus-4":        [15.00, 75.00],
+        "claude-opus-4-1":      [15.00, 75.00],
+        "claude-opus-4-5":      [15.00, 75.00],
+        /* GPT */
+        "gpt-5.1":             [2.00, 8.00],
+        "gpt-5":               [2.00, 8.00],
+        /* OpenRouter — strip provider prefix before lookup */
+        "mimo-v2-pro":         [1.00, 3.00],
+        "minimax-m2.7":        [0.50, 2.00],
+      };
+
+      function lookupPricing(modelName) {
+        if (!modelName) return null;
+        const name = modelName.replace(/^[^/]+\//, ""); /* strip provider/ prefix */
+        /* exact match first */
+        if (MODEL_PRICING[name]) return MODEL_PRICING[name];
+        /* prefix match */
+        for (const key of Object.keys(MODEL_PRICING)) {
+          if (name.startsWith(key)) return MODEL_PRICING[key];
+        }
+        return null;
+      }
+
+      function ensureTokenUsage() {
+        if (!state) return;
+        if (!state.tokenUsage) state.tokenUsage = {};
+      }
+
+      function recordTokenUsage(model, usage) {
+        if (!state || !usage) return;
+        ensureTokenUsage();
+        const key = model || "unknown";
+        if (!state.tokenUsage[key]) {
+          state.tokenUsage[key] = { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0 };
+        }
+        const u = state.tokenUsage[key];
+        u.promptTokens += usage.prompt_tokens || usage.input_tokens || 0;
+        u.completionTokens += usage.completion_tokens || usage.output_tokens || 0;
+        u.totalTokens += usage.total_tokens || ((usage.prompt_tokens || usage.input_tokens || 0) + (usage.completion_tokens || usage.output_tokens || 0));
+        u.calls += 1;
+      }
+
+      function getTokenUsageSummary() {
+        if (!state || !state.tokenUsage) return { models: {}, totalCost: 0, totalTokens: 0 };
+        let totalCost = 0;
+        let totalTokens = 0;
+        const models = {};
+        for (const [model, u] of Object.entries(state.tokenUsage)) {
+          const pricing = lookupPricing(model);
+          let cost = 0;
+          if (pricing) {
+            cost = (u.promptTokens / 1e6) * pricing[0] + (u.completionTokens / 1e6) * pricing[1];
+          }
+          models[model] = { ...u, cost, hasPricing: Boolean(pricing) };
+          totalCost += cost;
+          totalTokens += u.totalTokens;
+        }
+        return { models, totalCost, totalTokens };
+      }
 
       function shouldRecordTrajectory() {
         return Boolean(state && state.recordTrajectories);
@@ -3516,6 +3678,13 @@
         if (type === "player") {
           maybeHandleSlayerClaim(speaker, text);
           updateClaimsFromChat(speaker, text);
+          /* TTS: queue speech for AI player messages */
+          if (typeof window.ttsSpeak === "function") {
+            const speakerPlayer = state.players.find((p) => p.name === speaker);
+            if (speakerPlayer && !speakerPlayer.isHuman) {
+              window.ttsSpeak(speaker, text);
+            }
+          }
         }
         saveState();
       }
@@ -3805,10 +3974,10 @@
           playerList.appendChild(card);
         });
         nomineeSelect.innerHTML = "";
-        state.players.filter((p) => p.alive).forEach((player) => {
+        state.players.forEach((player) => {
           const option = document.createElement("option");
           option.value = player.id;
-          option.textContent = player.name;
+          option.textContent = player.name + (player.alive ? "" : "（已死亡）");
           nomineeSelect.appendChild(option);
         });
 
@@ -5733,6 +5902,7 @@
       function normalizeModelCatalog(raw) {
         if (!raw) return null;
         const userVariables = raw.api_keys || raw.variables || raw.secrets || {};
+        catalogApiKeys = userVariables;
         const runtimeVariables = {
           origin: window.location?.origin || "",
           host: window.location?.host || "",
@@ -6085,10 +6255,12 @@
           const data = await response.json();
           const content = extractClaudeText(data);
           const reasoning = extractClaudeReasoning(data);
+          if (data.usage) recordTokenUsage(config.model, data.usage);
           if (persist && actor) {
             commitSessionMessages(actor, sessionKey, messages, content);
           }
           recordTrajectoryEntry(actor, sessionKey, config.provider, config.model, sessionPayload.newMessages, content, reasoning);
+          renderTokenUsageDisplay();
           return content;
         }
         const headers = {
@@ -6116,10 +6288,12 @@
         const message = data.choices?.[0]?.message || {};
         const content = message.content || "";
         const reasoning = message.reasoning_content || message.reasoning || "";
+        if (data.usage) recordTokenUsage(config.model, data.usage);
         if (persist && actor) {
           commitSessionMessages(actor, sessionKey, messages, content);
         }
         recordTrajectoryEntry(actor, sessionKey, config.provider, config.model, sessionPayload.newMessages, content, reasoning);
+        renderTokenUsageDisplay();
         return content;
       }
 
@@ -6230,6 +6404,32 @@
           `<span class="chip">恶魔 ${dist.demon}</span>`
         ];
         configSummaryBox.innerHTML = chips.join("");
+      }
+
+      function renderTokenUsageDisplay() {
+        const section = document.getElementById("tokenUsageSection");
+        const container = document.getElementById("tokenUsageDisplay");
+        if (!section || !container) return;
+        const summary = getTokenUsageSummary();
+        if (summary.totalTokens === 0) {
+          section.style.display = "none";
+          return;
+        }
+        section.style.display = "";
+        const modelKeys = Object.keys(summary.models);
+        const fmtNum = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(n);
+        const fmtCost = (c) => c < 0.01 ? "<$0.01" : "$" + c.toFixed(2);
+        let rows = modelKeys.map((m) => {
+          const u = summary.models[m];
+          const costStr = u.hasPricing ? fmtCost(u.cost) : "—";
+          return `<tr><td title="${m}">${m.length > 28 ? m.slice(0, 26) + "…" : m}</td><td>${u.calls}</td><td>${fmtNum(u.promptTokens)}</td><td>${fmtNum(u.completionTokens)}</td><td>${fmtNum(u.totalTokens)}</td><td>${costStr}</td></tr>`;
+        }).join("");
+        const hasAnyPricing = modelKeys.some((m) => summary.models[m].hasPricing);
+        container.innerHTML =
+          `<table class="token-usage-table"><tr><th>模型</th><th>调用</th><th>输入</th><th>输出</th><th>总计</th><th>费用</th></tr>${rows}</table>` +
+          `<div class="token-usage-total"><span>总 Token: <b>${fmtNum(summary.totalTokens)}</b></span>` +
+          (hasAnyPricing ? `<span>预估总花费: <span class="cost">${fmtCost(summary.totalCost)}</span></span>` : `<span style="color:var(--muted)">部分模型无定价数据</span>`) +
+          `</div>`;
       }
 
       function getPromptSpeakerName(speaker) {
@@ -8007,6 +8207,8 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
           storytellerSummary: state.storySummary || "",
           log: state.log,
           chat: state.chat,
+          tokenUsage: state.tokenUsage || {},
+          tokenSummary: getTokenUsageSummary(),
           meta: {
             started: state.started,
             ended: state.ended,
@@ -8477,13 +8679,13 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
 
       async function aiNominate(player) {
         if (state && state.paused) return null;
-        const aliveTargets = state.players
-          .filter((p) => p.alive && !state.nomineeUsedIds.includes(p.id))
-          .map((p) => p.name);
+        const nominableTargets = state.players
+          .filter((p) => !state.nomineeUsedIds.includes(p.id) && p.id !== player.id)
+          .map((p) => `${p.name}${p.alive ? "" : "（已死亡）"}`);
         const recentChat = formatChatForPrompt(12, player);
         const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-当前提名阶段：你可以选择是否提名一名存活玩家。存活玩家：${aliveTargets.join("、")}。
+当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 今日最多${MAX_NOMINATIONS_PER_DAY}次提名，若已达到上限则不要提名。
 你的私密信息增量：${privateInfo}
 请输出 JSON：{"nominate":"yes|no","target":"玩家名","reason":"一句话"}。如果不提名，target为空字符串。`;
@@ -8495,9 +8697,9 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
           const json = extractJson(content);
           if (json && json.nominate === "yes") {
             const rawName = json.target || "";
-            const targetName = rawName.replace(/\(真人\)/g, "").trim();
+            const targetName = rawName.replace(/\(真人\)/g, "").replace(/（已死亡）/g, "").trim();
             const target = state.players.find(
-              (p) => p.alive && !state.nomineeUsedIds.includes(p.id) && p.name === targetName
+              (p) => !state.nomineeUsedIds.includes(p.id) && p.name === targetName
             );
             if (target) {
               return { nomineeId: target.id, reason: json.reason || "" };
@@ -8514,7 +8716,7 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
         state.nominationInProgress = true;
         const nominator = state.players.find((p) => p.id === nominatorId);
         const nominee = state.players.find((p) => p.id === nomineeId);
-        if (!nominator || !nominee || !nominee.alive) {
+        if (!nominator || !nominee) {
           state.nominationInProgress = false;
           return;
         }
@@ -9314,6 +9516,9 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}只基于以上
         if (typeof window.syncAutoBgmForState === "function") {
           window.syncAutoBgmForState({ force: true });
         }
+        if (typeof window.ttsClearQueue === "function") {
+          window.ttsClearQueue();
+        }
       });
       exportBtn.addEventListener("click", exportJson);
       if (exportTrajBtn) {
@@ -9671,6 +9876,7 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}只基于以上
       setupChatLayoutObserver();
       window.addEventListener("resize", () => renderSeatCircle());
       renderConfigSummary();
+      renderTokenUsageDisplay();
       if (state && state.started && state.phase === "night") {
         scheduleAutoNight();
       }
@@ -9888,6 +10094,238 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}只基于以上
         });
 
         syncAutoBgmForState({ force: true });
+      })();
+
+      /* ===== TTS ENGINE (mimo-v2-tts) ===== */
+      (function () {
+        const TTS_ENDPOINT = "https://api.xiaomimimo.com/v1/chat/completions";
+        const TTS_MODEL = "mimo-v2-tts";
+        const MAX_QUEUE = 6; /* drop oldest when queue exceeds this */
+
+        /* voice style pool — each AI player gets a random unique style */
+        const VOICE_STYLES = [
+          "成熟男性 低沉磁性",
+          "年轻女性 温柔甜美",
+          "中年男性 沉稳威严",
+          "少年 活泼开朗",
+          "老年男性 沙哑沧桑",
+          "年轻男性 阳光爽朗",
+          "少女 元气可爱",
+          "中年女性 知性优雅",
+          "青年女性 英姿飒爽",
+          "男童 天真稚嫩",
+          "东北口音 豪爽大方",
+          "四川口音 温柔亲切",
+          "台湾腔 软萌可爱",
+          "粤语口音 干练利索",
+          "河南口音 朴实憨厚",
+        ];
+
+        const ttsToggle = document.getElementById("ttsToggle");
+        const ttsVolumeSlider = document.getElementById("ttsVolumeSlider");
+        const ttsStatusEl = document.getElementById("ttsStatus");
+
+        /* persistent settings */
+        const TTS_STORAGE_KEY = "tts_settings";
+        function loadTtsSettings() {
+          try {
+            return JSON.parse(localStorage.getItem(TTS_STORAGE_KEY)) || {};
+          } catch { return {}; }
+        }
+        function saveTtsSettings() {
+          localStorage.setItem(TTS_STORAGE_KEY, JSON.stringify({
+            enabled: ttsToggle.checked,
+            volume: parseFloat(ttsVolumeSlider.value),
+          }));
+        }
+
+        const saved = loadTtsSettings();
+        if (saved.enabled) ttsToggle.checked = true;
+        if (saved.volume !== undefined) ttsVolumeSlider.value = saved.volume;
+
+        ttsToggle.addEventListener("change", saveTtsSettings);
+        ttsVolumeSlider.addEventListener("input", saveTtsSettings);
+
+        function getMimoApiKey() {
+          return catalogApiKeys.mimo || "";
+        }
+
+        /* map speaker name → style */
+        const speakerStyleMap = {};
+        let usedStyleIndices = [];
+
+        function getStyleForSpeaker(name) {
+          if (speakerStyleMap[name]) return speakerStyleMap[name];
+          if (usedStyleIndices.length >= VOICE_STYLES.length) {
+            usedStyleIndices = [];
+          }
+          const available = VOICE_STYLES.map((_, i) => i)
+            .filter((i) => !usedStyleIndices.includes(i));
+          const pick = available[Math.floor(Math.random() * available.length)];
+          usedStyleIndices.push(pick);
+          speakerStyleMap[name] = VOICE_STYLES[pick];
+          return speakerStyleMap[name];
+        }
+
+        /* ---- pre-fetch pipeline ---- */
+        /*  Each queue entry: { speaker, text, audioPromise }
+         *  audioPromise starts the API call immediately on enqueue,
+         *  so the next audio is already being fetched while current one plays. */
+        const queue = [];
+        let playing = false;
+        let bgmLowered = false;
+        let cancelled = false;
+        let currentAudio = null;
+        const bgmAudio = document.getElementById("bgmAudio");
+
+        function lowerBgm() {
+          if (bgmLowered || !bgmAudio) return;
+          bgmLowered = true;
+          bgmAudio._savedVolume = bgmAudio.volume;
+          bgmAudio.volume = Math.max(0, bgmAudio.volume * 0.25);
+        }
+
+        function restoreBgm() {
+          if (!bgmLowered || !bgmAudio) return;
+          bgmLowered = false;
+          if (bgmAudio._savedVolume !== undefined) {
+            bgmAudio.volume = bgmAudio._savedVolume;
+            delete bgmAudio._savedVolume;
+          }
+        }
+
+        function updateStatus(msg, cls) {
+          if (!ttsStatusEl) return;
+          ttsStatusEl.textContent = msg;
+          ttsStatusEl.className = "tts-status" + (cls ? " " + cls : "");
+        }
+
+        /* fetch audio from API, returns blob URL (or throws) */
+        async function fetchTtsAudio(speaker, text) {
+          const apiKey = getMimoApiKey();
+          if (!apiKey || apiKey === "YOUR_MIMO_API_KEY") {
+            throw new Error("请在 model_catalog.yaml 中填写 mimo API Key");
+          }
+
+          const style = getStyleForSpeaker(speaker);
+          const styledText = `<style>${style}</style>${text}`;
+
+          const body = {
+            model: TTS_MODEL,
+            messages: [
+              {
+                role: "user",
+                content: `请用自然流畅的语气朗读以下内容。你是一个名叫"${speaker}"的角色。`
+              },
+              {
+                role: "assistant",
+                content: styledText,
+              },
+            ],
+            audio: {
+              format: "wav",
+              voice: "mimo_default",
+            },
+          };
+
+          const resp = await fetch(TTS_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "api-key": apiKey,
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!resp.ok) {
+            const errText = await resp.text().catch(() => "");
+            throw new Error(`API ${resp.status}: ${errText.slice(0, 200)}`);
+          }
+
+          const data = await resp.json();
+          const audioB64 = data?.choices?.[0]?.message?.audio?.data;
+          if (!audioB64) {
+            throw new Error("API 返回中无音频数据");
+          }
+
+          const raw = atob(audioB64);
+          const bytes = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "audio/wav" });
+          return URL.createObjectURL(blob);
+        }
+
+        /* play a blob URL, returns promise */
+        function playBlobUrl(url) {
+          return new Promise((resolve, reject) => {
+            const audio = new Audio(url);
+            currentAudio = audio;
+            audio.volume = parseFloat(ttsVolumeSlider.value) || 0.8;
+            audio.onended = () => { currentAudio = null; URL.revokeObjectURL(url); resolve(); };
+            audio.onerror = (e) => { currentAudio = null; URL.revokeObjectURL(url); reject(e); };
+            audio.play().catch(reject);
+          });
+        }
+
+        async function processQueue() {
+          if (playing || queue.length === 0) return;
+          playing = true;
+          cancelled = false;
+          lowerBgm();
+
+          while (queue.length > 0 && !cancelled) {
+            const entry = queue.shift();
+            updateStatus(`🔊 ${entry.speaker} 语音播报中…（剩余 ${queue.length}）`, "active");
+            try {
+              const blobUrl = await entry.audioPromise;
+              if (cancelled) { URL.revokeObjectURL(blobUrl); break; }
+              await playBlobUrl(blobUrl);
+            } catch (e) {
+              console.warn("[TTS] error:", e);
+              updateStatus(`语音播报失败: ${e.message || e}`, "error");
+            }
+          }
+
+          playing = false;
+          currentAudio = null;
+          restoreBgm();
+          if (!cancelled) updateStatus("");
+        }
+
+        /* public interface */
+        window.ttsSpeak = function (speaker, text) {
+          if (!ttsToggle.checked) return;
+          if (!text || text.trim() === "过") return;
+
+          /* start API call immediately (pre-fetch) */
+          const audioPromise = fetchTtsAudio(speaker, text);
+          queue.push({ speaker, text, audioPromise });
+
+          /* drop oldest entries if queue too long to prevent unbounded lag */
+          while (queue.length > MAX_QUEUE) {
+            const dropped = queue.shift();
+            dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+          }
+
+          processQueue();
+        };
+
+        /* allow clearing queue (e.g. on game reset) */
+        window.ttsClearQueue = function () {
+          cancelled = true;
+          /* clean up pending fetches */
+          while (queue.length > 0) {
+            const dropped = queue.shift();
+            dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+          }
+          if (currentAudio) {
+            try { currentAudio.pause(); } catch {}
+            currentAudio = null;
+          }
+          playing = false;
+          restoreBgm();
+          updateStatus("");
+        };
       })();
     </script>
   </body>
