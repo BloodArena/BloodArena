@@ -1,15 +1,15 @@
 api_keys:
-  mimo: "YOUR_MIMO_KEY"
+  mimo: ""
   deepseek: "YOUR_DEEPSEEK_KEY"
-  gemini: "YOUR_GEMINI_KEY"
-  claude: "YOUR_CLAUDE_KEY"
+  gemini: ""
+  claude: ""
   gpt: "YOUR_GPT_KEY"
-  openrouter: "YOUR_OPENROUTER_KEY"
+  openrouter: ""
 
 providers:
   deepseek:
     label: "DeepSeek"
-    base_url: ""
+    base_url: "https://api.deepseek.com/v1"
     api_key: "${deepseek}"
     protocol: "openai"
     models:
@@ -71,6 +71,6 @@ providers:
       - "openai/gpt-5.4"
       - "google/gemini-3.1-pro-preview"
       - "anthropic/claude-sonnet-4.6"
-    default_model: "xiaomi/mimo-v2-pro"
+    default_model: "anthropic/claude-sonnet-4.6"
     headers:
       HTTP-Referer: "${origin}"

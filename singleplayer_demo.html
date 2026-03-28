@@ -1346,7 +1346,7 @@
       .night-overlay {
         display: none;
         position: absolute;
-        inset: 6%;
+        inset: 18%;
         padding: 24px;
         text-align: center;
         border-radius: 50%;
@@ -1875,6 +1875,21 @@
         border-color: var(--blood-bright);
         animation: flash-border 0.8s ease-in-out infinite;
       }
+      .seat-node.nominator-node {
+        border-color: var(--brass);
+        box-shadow: 0 0 12px rgba(184, 134, 11, 0.4);
+      }
+
+      /* Nomination pointers SVG overlay */
+      .nomination-pointer-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        pointer-events: none;
+        overflow: visible;
+      }
 
       .seat-node .seat-status-icon {
         position: absolute;
@@ -2335,6 +2350,61 @@
         min-width: 52px;
         transition: all 0.2s;
       }
+
+      /* Script board (板子) viewer */
+      #scriptBoardBtn {
+        background: var(--bg-panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+        color: var(--brass);
+        font-size: 14px;
+        cursor: pointer;
+        padding: 7px 12px;
+        pointer-events: all;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      #scriptBoardBtn:hover { color: var(--ink-bright); transform: scale(1.05); }
+
+      #scriptBoardOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(6px);
+        justify-content: center;
+        align-items: center;
+        cursor: zoom-out;
+      }
+      #scriptBoardOverlay.open { display: flex; }
+      #scriptBoardOverlay img {
+        max-width: 92vw;
+        max-height: 92vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 0 60px rgba(0,0,0,0.6);
+      }
+      #scriptBoardCloseBtn {
+        position: absolute;
+        top: 16px;
+        right: 24px;
+        background: rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 50%;
+        color: #fff;
+        font-size: 22px;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+      #scriptBoardCloseBtn:hover { background: rgba(180, 50, 50, 0.7); }
       #bgmToggleBtn {
         background: none;
         border: none;
@@ -2594,6 +2664,13 @@
         <span id="bgmTrackLabel"></span>
         <input id="bgmVolumeSlider" type="range" min="0" max="1" step="0.05" value="0.5" title="音量">
       </div>
+      <button id="scriptBoardBtn" title="查看暗流涌动板子">&#x1F4DC; 板子</button>
+    </div>
+
+    <!-- Script board overlay -->
+    <div id="scriptBoardOverlay">
+      <button id="scriptBoardCloseBtn">&times;</button>
+      <img src="pictures/trouble_brewing.jpg" alt="暗流涌动板子" />
     </div>
 
     <!-- Settings Drawer -->
@@ -3626,7 +3703,7 @@
         if (!state) return;
         const time = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
         if (!Array.isArray(state.publicLog)) state.publicLog = [];
-        state.publicLog.unshift({
+        state.publicLog.push({
           time,
           phase: getPhaseLabel(),
           text
@@ -3930,6 +4007,7 @@
             `;
             listEl.appendChild(item);
           });
+          listEl.scrollTop = listEl.scrollHeight;
         });
       }
 
@@ -4118,7 +4196,7 @@
           }
           const allTargets = state.players.slice();
           const targetOptions = allTargets
-            .map((p) => `<option value="${p.id}">${p.name}</option>`)
+            .map((p) => playerOptionHtml(p))
             .join("");
           humanActionBox.innerHTML = `
             <div class="hint">请选择恶魔击杀目标：</div>
@@ -4160,7 +4238,7 @@
             return;
           }
           const targets = state.players.filter((p) => p.alive && p.id !== human.id);
-          const options = targets.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+          const options = targets.map((p) => playerOptionHtml(p)).join("");
           humanActionBox.innerHTML = `
             <div class="hint">真实猎手请在此选择目标并点击“开枪”。其他玩家只能用聊天格式宣称开枪。</div>
             <div class="hint" style="margin-top:6px">猎手射击目标：</div>
@@ -4182,7 +4260,7 @@
           : state.players.filter((p) => p.alive);
         const filteredTargets = baseTargets.filter((p) => allowSelf || p.id !== human.id);
         const targetOptions = filteredTargets
-          .map((p) => `<option value="${p.id}">${p.name}</option>`)
+          .map((p) => playerOptionHtml(p))
           .join("");
         if (role.name === "僧侣" && state.nightCount === 1) {
           humanActionBox.textContent = "首夜僧侣不执行守护。";
@@ -4220,7 +4298,7 @@
         if (role.name === "占卜师") {
           const ftTargets = state.players.filter((p) => p.alive);
           const ftOptions = ftTargets
-            .map((p) => `<option value="${p.id}">${p.name}</option>`)
+            .map((p) => playerOptionHtml(p))
             .join("");
           humanActionBox.innerHTML = `
             <div class="hint">请选择两名目标：</div>
@@ -6567,7 +6645,7 @@
 
       function normalizeTargetName(name) {
         if (!name) return "";
-        return String(name).replace(/\(真人\)/g, "").trim();
+        return String(name).replace(/\(真人\)/g, "").replace(/（已死亡）/g, "").trim();
       }
 
       function resolveTargetByName(name, candidates, actor) {
@@ -6579,11 +6657,19 @@
         return candidates.find((p) => p.name === normalized) || null;
       }
 
+      function playerOptionLabel(p) {
+        return p.name + (p.alive ? "" : "（已死亡）");
+      }
+
+      function playerOptionHtml(p) {
+        return `<option value="${p.id}">${playerOptionLabel(p)}</option>`;
+      }
+
       async function aiChooseSingleTarget(actor, candidates, actionLabel, extraNote = "") {
         if (!actor || !candidates.length) return null;
         const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
         const recentChat = formatChatForPrompt(12, actor);
-        const targetNames = candidates.map((p) => p.name).join("、");
+        const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
@@ -6607,7 +6693,7 @@
         if (!actor || candidates.length < 2) return candidates;
         const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
         const recentChat = formatChatForPrompt(12, actor);
-        const targetNames = candidates.map((p) => p.name).join("、");
+        const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
@@ -8300,8 +8386,8 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
           }
         }
 
-        // Remove old nodes (but keep center)
-        wrapper.querySelectorAll(".seat-node").forEach((n) => n.remove());
+        // Remove old nodes and pointer SVG (but keep center)
+        wrapper.querySelectorAll(".seat-node, .nomination-pointer-svg").forEach((n) => n.remove());
 
         const count = state.players.length;
         const wrapperRect = wrapper.getBoundingClientRect();
@@ -8309,6 +8395,11 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
         const radius = (size / 2) - 42;
         const cx = size / 2;
         const cy = size / 2;
+
+        const isDay = state.started && !state.ended && state.phase === "day";
+        const isNominationPhase = isDay && state.dayStage === "nomination";
+        const nominatorId = isNominationPhase ? state.currentNominatorId : "";
+        const nomineeId = isNominationPhase ? state.currentNomineeId : "";
 
         state.players.forEach((player, i) => {
           const angle = (2 * Math.PI * i) / count - Math.PI / 2;
@@ -8319,11 +8410,12 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
           let cls = "seat-node";
           cls += player.alive ? " alive" : " dead";
           if (player.isHuman) cls += " self";
-          const isDay = state.started && !state.ended && state.phase === "day";
           const isSpeaking = isDay && state.dayStage === "discussion" && state.currentSpeakerId === player.id;
-          const isNominated = isDay && state.dayStage === "nomination" && state.currentNomineeId === player.id;
+          const isNominated = isNominationPhase && nomineeId === player.id;
+          const isNominator = isNominationPhase && nominatorId === player.id;
           if (isSpeaking) cls += " speaking-node";
           if (isNominated) cls += " nominated-node";
+          if (isNominator) cls += " nominator-node";
           node.className = cls;
           node.style.left = `${x}px`;
           node.style.top = `${y}px`;
@@ -8340,6 +8432,53 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一句话
           `;
           wrapper.appendChild(node);
         });
+
+        /* ---- Nomination pointer arrows ---- */
+        if (nominatorId && nomineeId) {
+          const nominatorIdx = state.players.findIndex((p) => p.id === nominatorId);
+          const nomineeIdx = state.players.findIndex((p) => p.id === nomineeId);
+          if (nominatorIdx >= 0 && nomineeIdx >= 0) {
+            const ntrAngle = (2 * Math.PI * nominatorIdx) / count - Math.PI / 2;
+            const neeAngle = (2 * Math.PI * nomineeIdx) / count - Math.PI / 2;
+            const shortLen = radius * 0.58;
+            const longLen = radius * 0.88;
+            /* tip geometry (triangle arrow head) */
+            const tipSize = 10;
+            function arrowPath(angle, len, color) {
+              const ex = cx + len * Math.cos(angle);
+              const ey = cy + len * Math.sin(angle);
+              /* arrow tip: triangle at tip pointing outward */
+              const tipDx = tipSize * Math.cos(angle);
+              const tipDy = tipSize * Math.sin(angle);
+              const perpX = tipSize * 0.5 * Math.cos(angle + Math.PI / 2);
+              const perpY = tipSize * 0.5 * Math.sin(angle + Math.PI / 2);
+              const t1x = ex + tipDx; const t1y = ey + tipDy;
+              const t2x = ex - perpX; const t2y = ey - perpY;
+              const t3x = ex + perpX; const t3y = ey + perpY;
+              return `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="${color}" stroke-width="3" stroke-linecap="round"/>` +
+                     `<polygon points="${t1x},${t1y} ${t2x},${t2y} ${t3x},${t3y}" fill="${color}"/>`;
+            }
+            const uid = Date.now();
+            const svgHtml = `<svg class="nomination-pointer-svg" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <filter id="glow-g-${uid}" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="b"/><feFlood flood-color="#daa520" flood-opacity="0.6"/>
+                  <feComposite in2="b" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glow-r-${uid}" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4.5" result="b"/><feFlood flood-color="#dc3545" flood-opacity="0.6"/>
+                  <feComposite in2="b" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <g filter="url(#glow-g-${uid})">${arrowPath(ntrAngle, shortLen, "#daa520")}</g>
+              <g filter="url(#glow-r-${uid})">${arrowPath(neeAngle, longLen, "#dc3545")}</g>
+            </svg>`;
+            const container = document.createElement("div");
+            container.innerHTML = svgHtml;
+            const svg = container.firstElementChild;
+            wrapper.appendChild(svg);
+          }
+        }
       }
 
       let seatCircleObserver = null;
@@ -9084,6 +9223,7 @@ reason 是公开可说的一句话，可留空；不要泄露私密信息，不�
           }
         }
         state.currentNomineeId = "";
+        state.currentNominatorId = "";
         if (state.dayNominationCount >= MAX_NOMINATIONS_PER_DAY) {
           state.nominationPhase = "";
           state.nominationStep = "";
@@ -9367,6 +9507,14 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}只基于以上
           applyDiscussionMinutes(minutes, true);
         });
       }
+
+      /* Auto-sync human name when seat changes (if name is still default) */
+      humanSeatInput.addEventListener("input", () => {
+        const name = humanNameInput.value.trim();
+        if (/^玩家\d*$/.test(name)) {
+          humanNameInput.value = `玩家${humanSeatInput.value}`;
+        }
+      });
 
       setupBtn.addEventListener("click", setupPlayers);
       assignBtn.addEventListener("click", assignRoles);
@@ -9882,6 +10030,19 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}只基于以上
       }
       updateHeaderPhase();
 
+      /* ===== SCRIPT BOARD VIEWER ===== */
+      (function () {
+        const overlay = document.getElementById("scriptBoardOverlay");
+        const openBtn = document.getElementById("scriptBoardBtn");
+        const closeBtn = document.getElementById("scriptBoardCloseBtn");
+        if (overlay && openBtn) {
+          openBtn.addEventListener("click", () => overlay.classList.add("open"));
+          closeBtn.addEventListener("click", (e) => { e.stopPropagation(); overlay.classList.remove("open"); });
+          overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+          document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) overlay.classList.remove("open"); });
+        }
+      })();
+
       /* ===== BGM PLAYER ===== */
       (function () {
         const audio = document.getElementById("bgmAudio");
@@ -10116,8 +10277,8 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}只基于以上
           "男童 天真稚嫩",
           "东北口音 豪爽大方",
           "四川口音 温柔亲切",
-          "台湾腔 软萌可爱",
-          "粤语口音 干练利索",
+          "北京口音 爽朗大气",
+          "天津口音 幽默风趣",
           "河南口音 朴实憨厚",
         ];
 
