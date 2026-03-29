@@ -4062,6 +4062,18 @@
         return slice.map((c) => `${c.sender} -> ${c.target}: ${c.text}`).join("\n");
       }
 
+      function formatPlayerPrivateChats(actor) {
+        if (!state || !actor) return "无";
+        var all = (state.privateChat || []).filter(
+          function(item) { return item.senderId === actor.id || item.targetId === actor.id; }
+        );
+        if (!all.length) return "无";
+        return all.map(function(c) {
+          var label = c.senderId === actor.id ? ("你 -> " + c.target) : (c.sender + " -> 你");
+          return "[私聊] " + label + ": " + c.text;
+        }).join("\n");
+      }
+
       function getTimelineIcon(entry) {
         if (entry.type === "phase") {
           if (entry.text.includes("夜晚")) return { icon: "\uD83C\uDF19", cls: "night" };
@@ -6783,9 +6795,11 @@
       async function aiChooseSingleTarget(actor, candidates, actionLabel, extraNote = "") {
         if (!actor || !candidates.length) return null;
         const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
+        const privateChatHistory = formatPlayerPrivateChats(actor);
         const recentChat = formatChatForPrompt(12, actor);
         const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
@@ -6807,9 +6821,11 @@
       async function aiChooseTwoTargets(actor, candidates, actionLabel) {
         if (!actor || candidates.length < 2) return candidates;
         const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
+        const privateChatHistory = formatPlayerPrivateChats(actor);
         const recentChat = formatChatForPrompt(12, actor);
         const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
@@ -8046,8 +8062,10 @@
         for (const player of aiPlayers) {
           if (!state || !state.postGameChat || state.paused) break;
           const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
+          const privateChatHistory = formatPlayerPrivateChats(player);
           const recentChat = formatChatForPrompt(12, player);
           const userContent = `游戏已结束，进入赛后聊天。你可以简单回顾这一局或表达感受。\n公开聊天（最近增量）：\n${recentChat}\n
+          你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 请用一小段话发言。`;
@@ -8078,12 +8096,14 @@
 
       async function respondToMention(player, mentionText) {
         const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
+        const privateChatHistory = formatPlayerPrivateChats(player);
         const recentChat = formatChatForPrompt(12, player);
         const dayRuleNote = getDayRuleNote();
         const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
           player,
           "chat",
           `公开聊天（最近增量）：\n${recentChat}\n
+          你的私聊记录：\n${privateChatHistory}\n
 你被@提问了。提问内容：${mentionText}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
@@ -8113,15 +8133,15 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请给出一小
 
       async function respondToPrivate(player, mentionText) {
         const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
-        const recentChat = formatChatForPrompt(10, player);
         const human = state.players.find((p) => p.isHuman);
-        const privateHistory = human ? formatPrivateChatBetween(human.id, player.id, 6) : "无";
+        const privateChatHistory = formatPlayerPrivateChats(player);
+        const recentChat = formatChatForPrompt(10, player);
         const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
           player,
           "chat",
           `公开聊天（最近增量）：\n${recentChat}\n
-这是私聊，仅你与对方可见。私聊记录：\n${privateHistory}\n
-对方私聊内容：${mentionText}
+你的全部私聊记录：\n${privateChatHistory}\n
+这是私聊，对方私聊内容：${mentionText}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话回应。`
@@ -8147,14 +8167,14 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
       async function aiPrivateReply(sender, target, text) {
         if (!state || !sender || !target) return;
         const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
+        const privateChatHistory = formatPlayerPrivateChats(target);
         const recentChat = formatChatForPrompt(8, target);
-        const privateHistory = formatPrivateChatBetween(sender.id, target.id, 6);
         const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
           target,
           "chat",
           `公开聊天（最近增量）：\n${recentChat}\n
-这是私聊，仅你与对方可见。私聊记录：\n${privateHistory}\n
-对方私聊内容：${text}
+你的全部私聊记录：\n${privateChatHistory}\n
+这是私聊，${sender.name}对你说：${text}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话回应。`
@@ -8187,9 +8207,11 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
         const candidates = state.players.filter((p) => p.alive && p.id !== player.id);
         if (!candidates.length) return;
         const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
+        const privateChatHistory = formatPlayerPrivateChats(player);
         const recentChat = formatChatForPrompt(8, player);
         const targetNames = candidates.map((p) => p.name).join("、");
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 现在是白天1，你可以选择是否发起一次私聊（仅在白天1可私聊）。
 可私聊目标：${targetNames}。
 如果你是邪恶阵营，可以考虑通过私聊与邪恶同伴交换身份或协调计划。
@@ -8585,17 +8607,19 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
             const longLen = radius * 0.88;
             /* tip geometry (triangle arrow head) */
             const tipSize = 10;
-            function arrowPath(angle, len, color) {
+            function arrowPath(angle, len, color, inward) {
               const ex = cx + len * Math.cos(angle);
               const ey = cy + len * Math.sin(angle);
-              /* arrow tip: triangle at tip pointing outward */
-              const tipDx = tipSize * Math.cos(angle);
-              const tipDy = tipSize * Math.sin(angle);
-              const perpX = tipSize * 0.5 * Math.cos(angle + Math.PI / 2);
-              const perpY = tipSize * 0.5 * Math.sin(angle + Math.PI / 2);
-              const t1x = ex + tipDx; const t1y = ey + tipDy;
-              const t2x = ex - perpX; const t2y = ey - perpY;
-              const t3x = ex + perpX; const t3y = ey + perpY;
+              var tipAngle = inward ? angle + Math.PI : angle;
+              var tipDx = tipSize * Math.cos(tipAngle);
+              var tipDy = tipSize * Math.sin(tipAngle);
+              var perpX = tipSize * 0.5 * Math.cos(tipAngle + Math.PI / 2);
+              var perpY = tipSize * 0.5 * Math.sin(tipAngle + Math.PI / 2);
+              var tx = inward ? cx : ex;
+              var ty = inward ? cy : ey;
+              var t1x = tx + tipDx, t1y = ty + tipDy;
+              var t2x = tx - perpX, t2y = ty - perpY;
+              var t3x = tx + perpX, t3y = ty + perpY;
               return `<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="${color}" stroke-width="3" stroke-linecap="round"/>` +
                      `<polygon points="${t1x},${t1y} ${t2x},${t2y} ${t3x},${t3y}" fill="${color}"/>`;
             }
@@ -8611,8 +8635,8 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
                   <feComposite in2="b" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
               </defs>
-              <g filter="url(#glow-g-${uid})">${arrowPath(ntrAngle, shortLen, "#daa520")}</g>
-              <g filter="url(#glow-r-${uid})">${arrowPath(neeAngle, longLen, "#dc3545")}</g>
+              <g filter="url(#glow-g-${uid})">${arrowPath(ntrAngle, shortLen, "#daa520", true)}</g>
+              <g filter="url(#glow-r-${uid})">${arrowPath(neeAngle, longLen, "#dc3545", false)}</g>
             </svg>`;
             const container = document.createElement("div");
             container.innerHTML = svgHtml;
@@ -8964,7 +8988,9 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
           .map((p) => `${p.name}${p.alive ? "" : "（已死亡）"}`);
         const recentChat = formatChatForPrompt(12, player);
         const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
+        const privateChatHistory = formatPlayerPrivateChats(player);
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 今日最多${MAX_NOMINATIONS_PER_DAY}次提名，若已达到上限则不要提名。
 你的私密信息增量：${privateInfo}
@@ -9081,7 +9107,9 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
       async function aiNominationReason(nominator, nominee) {
         const recentChat = formatChatForPrompt(12, nominator);
         const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
+        const privateChatHistory = formatPlayerPrivateChats(nominator);
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 你提名了${nominee.name}。
 你的私密信息增量：${privateInfo}
 这是一小段公开发言，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话说明理由。`;
@@ -9097,7 +9125,9 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
       async function aiNominationDefense(nominee) {
         const recentChat = formatChatForPrompt(12, nominee);
         const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
+        const privateChatHistory = formatPlayerPrivateChats(nominee);
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 你被提名了。
 你的私密信息增量：${privateInfo}
 这是公开辩解，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话辩解。`;
@@ -9284,6 +9314,7 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
         const nominee = state.players.find((p) => p.id === state.currentNomineeId);
         const recentChat = formatChatForPrompt(12, voter);
         const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
+        const privateChatHistory = formatPlayerPrivateChats(voter);
         if (!voter.alive && voter.deadVoteUsed) {
           return { vote: "no", reason: "遗言票已用" };
         }
@@ -9291,6 +9322,7 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段
           ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。"
           : "";
         const userContent = `公开聊天（最近增量）：\n${recentChat}\n
+        你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}
 你的私密信息增量：${privateInfo}
@@ -9394,6 +9426,7 @@ reason 是公开可说的一小段话，可留空；不要泄露私密信息，�
           }
         }
         const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
+        const privateChatHistory = formatPlayerPrivateChats(player);
         const recentSelf = player.memory.slice(-5).join(" / ") || "无";
         const recentChat = formatChatForPrompt(12, player);
         const dayRuleNote = getDayRuleNote();
@@ -9401,6 +9434,7 @@ reason 是公开可说的一小段话，可留空；不要泄露私密信息，�
           player,
           "chat",
           `公开聊天（最近增量）：\n${recentChat}\n
+          你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
 猎手声明规则：若要触发开枪，整句必须严格为“${SLAYER_DECLARATION_TEMPLATE}”。
