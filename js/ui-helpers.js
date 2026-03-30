@@ -686,7 +686,7 @@ export function renderTaskCardStatus() {
       desc = humanCanNominate
         ? "选择一名存活玩家并提交提名，或跳过。"
         : "等待其他玩家完成提名。";
-      hint = `今日提名：${state.dayNominationCount}/${MAX_NOMINATIONS_PER_DAY}`;
+      hint = `今日提名：${state.dayNominationCount}`;
     } else if (state.nominationPhase === "reason") {
       title = "提名理由阶段";
       desc = nominee ? `围绕“${nominee.name}”的提名理由陈述中。` : "提名理由陈述中。";
@@ -948,7 +948,7 @@ export function renderStatus() {
   if (state.started) {
     chips.push(`存活 ${aliveCount}/${state.players.length}`);
     if (state.phase === "day") {
-      chips.push(`提名 ${state.dayNominationCount || 0}/${MAX_NOMINATIONS_PER_DAY}`);
+      chips.push(`提名 ${state.dayNominationCount || 0}`);
     }
     if (state.phase === "day" && state.dayStage === "discussion" && state.currentSpeakerId) {
       const speaker = state.players.find((p) => p.id === state.currentSpeakerId);

@@ -166,7 +166,7 @@ export function formatPrivateInfoForPrompt(actor, sessionKey = "default", limit 
   if (!actor || !Array.isArray(actor.privateInfo) || !actor.privateInfo.length) return "无";
   const safeLimit = Math.max(1, Math.round(limit));
   if (!USE_INCREMENTAL_CHAT_CONTEXT) {
-    return actor.privateInfo.slice(-safeLimit).join(" / ");
+    return actor.privateInfo.join(" / ") || "无";
   }
   if (!actor.privateInfoCursorBySession || typeof actor.privateInfoCursorBySession !== "object") {
     actor.privateInfoCursorBySession = {};

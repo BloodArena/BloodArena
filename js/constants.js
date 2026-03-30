@@ -98,7 +98,7 @@ export const FULL_ROLE_RULES = SCRIPT.roles
 export const SLAYER_DECLARATION_TEMPLATE = "我是猎手，我要向玩家X开枪";
 export const SLAYER_DECLARATION_NOTICE =
   `猎手声明规则：任何人都可以声称自己是猎手，但必须严格使用格式“${SLAYER_DECLARATION_TEMPLATE}”，这里的X是一个数字。只有真正的清醒且健康的猎手命中恶魔才有效果，且每名玩家每局仅首次该格式会被结算。`;
-export const MAX_NOMINATIONS_PER_DAY = 3;
+export const MAX_NOMINATIONS_PER_DAY = Infinity;
 export const DEFAULT_DAY_DISCUSSION_MINUTES = 8;
 export const BASE_MODEL_OPTIONS = [];
 export let MODEL_OPTIONS = [];
@@ -137,6 +137,7 @@ export const GOOD_GUIDELINES = [
   "规则要点：首夜恶魔不杀人；醉酒/中毒/陌客/间谍可能扭曲信息；男爵会+2外来者。",
   `陌客阵营仍为善良，不需要假装别的身份以“自保”。`,
   "策略：不必全盘托出；强信息或强功能位角色可以更谨慎，首夜信息角色可视情况早报；这个板子的外来者报身份都比较安全，也可以视局势而定。",
+  "票型分析：关注投票模式，邪恶玩家往往倾向于保护同伴或集中票数陷害善良玩家，票型异常可以作为推理线索。",
   "处决观念：低价值或一次性信息角色在信息已公开后，可考虑接受处决以坐实信息或清理视野。",
   GOOD_MODULE
 ].join(" ");
@@ -147,6 +148,7 @@ export const EVIL_GUIDELINES = [
   `不公开恶魔的不在场身份/伪装名单，不要公布“场上没有X/Y/Z”这类信息。`,
   "伪装策略：结合外来者数量与男爵可能性，编织一致故事线，避免硬撞身份。",
   "目标：保护恶魔、制造信息冲突，避免自曝为爪牙或恶魔。",
+  "票型意识：善良玩家可能会通过分析投票模式来寻找线索，注意你的投票行为是否自然。",
   EVIL_MODULE
 ].join(" ");
 export const PLAYER_SYSTEM_PROMPT = [
@@ -185,10 +187,10 @@ export const PLAYER_JSON_SYSTEM_PROMPT = [
   "不要输出心理活动、内心独白或思考过程。"
 ].join("");
 export const USE_FULL_CHAT_HISTORY = true;
-export const USE_INCREMENTAL_CHAT_CONTEXT = true;
+export const USE_INCREMENTAL_CHAT_CONTEXT = false;
 export const CHAT_DELTA_MAX_LINES = 0;
 export const CHAT_DELTA_RECENT_LINES = 10;
-export const USE_PERSISTENT_MESSAGES = true;
+export const USE_PERSISTENT_MESSAGES = false;
 export const STORYTELLER_LLM_ENABLED = true;
 export const STORYTELLER_REGISTER_LLM_ENABLED = true;
 export const HUMAN_CHAT_GRACE_MS = 650;
