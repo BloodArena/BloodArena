@@ -1,0 +1,69 @@
+/* ===== Responsive / Media Queries ===== */
+
+@media (max-width: 1000px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+
+  .town-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .town-right {
+    max-height: none;
+  }
+
+  .chat-section {
+    min-height: 260px;
+  }
+
+  .chat-toolbar {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+
+  .chat-follow-btn,
+  .chat-jump-btn {
+    width: 100%;
+  }
+
+  .town-layout.discussion-focus .town-left {
+    width: min(360px, 92vw);
+    max-width: 92vw;
+  }
+
+  .town-layout.discussion-focus .town-right {
+    padding-left: 62px;
+  }
+
+  .town-layout.discussion-focus .discussion-handle-stack {
+    left: 6px;
+    gap: 6px;
+  }
+
+  .discussion-handle {
+    min-width: 52px;
+    padding: 6px 8px;
+  }
+
+  .town-layout.discussion-focus .discussion-log-drawer {
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    max-height: min(56vh, 480px);
+  }
+
+  .seat-circle-wrapper {
+    max-width: 380px;
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-section {
+    min-height: 220px;
+  }
+}

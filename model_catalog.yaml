@@ -1,10 +1,10 @@
 api_keys:
-  mimo: ""
+  mimo: "YOUR_MIMO_KEY"
   deepseek: "YOUR_DEEPSEEK_KEY"
-  gemini: ""
-  claude: ""
+  gemini: "YOUR_GEMINI_KEY"
+  claude: "YOUR_CLAUDE_KEY"
   gpt: "YOUR_GPT_KEY"
-  openrouter: ""
+  openrouter: "YOUR_OPENROUTER_KEY"
 
 providers:
   deepseek:

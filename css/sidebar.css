@@ -1,0 +1,393 @@
+/* ============================================
+   sidebar.css
+   Settings drawer, gear button, tabs,
+   model health, logs, replay, timeline,
+   token usage, private box
+   ============================================ */
+
+/* --- Drawer Overlay --- */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 40;
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- Settings Drawer --- */
+.settings-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: min(440px, 90vw);
+  height: 100vh;
+  background: rgba(18, 18, 32, 0.97);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--line);
+  box-shadow: 8px 0 40px rgba(0, 0, 0, 0.5);
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 45;
+  overflow-y: auto;
+  padding: 20px 22px;
+}
+
+.settings-drawer.open {
+  transform: translateX(0);
+}
+
+.settings-drawer::-webkit-scrollbar { width: 5px; }
+.settings-drawer::-webkit-scrollbar-track { background: transparent; }
+.settings-drawer::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 3px; }
+
+/* --- Drawer Header --- */
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-family: "Cinzel", serif;
+  font-size: 16px;
+  color: var(--brass);
+  letter-spacing: 1px;
+}
+
+/* --- Drawer Close --- */
+.drawer-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.drawer-close:hover {
+  color: var(--ink-bright);
+  background: rgba(255,255,255,0.05);
+  transform: none;
+  box-shadow: none;
+}
+
+/* --- Gear Button --- */
+.gear-btn {
+  background: none;
+  border: 1px solid var(--brass-dim);
+  color: var(--brass);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  line-height: 1;
+}
+
+.gear-btn:hover {
+  color: var(--ink-bright);
+  border-color: var(--brass);
+  box-shadow: var(--glow-brass);
+  transform: none;
+}
+
+/* --- Settings Tabs --- */
+.settings-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-tab {
+  flex: 1;
+  padding: 8px 6px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  border-radius: 0;
+  font-family: inherit;
+}
+
+.settings-tab:hover {
+  color: var(--ink);
+  transform: none;
+  box-shadow: none;
+}
+
+.settings-tab.active {
+  color: var(--brass);
+  border-bottom-color: var(--brass);
+}
+
+/* --- Settings Tab Content --- */
+.settings-tab-content {
+  display: none;
+}
+
+.settings-tab-content.active {
+  display: block;
+}
+
+/* --- Model Health --- */
+.model-health-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.model-health-box {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(12, 12, 22, 0.5);
+  padding: 8px;
+}
+
+.model-health-summary {
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.model-health-summary.error {
+  color: #e37a7a;
+}
+
+.model-health-list {
+  display: grid;
+  gap: 6px;
+}
+
+.model-health-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 20, 34, 0.55);
+}
+
+.model-health-item.ready {
+  border-color: rgba(40, 160, 96, 0.45);
+}
+
+.model-health-item.warning {
+  border-color: rgba(212, 136, 32, 0.45);
+}
+
+.model-health-item.error {
+  border-color: rgba(196, 62, 62, 0.48);
+}
+
+.model-health-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.model-health-provider {
+  font-size: 12px;
+  color: var(--ink-bright);
+  font-weight: 600;
+}
+
+.model-health-badge {
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--muted);
+}
+
+.model-health-item.ready .model-health-badge {
+  color: #7ed3a5;
+  border-color: rgba(40, 160, 96, 0.45);
+}
+
+.model-health-item.warning .model-health-badge {
+  color: #e0b56f;
+  border-color: rgba(212, 136, 32, 0.45);
+}
+
+.model-health-item.error .model-health-badge {
+  color: #e38a8a;
+  border-color: rgba(196, 62, 62, 0.48);
+}
+
+.model-health-detail {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  white-space: pre-wrap;
+}
+
+/* --- Private Box --- */
+.private-box {
+  border: 1px solid rgba(184, 134, 11, 0.2);
+  background: rgba(184, 134, 11, 0.05);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--ink);
+}
+
+/* --- Log List --- */
+.log-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.log-list::-webkit-scrollbar { width: 5px; }
+.log-list::-webkit-scrollbar-track { background: transparent; }
+.log-list::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 3px; }
+
+.log-list li {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.log-list li.phase {
+  border-color: rgba(42, 111, 143, 0.35);
+  background: rgba(28, 61, 90, 0.15);
+  font-weight: 600;
+  color: var(--ink-bright);
+}
+
+/* --- Replay List --- */
+.replay-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.replay-list::-webkit-scrollbar { width: 5px; }
+.replay-list::-webkit-scrollbar-track { background: transparent; }
+.replay-list::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 3px; }
+
+/* --- Token Usage --- */
+.token-usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.token-usage-table th,
+.token-usage-table td {
+  padding: 3px 6px;
+  text-align: right;
+  border-bottom: 1px solid rgba(42, 111, 143, 0.15);
+}
+.token-usage-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: normal;
+}
+.token-usage-table th:first-child,
+.token-usage-table td:first-child {
+  text-align: left;
+}
+.token-usage-total {
+  margin-top: 6px;
+  font-size: 13px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.token-usage-total .cost {
+  color: var(--brass);
+  font-weight: bold;
+}
+
+/* --- Timeline --- */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  max-height: 220px;
+  overflow: auto;
+  position: relative;
+}
+
+.timeline::-webkit-scrollbar { width: 5px; }
+.timeline::-webkit-scrollbar-track { background: transparent; }
+.timeline::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 3px; }
+
+.timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  position: relative;
+}
+
+.timeline-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 30px;
+  bottom: -6px;
+  width: 1px;
+  background: var(--line);
+  z-index: 1;
+}
+
+.timeline-icon.night { border-color: rgba(74, 90, 138, 0.4); }
+.timeline-icon.day { border-color: rgba(201, 169, 78, 0.3); }
+.timeline-icon.death { border-color: rgba(139, 0, 0, 0.4); background: rgba(139, 0, 0, 0.1); }
+.timeline-icon.execution { border-color: rgba(196, 30, 58, 0.4); }
+
+.timeline-text {
+  flex: 1;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.timeline-item.phase-entry .timeline-text {
+  font-weight: 600;
+  color: var(--ink-bright);
+}

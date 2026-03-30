@@ -1,0 +1,23 @@
+/* ===== CSS Variables & Root Theme ===== */
+:root {
+  --bg-deep: #0d0d0f;
+  --bg-panel: rgba(26, 26, 46, 0.85);
+  --bg-card: rgba(30, 30, 52, 0.7);
+  --ink: #d4cfc8;
+  --ink-bright: #eae6e0;
+  --muted: #7a7268;
+  --blood: #8b0000;
+  --blood-bright: #c41e3a;
+  --teal: #1c3d5a;
+  --teal-bright: #2a6f8f;
+  --brass: #b8860b;
+  --brass-dim: rgba(184, 134, 11, 0.25);
+  --line: rgba(184, 134, 11, 0.15);
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  --glow-blood: 0 0 18px rgba(196, 30, 58, 0.25);
+  --glow-brass: 0 0 12px rgba(184, 134, 11, 0.15);
+  --bg-ambient-1: rgba(139, 0, 0, 0.08);
+  --bg-ambient-2: rgba(184, 134, 11, 0.05);
+  --bg-ambient-3: rgba(28, 61, 90, 0.06);
+  --bg-base: var(--bg-deep);
+}

@@ -1,0 +1,214 @@
+/* ===== Day/Dusk/Night Theme Overrides ===== */
+
+/* ===== DAY THEME (讨论阶段 - 明亮暖调) ===== */
+body.phase-day {
+  --bg-ambient-1: rgba(220, 185, 90, 0.28);
+  --bg-ambient-2: rgba(240, 210, 130, 0.18);
+  --bg-ambient-3: rgba(200, 180, 130, 0.12);
+  --bg-base: #1e1e28;
+  --bg-panel: rgba(44, 42, 58, 0.85);
+  --bg-card: rgba(52, 48, 68, 0.60);
+  --ink: #ece8e0;
+  --ink-bright: #f8f5ee;
+  --muted: #a09888;
+  --brass: #daa520;
+  --brass-dim: rgba(218, 165, 32, 0.32);
+  --line: rgba(218, 165, 32, 0.20);
+}
+
+/* ===== DUSK THEME (提名阶段 - 黄昏橙红) ===== */
+body.phase-dusk {
+  --bg-ambient-1: rgba(200, 100, 30, 0.25);
+  --bg-ambient-2: rgba(180, 80, 20, 0.18);
+  --bg-ambient-3: rgba(120, 50, 15, 0.14);
+  --bg-base: #18140f;
+  --bg-panel: rgba(40, 30, 24, 0.88);
+  --bg-card: rgba(48, 36, 28, 0.65);
+  --ink: #e0d0c0;
+  --ink-bright: #f0e4d6;
+  --muted: #98887a;
+  --brass: #d48820;
+  --brass-dim: rgba(212, 136, 32, 0.28);
+  --line: rgba(200, 120, 40, 0.20);
+}
+
+/* ===== NIGHT THEME (夜晚 - 冷蓝暗调) ===== */
+body.phase-night {
+  --bg-ambient-1: rgba(25, 30, 65, 0.22);
+  --bg-ambient-2: rgba(45, 55, 100, 0.15);
+  --bg-ambient-3: rgba(10, 10, 30, 0.18);
+  --bg-base: #0b0b12;
+  --bg-panel: rgba(18, 18, 34, 0.90);
+  --bg-card: rgba(22, 22, 42, 0.70);
+  --ink: #b0acc0;
+  --ink-bright: #d0ccd8;
+  --muted: #706888;
+  --brass: #9a8040;
+  --brass-dim: rgba(154, 128, 64, 0.22);
+  --line: rgba(70, 70, 110, 0.22);
+}
+
+body.phase-day::before { opacity: 0.75; }
+body.phase-dusk::before { opacity: 0.6; }
+body.phase-night::before { opacity: 0.38; }
+
+body.phase-day::after {
+  background: radial-gradient(circle at center, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+body.phase-dusk::after {
+  background: radial-gradient(circle at center, transparent 45%, rgba(60, 20, 0, 0.55) 100%);
+}
+
+body.phase-night::after {
+  background: radial-gradient(circle at center, transparent 38%, rgba(0, 0, 0, 0.70) 100%);
+}
+
+body.phase-day .theme-overlay.day { opacity: 0.75; }
+body.phase-day .theme-overlay.dusk { opacity: 0; }
+body.phase-day .theme-overlay.night { opacity: 0; }
+
+body.phase-dusk .theme-overlay.day { opacity: 0; }
+body.phase-dusk .theme-overlay.dusk { opacity: 0.8; }
+body.phase-dusk .theme-overlay.night { opacity: 0; }
+
+body.phase-night .theme-overlay.day { opacity: 0; }
+body.phase-night .theme-overlay.dusk { opacity: 0; }
+body.phase-night .theme-overlay.night { opacity: 0.75; }
+
+/* === Day/Dusk/Night element transitions === */
+body.phase-day header {
+  background: linear-gradient(120deg, rgba(130, 105, 35, 0.20), rgba(44, 42, 58, 0.88));
+}
+body.phase-dusk header {
+  background: linear-gradient(120deg, rgba(160, 80, 20, 0.25), rgba(40, 28, 20, 0.92));
+}
+body.phase-night header {
+  background: linear-gradient(120deg, rgba(18, 18, 45, 0.45), rgba(12, 12, 24, 0.94));
+}
+
+body.phase-day .chat-item {
+  background-color: rgba(46, 44, 60, 0.48);
+  border-color: rgba(218, 165, 32, 0.14);
+  color: #ece8e0;
+}
+body.phase-dusk .chat-item {
+  background-color: rgba(45, 34, 26, 0.55);
+  border-color: rgba(200, 120, 40, 0.16);
+  color: #e0d0c0;
+}
+body.phase-night .chat-item {
+  background-color: rgba(16, 16, 32, 0.60);
+  border-color: rgba(60, 60, 90, 0.15);
+  color: #b0acc0;
+}
+
+body.phase-day .status {
+  background: rgba(110, 95, 45, 0.14);
+  border-color: rgba(218, 165, 32, 0.22);
+  color: #ece8e0;
+}
+body.phase-dusk .status {
+  background: rgba(100, 55, 20, 0.15);
+  border-color: rgba(200, 120, 40, 0.22);
+  color: #e0d0c0;
+}
+body.phase-night .status {
+  background: rgba(18, 18, 45, 0.22);
+  border-color: rgba(60, 60, 110, 0.20);
+  color: #b0acc0;
+}
+
+body.phase-day .private-box {
+  border-color: rgba(218, 165, 32, 0.22);
+  background-color: rgba(218, 165, 32, 0.07);
+}
+body.phase-dusk .private-box {
+  border-color: rgba(200, 120, 40, 0.22);
+  background-color: rgba(200, 120, 40, 0.07);
+}
+body.phase-night .private-box {
+  border-color: rgba(60, 60, 110, 0.22);
+  background-color: rgba(25, 25, 55, 0.12);
+}
+
+body.phase-day .seat-node {
+  background-color: rgba(46, 44, 60, 0.65);
+  border-color: rgba(218, 165, 32, 0.22);
+}
+body.phase-dusk .seat-node {
+  background-color: rgba(45, 34, 26, 0.70);
+  border-color: rgba(200, 120, 40, 0.25);
+}
+body.phase-night .seat-node {
+  background-color: rgba(16, 16, 32, 0.75);
+  border-color: rgba(60, 60, 90, 0.25);
+}
+
+body.phase-day .seat-circle-center .phase-text {
+  color: #b0a070;
+}
+body.phase-dusk .seat-circle-center .phase-text {
+  color: #c08040;
+}
+body.phase-night .seat-circle-center .phase-text {
+  color: #7068a0;
+}
+
+header, .status, .private-box, .seat-node, .chat-item, .panel, .panel h2, .seat-circle-center .phase-text {
+  transition: background 1.5s ease, background-color 1.5s ease, border-color 1.5s ease, color 1.2s ease;
+}
+
+body.phase-day .panel h2 { color: #daa520; }
+body.phase-dusk .panel h2 { color: #d48820; }
+body.phase-night .panel h2 { color: #7a70a0; }
+
+body.phase-day main {
+  grid-template-columns: minmax(600px, 2.85fr) minmax(240px, 0.75fr);
+}
+
+body.phase-day .panel {
+  background-color: rgba(44, 42, 58, 0.85);
+  border-color: rgba(218, 165, 32, 0.20);
+}
+
+body.phase-dusk .panel {
+  background-color: rgba(40, 30, 24, 0.88);
+  border-color: rgba(200, 120, 40, 0.20);
+}
+
+body.phase-night .panel {
+  background-color: rgba(18, 18, 34, 0.90);
+  border-color: rgba(70, 70, 110, 0.22);
+}
+
+body.phase-day .town-layout {
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 2.3fr);
+}
+
+body.phase-dusk .town-layout {
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.95fr);
+}
+
+body.phase-night .town-layout {
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 1.35fr);
+}
+
+.town-layout.discussion-focus,
+body.phase-day .town-layout.discussion-focus,
+body.phase-dusk .town-layout.discussion-focus,
+body.phase-night .town-layout.discussion-focus {
+  grid-template-columns: 1fr;
+}
+
+body.phase-day .seat-circle-wrapper {
+  max-width: 360px;
+}
+
+body.phase-dusk .seat-circle-wrapper {
+  max-width: 420px;
+}
+
+body.phase-night .seat-circle-wrapper {
+  max-width: 480px;
+}

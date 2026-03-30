@@ -1,0 +1,327 @@
+/* ============================================
+   bgm.css
+   BGM mini player, panel, tracks, controls,
+   script board viewer
+   ============================================ */
+
+/* --- BGM Mini Player --- */
+#bgmMiniPlayer {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+/* --- BGM Panel --- */
+#bgmPanel {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow), 0 0 30px rgba(0,0,0,0.5);
+  width: 320px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 12px;
+  backdrop-filter: blur(16px);
+  pointer-events: all;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+#bgmPanel.open {
+  display: flex;
+}
+#bgmPanel::-webkit-scrollbar {
+  width: 4px;
+}
+#bgmPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+#bgmPanel::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 2px;
+}
+
+/* --- BGM Panel Header --- */
+.bgm-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+.bgm-panel-title {
+  font-family: "Cinzel", serif;
+  font-size: 13px;
+  color: var(--brass);
+  letter-spacing: 0.05em;
+}
+.bgm-panel-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  transition: color 0.2s;
+}
+.bgm-panel-close:hover { color: var(--ink-bright); }
+
+/* --- BGM Category --- */
+.bgm-category {
+  margin-top: 8px;
+}
+.bgm-category-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 6px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bgm-category-label::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.bgm-category-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.bgm-category-icon {
+  font-size: 12px;
+}
+
+/* --- BGM Track --- */
+.bgm-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+  pointer-events: all;
+}
+.bgm-track:hover {
+  background: rgba(184, 134, 11, 0.1);
+  border-color: var(--line);
+}
+.bgm-track.active {
+  background: var(--brass-dim);
+  border-color: rgba(184, 134, 11, 0.35);
+}
+.bgm-track-num {
+  font-size: 10px;
+  color: var(--muted);
+  min-width: 16px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bgm-track-info {
+  flex: 1;
+  min-width: 0;
+}
+.bgm-track-name {
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.bgm-track.active .bgm-track-name { color: var(--brass); }
+.bgm-track-meta {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bgm-track-hint {
+  font-size: 10px;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+}
+
+/* --- BGM Playing Indicator --- */
+.bgm-playing-indicator {
+  display: none;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.bgm-track.active .bgm-playing-indicator { display: block; }
+.bgm-playing-indicator span {
+  display: inline-block;
+  width: 3px;
+  background: var(--brass);
+  border-radius: 2px;
+  margin-right: 1px;
+  animation: bgm-bar 0.8s ease-in-out infinite alternate;
+  vertical-align: bottom;
+}
+.bgm-playing-indicator span:nth-child(1) { height: 6px; animation-delay: 0s; }
+.bgm-playing-indicator span:nth-child(2) { height: 10px; animation-delay: 0.2s; }
+.bgm-playing-indicator span:nth-child(3) { height: 7px; animation-delay: 0.4s; }
+@keyframes bgm-bar {
+  from { transform: scaleY(0.4); }
+  to   { transform: scaleY(1); }
+}
+.bgm-track.active.paused .bgm-playing-indicator span {
+  animation-play-state: paused;
+}
+
+/* --- BGM Bar --- */
+#bgmBar {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  pointer-events: all;
+  min-width: 52px;
+  transition: all 0.2s;
+}
+
+/* --- Script Board --- */
+#scriptBoardBtn {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  color: var(--brass);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 7px 12px;
+  pointer-events: all;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+#scriptBoardBtn:hover { color: var(--ink-bright); transform: scale(1.05); }
+
+#scriptBoardOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  justify-content: center;
+  align-items: center;
+  cursor: zoom-out;
+}
+#scriptBoardOverlay.open { display: flex; }
+#scriptBoardOverlay img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 0 60px rgba(0,0,0,0.6);
+}
+#scriptBoardCloseBtn {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+#scriptBoardCloseBtn:hover { background: rgba(180, 50, 50, 0.7); }
+
+/* --- BGM Control Buttons --- */
+#bgmToggleBtn {
+  background: none;
+  border: none;
+  color: var(--brass);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s, transform 0.2s;
+  flex-shrink: 0;
+}
+#bgmToggleBtn:hover { color: var(--ink-bright); transform: scale(1.1); }
+
+#bgmPlayPauseBtn {
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+  flex-shrink: 0;
+  display: none;
+}
+#bgmPlayPauseBtn:hover { color: var(--ink-bright); }
+#bgmPlayPauseBtn.visible { display: block; }
+
+#bgmTrackLabel {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  display: none;
+  flex: 1;
+}
+#bgmTrackLabel.visible { display: block; }
+
+#bgmVolumeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 64px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  cursor: pointer;
+  outline: none;
+  display: none;
+  flex-shrink: 0;
+}
+#bgmVolumeSlider.visible { display: block; }
+#bgmVolumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brass);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#bgmVolumeSlider::-webkit-slider-thumb:hover { background: var(--ink-bright); }

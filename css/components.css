@@ -1,0 +1,226 @@
+/* ============================================
+   components.css - UI component rules
+   ============================================ */
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+select,
+textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  font-family: inherit;
+  background: rgba(13, 13, 15, 0.7);
+  color: var(--ink);
+  transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: var(--glow-brass);
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: rgba(26, 26, 46, 0.8);
+  color: var(--ink);
+  padding: 8px 14px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  border-color: var(--brass-dim);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+
+button.primary {
+  background: linear-gradient(135deg, var(--blood), var(--blood-bright));
+  border-color: var(--blood-bright);
+  color: #fff;
+  box-shadow: var(--glow-blood);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+button.primary:hover {
+  box-shadow: 0 0 24px rgba(196, 30, 58, 0.4);
+}
+
+button.secondary {
+  background: linear-gradient(135deg, rgba(28, 61, 90, 0.35), rgba(28, 61, 90, 0.1));
+  border-color: rgba(42, 111, 143, 0.3);
+}
+
+button.secondary:hover {
+  border-color: rgba(42, 111, 143, 0.5);
+}
+
+button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#voiceBtn.active {
+  border-color: var(--blood-bright);
+  box-shadow: var(--glow-blood);
+  color: #fff;
+}
+
+#voiceStatus {
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#voiceStatus.error {
+  color: var(--blood-bright);
+}
+
+/* TTS controls */
+.tts-volume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.tts-volume-row label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tts-volume-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--brass);
+}
+.tts-status {
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.tts-status.error {
+  color: var(--blood-bright);
+}
+.tts-status.active {
+  color: var(--brass);
+}
+
+.status {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(42, 111, 143, 0.25);
+  background: linear-gradient(140deg, rgba(28, 61, 90, 0.25), rgba(13, 13, 15, 0.5));
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.status-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 134, 11, 0.3);
+  background: rgba(184, 134, 11, 0.12);
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(42, 111, 143, 0.35);
+  background: rgba(28, 61, 90, 0.2);
+  font-size: 12px;
+}
+
+.chip.chip-dead {
+  border-color: rgba(139, 0, 0, 0.4);
+  background: rgba(139, 0, 0, 0.15);
+  color: #a08080;
+}
+
+.chip.chip-alive {
+  border-color: rgba(40, 140, 80, 0.4);
+  background: rgba(40, 140, 80, 0.12);
+  color: #80b090;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Label styling */
+label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 50;
+}
+
+.modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background: rgba(26, 26, 46, 0.95);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--brass-dim);
+  width: min(380px, 90vw);
+  text-align: center;
+  backdrop-filter: blur(12px);
+}
+
+.modal-card p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--ink-bright);
+}
+
+.config-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

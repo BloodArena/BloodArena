@@ -1,0 +1,306 @@
+/* ============================================
+   phases.css
+   Phase indicators, nominations, tasks, votes,
+   night overlay, countdown, death effects
+   ============================================ */
+
+/* --- Nomination Flow --- */
+.nomination-flow {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.nomination-step {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: rgba(13, 13, 15, 0.45);
+}
+
+.nomination-step.active {
+  color: var(--ink-bright);
+  border-color: rgba(212, 136, 32, 0.5);
+  background: rgba(212, 136, 32, 0.18);
+}
+
+.nomination-step.done {
+  color: #90c7a8;
+  border-color: rgba(40, 140, 80, 0.45);
+  background: rgba(40, 140, 80, 0.16);
+}
+
+.nomination-flow-line {
+  flex: 1;
+  min-width: 10px;
+  height: 1px;
+  background: rgba(184, 134, 11, 0.22);
+}
+
+/* --- Task Section --- */
+.task-section {
+  margin-top: 12px;
+}
+
+.task-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(13, 13, 15, 0.45);
+}
+
+.task-title {
+  font-size: 15px;
+  color: var(--ink-bright);
+  font-weight: 600;
+}
+
+.task-desc {
+  margin-top: 5px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.task-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --- Phase Indicator --- */
+.phase-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: linear-gradient(140deg, rgba(13, 13, 15, 0.7), rgba(26, 26, 46, 0.6));
+  white-space: nowrap;
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.03);
+}
+
+.phase-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.phase-dot.night { background: #5a6aaa; box-shadow: 0 0 6px rgba(90, 106, 170, 0.5); }
+.phase-dot.day { background: #dab840; box-shadow: 0 0 6px rgba(218, 184, 64, 0.5); }
+.phase-dot.dusk { background: #d48820; box-shadow: 0 0 6px rgba(212, 136, 32, 0.5); }
+.phase-dot.ended { background: var(--blood-bright); box-shadow: 0 0 6px rgba(196, 30, 58, 0.4); }
+
+/* --- Action Groups --- */
+.action-group {
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+  animation: fade-in 0.25s ease;
+}
+
+.action-group.visible {
+  display: flex;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* --- Vote Actions --- */
+.vote-actions {
+  display: none;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(139, 0, 0, 0.08);
+  border: 1px solid rgba(139, 0, 0, 0.2);
+  margin-top: 10px;
+  animation: fade-in 0.3s ease;
+}
+
+.vote-actions.visible {
+  display: flex;
+}
+
+.vote-actions button {
+  min-width: 100px;
+  font-size: 15px;
+  padding: 10px 20px;
+}
+
+.vote-countdown {
+  font-size: 18px;
+  font-family: "Cinzel", serif;
+  color: var(--blood-bright);
+  text-shadow: 0 0 10px rgba(196, 30, 58, 0.3);
+}
+
+/* --- Night Overlay --- */
+.night-overlay {
+  display: none;
+  position: absolute;
+  inset: 18%;
+  padding: 24px;
+  text-align: center;
+  border-radius: 50%;
+  background: rgba(10, 12, 20, 0.86);
+  border: 1px solid rgba(74, 90, 138, 0.25);
+  backdrop-filter: blur(6px);
+  z-index: 4;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.night-overlay.visible {
+  display: flex;
+}
+
+.night-overlay .moon-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* --- Phase Progress --- */
+.phase-progress {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 4px 0;
+  margin-bottom: 8px;
+}
+
+.phase-step {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.phase-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: transparent;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.phase-step-dot.active {
+  background: var(--brass);
+  border-color: var(--brass);
+  box-shadow: 0 0 8px rgba(184, 134, 11, 0.4);
+}
+
+.phase-step-dot.completed {
+  background: var(--teal-bright);
+  border-color: var(--teal-bright);
+}
+
+.phase-step-line {
+  width: 20px;
+  height: 2px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+.phase-step-line.completed {
+  background: var(--teal-bright);
+}
+
+.phase-step-label {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+/* --- Countdown Ring --- */
+.countdown-ring {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--brass);
+  font-family: "Cinzel", serif;
+}
+
+.countdown-ring svg {
+  width: 28px;
+  height: 28px;
+}
+
+.countdown-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.countdown-ring .ring-bg {
+  stroke: var(--line);
+}
+
+.countdown-ring .ring-fg {
+  stroke: var(--brass);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* --- Death Flash --- */
+@keyframes death-flash {
+  0% { box-shadow: inset 0 0 0 0 rgba(139,0,0,0); }
+  30% { box-shadow: inset 0 0 60px 10px rgba(139,0,0,0.15); }
+  100% { box-shadow: inset 0 0 0 0 rgba(139,0,0,0); }
+}
+
+.death-flash {
+  animation: death-flash 0.8s ease-out;
+}
+
+/* --- Vote Result Bar --- */
+.vote-result-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.vote-bar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(139, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.vote-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #1a6b3a, #28a060);
+  transition: width 0.6s ease;
+}
+
+.vote-bar-label {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 60px;
+  text-align: right;
+}

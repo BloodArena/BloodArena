@@ -1,0 +1,252 @@
+/* ===== Base Styles, Body, Overlays ===== */
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family: "Noto Sans SC", "Inter", sans-serif;
+        background:
+          radial-gradient(ellipse at 20% 15%, var(--bg-ambient-1), transparent 55%),
+          radial-gradient(ellipse at 80% 10%, var(--bg-ambient-2), transparent 50%),
+          radial-gradient(ellipse at 50% 80%, var(--bg-ambient-3), transparent 55%),
+          var(--bg-base);
+        min-height: 100vh;
+        position: relative;
+        transition: background 1.4s ease;
+      }
+
+      /* ===== DAY THEME (讨论阶段 - 明亮暖调) ===== */
+      body.phase-day {
+        --bg-ambient-1: rgba(220, 185, 90, 0.28);
+        --bg-ambient-2: rgba(240, 210, 130, 0.18);
+        --bg-ambient-3: rgba(200, 180, 130, 0.12);
+        --bg-base: #1e1e28;
+        --bg-panel: rgba(44, 42, 58, 0.85);
+        --bg-card: rgba(52, 48, 68, 0.60);
+        --ink: #ece8e0;
+        --ink-bright: #f8f5ee;
+        --muted: #a09888;
+        --brass: #daa520;
+        --brass-dim: rgba(218, 165, 32, 0.32);
+        --line: rgba(218, 165, 32, 0.20);
+      }
+
+      /* ===== DUSK THEME (提名阶段 - 黄昏橙红) ===== */
+      body.phase-dusk {
+        --bg-ambient-1: rgba(200, 100, 30, 0.25);
+        --bg-ambient-2: rgba(180, 80, 20, 0.18);
+        --bg-ambient-3: rgba(120, 50, 15, 0.14);
+        --bg-base: #18140f;
+        --bg-panel: rgba(40, 30, 24, 0.88);
+        --bg-card: rgba(48, 36, 28, 0.65);
+        --ink: #e0d0c0;
+        --ink-bright: #f0e4d6;
+        --muted: #98887a;
+        --brass: #d48820;
+        --brass-dim: rgba(212, 136, 32, 0.28);
+        --line: rgba(200, 120, 40, 0.20);
+      }
+
+      /* ===== NIGHT THEME (夜晚 - 冷蓝暗调) ===== */
+      body.phase-night {
+        --bg-ambient-1: rgba(25, 30, 65, 0.22);
+        --bg-ambient-2: rgba(45, 55, 100, 0.15);
+        --bg-ambient-3: rgba(10, 10, 30, 0.18);
+        --bg-base: #0b0b12;
+        --bg-panel: rgba(18, 18, 34, 0.90);
+        --bg-card: rgba(22, 22, 42, 0.70);
+        --ink: #b0acc0;
+        --ink-bright: #d0ccd8;
+        --muted: #706888;
+        --brass: #9a8040;
+        --brass-dim: rgba(154, 128, 64, 0.22);
+        --line: rgba(70, 70, 110, 0.22);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(circle at 15% 10%, rgba(196, 30, 58, 0.12), transparent 40%),
+          radial-gradient(circle at 85% 12%, rgba(184, 134, 11, 0.12), transparent 45%),
+          radial-gradient(circle at 50% 85%, rgba(42, 111, 143, 0.12), transparent 50%),
+          repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 12px);
+        opacity: 0.55;
+        pointer-events: none;
+        z-index: 0;
+        transition: opacity 1.5s ease;
+      }
+
+      body.phase-day::before { opacity: 0.75; }
+      body.phase-dusk::before { opacity: 0.6; }
+      body.phase-night::before { opacity: 0.38; }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, 0.65) 100%);
+        pointer-events: none;
+        z-index: 0;
+        transition: background 1.5s ease;
+      }
+
+      body.phase-day::after {
+        background: radial-gradient(circle at center, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
+      }
+
+      body.phase-dusk::after {
+        background: radial-gradient(circle at center, transparent 45%, rgba(60, 20, 0, 0.55) 100%);
+      }
+
+      body.phase-night::after {
+        background: radial-gradient(circle at center, transparent 38%, rgba(0, 0, 0, 0.70) 100%);
+      }
+
+      body.prestart header,
+      body.prestart main,
+      body.prestart footer {
+        display: none;
+      }
+
+      .story-overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.2s ease;
+        z-index: 200;
+        text-align: center;
+      }
+
+      .story-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .story-line {
+        max-width: 760px;
+        font-size: 22px;
+        line-height: 1.8;
+        color: #f4efe7;
+        text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        animation: storyFade 1.6s ease;
+        white-space: pre-line;
+      }
+
+      @keyframes storyFade {
+        0% { opacity: 0; transform: translateY(12px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+
+      .start-overlay,
+      .intro-overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.6s ease;
+        z-index: 210;
+      }
+
+      .start-overlay.show,
+      .intro-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .start-card {
+        padding: 28px 32px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(10, 10, 16, 0.85);
+        box-shadow: var(--shadow);
+        text-align: center;
+        max-width: 520px;
+      }
+
+      .start-card h1 {
+        margin: 0 0 12px;
+        font-size: 30px;
+        letter-spacing: 2px;
+      }
+
+      .start-card p {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .intro-overlay video {
+        width: min(88vw, 980px);
+        height: min(70vh, 560px);
+        object-fit: contain;
+        background: #000;
+        border-radius: 12px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+      }
+
+      .intro-skip {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        z-index: 2;
+      }
+
+      .theme-overlay {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0;
+        transition: opacity 1.4s ease;
+      }
+
+      .theme-overlay.day {
+        background:
+          radial-gradient(circle at 30% 12%, rgba(230, 200, 100, 0.55), transparent 40%),
+          radial-gradient(circle at 70% 20%, rgba(210, 175, 70, 0.40), transparent 45%),
+          radial-gradient(circle at 50% 85%, rgba(190, 165, 90, 0.22), transparent 50%),
+          linear-gradient(180deg, rgba(60, 55, 35, 0.12) 0%, transparent 60%);
+      }
+
+      .theme-overlay.dusk {
+        background:
+          radial-gradient(circle at 25% 20%, rgba(220, 100, 30, 0.50), transparent 40%),
+          radial-gradient(circle at 75% 15%, rgba(200, 80, 20, 0.40), transparent 45%),
+          radial-gradient(circle at 50% 90%, rgba(160, 60, 15, 0.35), transparent 55%),
+          linear-gradient(180deg, rgba(80, 30, 5, 0.20) 0%, rgba(40, 15, 0, 0.10) 100%);
+      }
+
+      .theme-overlay.night {
+        background:
+          radial-gradient(circle at 20% 15%, rgba(25, 25, 70, 0.40), transparent 40%),
+          radial-gradient(circle at 80% 10%, rgba(20, 30, 75, 0.35), transparent 50%),
+          radial-gradient(circle at 50% 85%, rgba(5, 5, 25, 0.40), transparent 55%),
+          linear-gradient(180deg, rgba(0, 0, 20, 0.22) 0%, transparent 60%);
+      }
+
+      body.phase-day .theme-overlay.day { opacity: 0.75; }
+      body.phase-day .theme-overlay.dusk { opacity: 0; }
+      body.phase-day .theme-overlay.night { opacity: 0; }
+
+      body.phase-dusk .theme-overlay.day { opacity: 0; }
+      body.phase-dusk .theme-overlay.dusk { opacity: 0.8; }
+      body.phase-dusk .theme-overlay.night { opacity: 0; }
+
+      body.phase-night .theme-overlay.day { opacity: 0; }
+      body.phase-night .theme-overlay.dusk { opacity: 0; }
+      body.phase-night .theme-overlay.night { opacity: 0.75; }

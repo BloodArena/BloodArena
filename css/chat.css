@@ -1,0 +1,172 @@
+/* ============================================
+   chat.css — Chat-related styles
+   Extracted from singleplayer_demo.html
+   ============================================ */
+
+.chat {
+  display: grid;
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  padding-bottom: 14px;
+  overflow-anchor: none;
+}
+
+.chat::-webkit-scrollbar { width: 5px; }
+.chat::-webkit-scrollbar-track { background: transparent; }
+.chat::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 3px; }
+
+.private-chat {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.private-chat::-webkit-scrollbar { width: 5px; }
+.private-chat::-webkit-scrollbar-track { background: transparent; }
+.private-chat::-webkit-scrollbar-thumb { background: var(--brass-dim); border-radius: 3px; }
+
+.chat-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(184, 134, 11, 0.12);
+  background-color: rgba(26, 26, 46, 0.55);
+  font-size: 14px;
+  line-height: 1.5;
+  animation: chat-slide-in 0.25s ease-out;
+  transition: background-color 1.5s ease, border-color 1.5s ease, color 1.2s ease;
+}
+
+@keyframes chat-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-item.storyteller {
+  border-color: rgba(139, 0, 0, 0.35);
+  background: linear-gradient(140deg, rgba(139, 0, 0, 0.22), rgba(13, 13, 15, 0.6));
+  border-left: 3px solid var(--blood-bright);
+}
+
+.chat-item.system {
+  border-color: rgba(42, 111, 143, 0.3);
+  background: linear-gradient(140deg, rgba(28, 61, 90, 0.2), rgba(13, 13, 15, 0.6));
+  border-left: 3px solid var(--teal-bright);
+}
+
+.chat-item.player {
+  border-left: 3px solid var(--brass-dim);
+}
+
+.chat-item.self-msg {
+  border-color: var(--brass-dim);
+  border-left: 3px solid var(--brass);
+  background: linear-gradient(140deg, rgba(184, 134, 11, 0.16), rgba(13, 13, 15, 0.6));
+}
+
+.chat-item .meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+
+.chat-lock-hint {
+  margin-top: 6px;
+  color: #d8b06b;
+}
+
+/* Chat tabs */
+.chat-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  border-radius: 0;
+  font-family: inherit;
+}
+
+.chat-tab:hover {
+  color: var(--ink);
+  transform: none;
+  box-shadow: none;
+}
+
+.chat-tab.active {
+  color: var(--brass);
+  border-bottom-color: var(--brass);
+}
+
+.chat-tab-content {
+  display: none;
+}
+
+.chat-tab-content.active {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-toolbar {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.9fr) minmax(140px, 1.2fr) auto auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.chat-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.chat-toolbar input,
+.chat-toolbar select {
+  width: 100%;
+}
+
+.chat-follow-btn,
+.chat-jump-btn {
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+
+.chat-jump-btn {
+  display: none;
+}
+
+.chat-jump-btn.visible {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-result-hint {
+  min-height: 16px;
+  font-size: 11px;
+}
+
+.chat-item.search-hit {
+  border-color: rgba(212, 136, 32, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(212, 136, 32, 0.18);
+}
