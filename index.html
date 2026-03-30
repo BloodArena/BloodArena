@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>血染钟楼 单人模式 Demo - 暗流涌动</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/themes.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/chat.css" />
+    <link rel="stylesheet" href="css/players.css" />
+    <link rel="stylesheet" href="css/phases.css" />
+    <link rel="stylesheet" href="css/sidebar.css" />
+    <link rel="stylesheet" href="css/bgm.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+  </head>
+  <body class="prestart">
+    <div class="theme-overlay day"></div>
+    <div class="theme-overlay dusk"></div>
+    <div class="theme-overlay night"></div>
+    <div class="start-overlay show" id="startOverlay">
+      <div class="start-card">
+        <h1>血染钟楼</h1>
+        <p>点击开始进入小镇，聆听说书人的低语。</p>
+        <button class="primary" id="enterGameBtn">开始游戏</button>
+      </div>
+    </div>
+    <div class="intro-overlay" id="introOverlay">
+      <button class="secondary intro-skip" id="skipIntroBtn">跳过视频</button>
+      <video id="introVideo" src="begin_qwen.mp4" preload="auto" playsinline></video>
+    </div>
+
+    <header>
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="gear-btn" id="settingsGearBtn" title="设置">&#9881;</button>
+        <div>
+          <h1>血染钟楼 · 单人模式</h1>
+          <p>脚本：暗流涌动（AI 说书人 + AI 玩家）</p>
+        </div>
+      </div>
+      <div class="row" style="align-items:center;gap:12px">
+        <div class="phase-indicator" id="headerPhaseIndicator">
+          <span class="phase-dot" id="headerPhaseDot"></span>
+          <span id="headerPhaseText">未开局</span>
+        </div>
+        <button class="secondary" id="exportBtn">导出复盘</button>
+        <button class="secondary" id="exportTrajBtn">导出轨迹</button>
+        <button class="primary" id="resetBtn">重置</button>
+      </div>
+    </header>
+
+    <!-- BGM Player -->
+    <audio id="bgmAudio" loop></audio>
+    <div id="bgmMiniPlayer">
+      <div id="bgmPanel">
+        <div class="bgm-panel-header">
+          <span class="bgm-panel-title">♪ BGM 歌单</span>
+          <button class="bgm-panel-close" id="bgmPanelCloseBtn" title="关闭">&times;</button>
+        </div>
+
+        <div class="bgm-category" data-bgm-key="opening">
+          <div class="bgm-category-label"><span class="bgm-category-icon">🎬</span>氛围 · 开场</div>
+          <div class="bgm-track" data-src="music/01-the-game-is-on.mp3" data-num="1">
+            <span class="bgm-track-num">1</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">The Game is On</div>
+              <div class="bgm-track-meta">神探夏洛克 OST</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/09-mirthful-steps.mp3" data-num="9">
+            <span class="bgm-track-num">9</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">Mirthful Steps</div>
+              <div class="bgm-track-meta">John Debney</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+
+        <div class="bgm-category" data-bgm-key="discussion">
+          <div class="bgm-category-label"><span class="bgm-category-icon">☀️</span>日间讨论</div>
+          <div class="bgm-track" data-src="music/06-kokishin-shinkoukei.mp3" data-num="6">
+            <span class="bgm-track-num">6</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">好奇心進行形</div>
+              <div class="bgm-track-meta">田中公平</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/15-haiiro-shoene.mp3" data-num="15">
+            <span class="bgm-track-num">15</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">灰色かつ省エネ</div>
+              <div class="bgm-track-meta">田中公平</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/03-kojin-shinnyusha.mp3" data-num="3">
+            <span class="bgm-track-num">3</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">小心な侵入者</div>
+              <div class="bgm-track-meta">根岸貴幸 · 胆小的入侵者</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+
+        <div class="bgm-category" data-bgm-key="reasoning">
+          <div class="bgm-category-label"><span class="bgm-category-icon">🔍</span>推理 · 侦探</div>
+          <div class="bgm-track" data-src="music/02-suiri-ohno.mp3" data-num="2">
+            <span class="bgm-track-num">2</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">推理</div>
+              <div class="bgm-track-meta">大野克夫 · 不気味ヴァージョン</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/05-hannin-no-ajito.mp3" data-num="5">
+            <span class="bgm-track-num">5</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">犯人のアジト</div>
+              <div class="bgm-track-meta">大野克夫</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/07-the-core-of-a-matter.mp3" data-num="7">
+            <span class="bgm-track-num">7</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">the core oF a matter</div>
+              <div class="bgm-track-meta">川井憲次 · 全部成为F</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+
+        <div class="bgm-category" data-bgm-key="night">
+          <div class="bgm-category-label"><span class="bgm-category-icon">🌙</span>入夜 · 紧张</div>
+          <div class="bgm-track" data-src="music/08-mishi-jiaobu-sheng.mp3" data-num="8">
+            <span class="bgm-track-num">8</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">密室里的脚步声</div>
+              <div class="bgm-track-meta">森水垚 · 适合入夜</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/12-shizumu-yuhi.mp3" data-num="12">
+            <span class="bgm-track-num">12</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">沈む夕陽</div>
+              <div class="bgm-track-meta">大野克夫 · 沉落夕阳</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+
+        <div class="bgm-category" data-bgm-key="finale">
+          <div class="bgm-category-label"><span class="bgm-category-icon">⚡</span>决赛 · 高潮</div>
+          <div class="bgm-track" data-src="music/10-conan-main-theme.mp3" data-num="10">
+            <span class="bgm-track-num">10</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">名探偵コナン メインテーマ</div>
+              <div class="bgm-track-meta">大野克夫 · 适合决赛圈</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/11-fushi-sha-instrumental.mp3" data-num="11">
+            <span class="bgm-track-num">11</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">不死者（伴奏）</div>
+              <div class="bgm-track-meta">喻川 · 逻辑高潮</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/14-taiketsu-no-theme.mp3" data-num="14">
+            <span class="bgm-track-num">14</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">対決のテーマ</div>
+              <div class="bgm-track-meta">大野克夫 · 高潮 / 玩家胜利</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+
+        <div class="bgm-category" data-bgm-key="ending">
+          <div class="bgm-category-label"><span class="bgm-category-icon">🎭</span>结局 · 尾声</div>
+          <div class="bgm-track" data-src="music/13-conan-main-theme-vocal.mp3" data-num="13">
+            <span class="bgm-track-num">13</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">名探偵コナン テーマ（ヴォーカル）</div>
+              <div class="bgm-track-meta">大野克夫 · 适合玩家落败</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+          <div class="bgm-track" data-src="music/17-acg-guitar-medley.mp3" data-num="17">
+            <span class="bgm-track-num">17</span>
+            <div class="bgm-track-info">
+              <div class="bgm-track-name">ACG经典爆裂双吉他串烧 第二弹</div>
+              <div class="bgm-track-meta">苍小天 / 陈晨 · 适合复盘</div>
+            </div>
+            <div class="bgm-playing-indicator"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="bgmBar">
+        <button id="bgmToggleBtn" title="打开BGM歌单">♪</button>
+        <button id="bgmPlayPauseBtn" title="播放/暂停">▶</button>
+        <span id="bgmTrackLabel"></span>
+        <input id="bgmVolumeSlider" type="range" min="0" max="1" step="0.05" value="0.5" title="音量">
+      </div>
+      <button id="scriptBoardBtn" title="查看暗流涌动板子">&#x1F4DC; 板子</button>
+    </div>
+
+    <!-- Script board overlay -->
+    <div id="scriptBoardOverlay">
+      <button id="scriptBoardCloseBtn">&times;</button>
+      <img src="pictures/trouble_brewing.jpg" alt="暗流涌动板子" />
+    </div>
+
+    <!-- Note pickers -->
+    <div class="note-picker" id="noteRolePicker"></div>
+    <div class="note-picker" id="noteTagPicker"></div>
+
+    <!-- Settings Drawer -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <aside class="settings-drawer" id="settingsDrawer">
+      <div class="drawer-header">
+        <h2>&#9881; 设置</h2>
+        <button class="drawer-close" id="drawerCloseBtn">&times;</button>
+      </div>
+
+      <!-- Game setup -->
+      <div class="section">
+        <div class="row" style="margin-bottom:10px">
+          <label style="width:80px">
+            人数
+            <input type="number" id="playerCount" min="5" max="15" value="8" />
+          </label>
+          <label style="flex:1">
+            你的名字
+            <input type="text" id="humanName" value="玩家1" />
+          </label>
+          <label style="width:80px">
+            座位
+            <input type="number" id="humanSeat" min="1" max="15" value="1" />
+          </label>
+          <label style="flex:1">
+            你的角色
+            <select id="humanRoleSelect"></select>
+          </label>
+        </div>
+        <div class="row">
+          <button class="secondary" id="setupBtn">生成玩家</button>
+          <button class="secondary" id="assignBtn">随机发牌</button>
+          <button class="secondary" id="startBtn">开局</button>
+          <button class="secondary" id="randomModelBtn">随机模型</button>
+        </div>
+      </div>
+
+      <!-- Model config -->
+      <div class="section">
+        <div class="row" style="margin-top:8px">
+          <label style="flex:1">
+            默认模型
+            <select id="modelSelect"></select>
+          </label>
+          <label style="width:90px">
+            温度
+            <input type="number" id="tempInput" min="0" max="1" step="0.1" value="1.0" />
+          </label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label style="flex:1">
+            白天讨论时长（分钟）
+            <input type="number" id="dayDiscussionMinutes" min="1" max="30" value="8" />
+          </label>
+        </div>
+        <div class="hint" style="margin-top:6px">
+          模型列表自动读取同目录的 model_catalog.yaml（用户在外部编辑即可）。
+        </div>
+        <div id="modelCatalogFallback" style="display:none; margin-top:8px; padding:8px; background:rgba(0,0,0,0.06); border-radius:6px;">
+          <p class="hint" style="margin:0 0 8px 0">通过本地文件（file://）打开时，浏览器不允许页面自动读取同目录的 YAML，因此无法加载模型配置。</p>
+          <p class="hint" style="margin:0 0 8px 0">请任选其一：</p>
+          <ul style="margin:0 0 8px 0; padding-left:1.2em; font-size:0.9em; color:#666">
+            <li>点击下方「选择 model_catalog.yaml」按钮，手动选择同目录下的配置文件；</li>
+            <li>或使用本地 HTTP 服务打开本页（推荐在当前目录执行 <code>python3 local_server.py</code>；若只使用用户自填 key，也可继续用 <code>python3 -m http.server 8000</code>）。</li>
+          </ul>
+          <input type="file" id="modelCatalogFileInput" accept=".yaml,.yml,application/x-yaml,text/yaml" style="display:none" />
+          <button type="button" class="secondary" id="loadModelCatalogBtn">选择 model_catalog.yaml</button>
+        </div>
+        <div class="model-health-actions">
+          <button class="secondary" id="modelHealthRefreshBtn">重新检查模型配置</button>
+        </div>
+        <div class="model-health-box" id="modelHealthBox"></div>
+      </div>
+
+      <!-- Game controls (inside drawer) -->
+      <div class="section" id="drawerGameControls">
+        <label class="toggle" style="margin-bottom:8px">
+          <input type="checkbox" id="autoNightToggle" checked />
+          自动夜晚结算
+        </label>
+        <label class="toggle" style="margin-bottom:8px">
+          <input type="checkbox" id="trajectoryToggle" />
+          记录 LLM 轨迹（含 system prompt）
+        </label>
+        <div class="row">
+          <button class="secondary" id="pauseBtn">暂停</button>
+          <button class="secondary" id="nightResolveBtn">夜晚结算</button>
+          <button class="secondary" id="aiTalkBtn">AI轮转</button>
+          <button class="secondary" id="forceNominationBtn">强制提名</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="secondary" id="voteBtn">投票结算</button>
+          <button class="secondary" id="endBtn">结束游戏</button>
+        </div>
+      </div>
+
+      <!-- TTS config -->
+      <div class="section">
+        <label class="toggle" style="margin-bottom:8px">
+          <input type="checkbox" id="ttsToggle" />
+          AI 语音播报（mimo-v2-tts）
+        </label>
+        <div class="tts-volume-row">
+          <label>语音音量</label>
+          <input type="range" id="ttsVolumeSlider" min="0" max="1" step="0.05" value="0.8" />
+        </div>
+        <div class="hint" style="margin-top:6px">
+          开启后，AI 玩家发言将自动语音播报，每位 AI 拥有不同音色风格。<br/>
+          请在 model_catalog.yaml 的 api_keys 中填写 <code>mimo</code> 密钥。
+        </div>
+        <div class="tts-status" id="ttsStatus"></div>
+      </div>
+    </aside>
+
+    <main>
+      <!-- Phase status bar (visible in main area) -->
+      <section class="panel" id="mainStatusPanel" style="grid-column: 1 / -1; padding: 12px 18px;">
+        <div class="phase-progress" id="phaseProgress"></div>
+        <div class="status" id="phaseStatus" style="display:flex;align-items:center;gap:10px;justify-content:space-between;">
+          <span id="phaseStatusText">未开局</span>
+          <span class="countdown-ring" id="countdownRing" style="display:none">
+            <svg viewBox="0 0 32 32">
+              <circle class="ring-bg" cx="16" cy="16" r="13" />
+              <circle class="ring-fg" id="countdownRingFg" cx="16" cy="16" r="13"
+                stroke-dasharray="81.68" stroke-dashoffset="0"
+                transform="rotate(-90 16 16)" />
+            </svg>
+            <span id="countdownRingText"></span>
+          </span>
+        </div>
+        <div class="status-meta" id="statusMetaChips"></div>
+        <div class="nomination-flow" id="nominationFlow"></div>
+      </section>
+
+      <section class="panel">
+        <h2>城镇广场</h2>
+        <div class="town-layout" id="townLayout">
+          <div class="town-left">
+            <button class="secondary discussion-drawer-close" id="peekTownCloseBtn">收起广场</button>
+            <div class="seat-circle-wrapper" id="seatCircle">
+              <div class="seat-circle-center" id="seatCircleCenter">
+                <span class="phase-icon" id="seatPhaseIcon">&#127769;</span>
+                <span class="phase-text" id="seatPhaseText">未开局</span>
+              </div>
+              <div class="night-overlay" id="nightOverlay">
+                <div class="moon-icon">&#127769;</div>
+                <div style="color:var(--muted)">夜幕降临，请等待说书人宣布天亮...</div>
+              </div>
+            </div>
+            <div class="player-list" id="playerList" style="display:none"></div>
+            <!-- Collapsible player model config -->
+            <div style="text-align:center;margin-bottom:8px;">
+              <button class="secondary" id="toggleModelListBtn" style="font-size:12px;padding:4px 14px;">
+                &#9881; 配置玩家模型
+              </button>
+            </div>
+            <div class="player-model-list" id="playerModelList" style="display:none;"></div>
+            <div class="section">
+              <h2>配置</h2>
+              <div class="config-summary" id="configSummaryBox"></div>
+            </div>
+            <div class="section" id="tokenUsageSection" style="display:none">
+              <h2>Token 用量 &amp; 花费</h2>
+              <div id="tokenUsageDisplay"></div>
+            </div>
+          </div>
+
+          <div class="town-right">
+            <div class="town-right-scroll">
+              <div class="section chat-section">
+                <div class="chat-tabs">
+                  <button class="chat-tab active" id="chatTabPublic" data-target="chatTabContentPublic">公开聊天</button>
+                  <button class="chat-tab" id="chatTabPrivate" data-target="chatTabContentPrivate">私聊</button>
+                </div>
+                <div class="chat-tab-content active" id="chatTabContentPublic">
+                  <div class="chat-toolbar">
+                    <label>
+                      查看发言
+                      <select id="chatFilterSelect"></select>
+                    </label>
+                    <label>
+                      搜索关键词
+                      <input type="text" id="chatSearchInput" placeholder="搜索发言内容..." />
+                    </label>
+                    <button class="secondary chat-follow-btn" id="chatAutoScrollBtn">跟随新消息：开</button>
+                    <button class="secondary chat-jump-btn" id="chatJumpLatestBtn">回到底部</button>
+                  </div>
+                  <div class="hint chat-result-hint" id="chatResultHint"></div>
+                  <div class="chat" id="chatBox"></div>
+                </div>
+                <div class="chat-tab-content" id="chatTabContentPrivate">
+                  <div class="private-chat" id="privateChatBox"></div>
+                  <div class="row" style="margin-top:8px">
+                    <select id="privateTargetSelect" style="max-width:180px"></select>
+                    <input type="text" id="privateInput" placeholder="私聊内容..." />
+                    <button class="secondary" id="privateSendBtn">发送私聊</button>
+                  </div>
+                  <div class="hint" id="privateChatHint">仅白天1可使用私聊。</div>
+                </div>
+              </div>
+              <div class="section" id="publicLogSection">
+                <h2>记录板</h2>
+                <div class="log-list" id="publicLogList"></div>
+              </div>
+            </div>
+            <!-- Discussion actions -->
+            <div class="section" id="discussionActions">
+              <textarea id="humanInput" placeholder="你可以在这里发言..."></textarea>
+              <div class="action-group visible" id="discussionBtnGroup">
+                <select id="mentionSelect" style="max-width:160px"></select>
+                <button class="secondary" id="mentionBtn">@</button>
+                <button class="secondary" id="slayerTemplateBtn" style="display:none">猎手格式</button>
+                <button class="secondary" id="voiceBtn">语音输入</button>
+                <button class="primary" id="sendBtn">发送发言</button>
+                <button class="secondary" id="passBtn">跳过讨论</button>
+              </div>
+              <div class="hint" id="voiceStatus"></div>
+              <div class="hint chat-lock-hint" id="chatLockHint" style="display:none"></div>
+              <div class="hint" id="slayerFormatHint" style="display:none"></div>
+            </div>
+
+            <!-- Nomination actions -->
+            <div class="action-group" id="nominationBtnGroup">
+              <select id="nomineeSelect" style="max-width:220px"></select>
+              <button class="primary" id="nominateBtn">提名</button>
+              <button class="secondary" id="skipNominationBtn">跳过提名</button>
+            </div>
+
+            <!-- Vote actions -->
+            <div class="vote-actions" id="voteBtnGroup">
+              <button class="primary" id="voteYesBtn" style="background:linear-gradient(135deg,#1a6b3a,#28a060);">&#10003; 赞成</button>
+              <span class="vote-countdown" id="voteCountdownDisplay"></span>
+              <button class="secondary" id="voteNoBtn" style="border-color:rgba(139,0,0,0.3);">&#10007; 反对</button>
+            </div>
+
+            <div class="discussion-handle-stack">
+              <button class="secondary discussion-handle discussion-town-handle" id="peekTownBtn">广场</button>
+              <button class="secondary discussion-handle discussion-log-handle" id="peekLogBtn">记录</button>
+            </div>
+            <div class="discussion-log-drawer" id="discussionLogDrawer">
+              <div class="discussion-log-header">
+                <strong>记录板</strong>
+                <button class="secondary" id="peekLogCloseBtn">收起记录</button>
+              </div>
+              <div class="discussion-log-body">
+                <div class="log-list" id="publicLogDrawerList"></div>
+              </div>
+            </div>
+          </div>
+          <div class="discussion-overlay-backdrop" id="discussionOverlayBackdrop"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>你的身份</h2>
+        <div class="private-box" id="humanRoleBox">尚未分配角色</div>
+        <div class="section">
+          <h2>你的私密信息</h2>
+          <div class="private-box" id="humanPrivateBox">暂无</div>
+        </div>
+        <div class="section">
+          <h2>你的夜晚行动</h2>
+          <div class="private-box" id="humanActionBox">无夜晚行动</div>
+        </div>
+        <div class="section task-section" id="taskSection">
+          <h2>当前任务</h2>
+          <div class="task-card">
+            <div class="task-title" id="taskTitle">等待开局</div>
+            <div class="task-desc" id="taskDesc">请先生成玩家并随机发牌。</div>
+            <div class="task-hint" id="taskHint">提示：设置好模型后点击"开局"。</div>
+          </div>
+        </div>
+        <div class="section">
+          <h2>事件记录</h2>
+          <div class="log-list" id="logList"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="replayPanel" style="display:none">
+        <h2>游戏复盘</h2>
+        <div class="section">
+          <h2>角色一览</h2>
+          <ul class="replay-list" id="replayRoles"></ul>
+        </div>
+        <div class="section">
+          <h2>夜晚行为</h2>
+          <ul class="replay-list" id="replayActions"></ul>
+        </div>
+        <div class="section">
+          <h2>私聊记录</h2>
+          <ul class="replay-list" id="replayPrivate"></ul>
+        </div>
+        <div class="section">
+          <h2>发言记录</h2>
+          <ul class="replay-list" id="replayChat"></ul>
+        </div>
+        <div class="section">
+          <h2>说书人复盘</h2>
+          <button class="secondary" id="storySummaryBtn">生成复盘</button>
+          <div class="private-box" id="storySummaryBox">暂无</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Dawn narration overlay -->
+    <div class="story-overlay" id="dawnOverlay">
+      <div class="story-line" id="dawnText">天亮了……</div>
+    </div>
+
+    <footer>本页面仅用于自用测试，API Key 存在浏览器 localStorage。</footer>
+
+    <div class="modal" id="modalOverlay">
+      <div class="modal-card">
+        <p id="modalMessage">请注意操作提示。</p>
+        <button class="secondary" id="modalCloseBtn">知道了</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
