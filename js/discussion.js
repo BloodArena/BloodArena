@@ -127,19 +127,6 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊
 export async function aiSpeak(player) {
   if (state && state.paused) return;
   const token = state.discussionToken || 0;
-  if (player.roleName === "猎手" && !player.slayerUsed && state.phase === "day" && state.dayStage === "discussion") {
-    if (Math.random() < 0.2) {
-      const targets = state.players.filter((p) => p.alive && p.id !== player.id);
-      if (targets.length) {
-        const target = targets[Math.floor(Math.random() * targets.length)];
-        const seat = state.players.indexOf(target) + 1;
-        const claim = buildSlayerDeclarationTemplate(seat);
-        player.memory.push(claim);
-        addChat(player.name, claim, "player");
-        return;
-      }
-    }
-  }
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";

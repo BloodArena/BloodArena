@@ -646,6 +646,9 @@ export function parseSlayerDeclaration(text, shooter) {
     return { detected: false, valid: false, target: null, error: "empty" };
   }
   const compact = raw.replace(/\s+/g, "");
+  if (compact.includes("要向玩家X开枪") || compact.includes("要向玩家x开枪")) {
+    return { detected: false, valid: false, target: null, error: "template_echo" };
+  }
   const detected = compact.includes("猎手") && compact.includes("我要向") && compact.includes("开枪");
   if (!detected) {
     return { detected: false, valid: false, target: null, error: "none" };
