@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>血染钟楼 AI 对战排行榜</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e0e12;
+      --surface: #1a1a24;
+      --border: #2a2a3a;
+      --text: #e0ddd4;
+      --muted: #8a8a9a;
+      --blood: #8b0000;
+      --blood-light: #b22222;
+      --gold: #c9a84c;
+      --green: #28a060;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans SC", sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+    }
+    h1 {
+      font-family: "Cinzel", serif;
+      font-size: 2rem;
+      color: var(--blood-light);
+      margin-bottom: 8px;
+    }
+    .subtitle { color: var(--muted); font-size: 0.95rem; }
+    .meta-row {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .meta-row span { background: var(--surface); padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 0.9rem;
+    }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    th {
+      background: var(--surface);
+      color: var(--gold);
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    th:hover { color: var(--text); }
+    th .arrow { font-size: 0.7em; margin-left: 4px; }
+    tr:hover td { background: rgba(139, 0, 0, 0.08); }
+    .rank { font-weight: 700; color: var(--gold); width: 40px; text-align: center; }
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #c0c0c0; }
+    .rank-3 { color: #cd7f32; }
+    .model-name { font-weight: 500; }
+    .rate { font-variant-numeric: tabular-nums; }
+    .rate-good { color: var(--green); }
+    .rate-evil { color: var(--blood-light); }
+    .cost { color: var(--muted); font-variant-numeric: tabular-nums; }
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--blood-light); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    #loading { text-align: center; padding: 40px; color: var(--muted); }
+    #error { text-align: center; padding: 40px; color: var(--blood-light); display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Blood on the Clocktower</h1>
+      <div class="subtitle">AI 对战评测排行榜 — 暗流涌动 (Trouble Brewing)</div>
+      <div class="meta-row" id="metaRow"></div>
+    </header>
+    <div id="loading">加载排行榜数据中...</div>
+    <div id="error">无法加载排行榜数据。请确认 results/leaderboard.json 存在。</div>
+    <table id="leaderboard" style="display:none">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <footer>
+      <p>评测方法：12 个模型 &times; 12 人局，每模型 1 次恶魔 / 2 次爪牙 / 9 次好人</p>
+      <p style="margin-top:8px"><a href="index.html">想自己试试？点击进入单人对战模式</a></p>
+    </footer>
+  </div>
+  <script>
+    const columns = [
+      { key: "rank", label: "#", fmt: v => v },
+      { key: "label", label: "模型", fmt: v => v },
+      { key: "overallWinRate", label: "综合胜率", fmt: pct, cls: "rate" },
+      { key: "townsfolkWinRate", label: "镇民胜率", fmt: pct, cls: "rate rate-good" },
+      { key: "outsiderWinRate", label: "外来者胜率", fmt: pct, cls: "rate rate-good" },
+      { key: "goodWinRate", label: "善良胜率", fmt: pct, cls: "rate rate-good" },
+      { key: "evilWinRate", label: "邪恶胜率", fmt: pct, cls: "rate rate-evil" },
+      { key: "demonWinRate", label: "恶魔胜率", fmt: pct, cls: "rate rate-evil" },
+      { key: "minionWinRate", label: "爪牙胜率", fmt: pct, cls: "rate rate-evil" },
+      { key: "totalCost", label: "总花费", fmt: v => v != null ? "$" + v.toFixed(3) : "—", cls: "cost" },
+      { key: "avgCostPerGame", label: "均花费/局", fmt: v => v != null ? "$" + v.toFixed(4) : "—", cls: "cost" }
+    ];
+    function pct(v) { return v != null ? (v * 100).toFixed(1) + "%" : "N/A"; }
+
+    let data = null;
+    let sortKey = "overallWinRate";
+    let sortAsc = false;
+
+    async function load() {
+      try {
+        const resp = await fetch("results/leaderboard.json");
+        if (!resp.ok) throw new Error(resp.status);
+        data = await resp.json();
+        render();
+      } catch (e) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("error").style.display = "";
+      }
+    }
+
+    function render() {
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("leaderboard").style.display = "";
+
+      // Meta
+      const meta = document.getElementById("metaRow");
+      const dt = data.generatedAt ? new Date(data.generatedAt).toLocaleString("zh-CN") : "—";
+      meta.innerHTML = `<span>总局数：${data.totalGames}</span><span>总花费：$${(data.totalCost || 0).toFixed(2)}</span><span>生成时间：${dt}</span>`;
+
+      // Sort
+      const models = data.models.slice().sort((a, b) => {
+        const va = a[sortKey] ?? -Infinity;
+        const vb = b[sortKey] ?? -Infinity;
+        return sortAsc ? va - vb : vb - va;
+      });
+      models.forEach((m, i) => m.rank = i + 1);
+
+      // Header
+      const thead = document.getElementById("thead");
+      thead.innerHTML = "<tr>" + columns.map(c => {
+        const arrow = c.key === sortKey ? (sortAsc ? "▲" : "▼") : "";
+        return `<th data-key="${c.key}">${c.label}<span class="arrow">${arrow}</span></th>`;
+      }).join("") + "</tr>";
+      thead.querySelectorAll("th").forEach(th => {
+        th.addEventListener("click", () => {
+          const key = th.dataset.key;
+          if (key === sortKey) sortAsc = !sortAsc;
+          else { sortKey = key; sortAsc = false; }
+          render();
+        });
+      });
+
+      // Body
+      const tbody = document.getElementById("tbody");
+      tbody.innerHTML = models.map(m => {
+        return "<tr>" + columns.map(c => {
+          let cls = c.cls || "";
+          if (c.key === "rank") cls = `rank${m.rank <= 3 ? " rank-" + m.rank : ""}`;
+          if (c.key === "label") cls = "model-name";
+          const val = c.fmt(m[c.key]);
+          return `<td class="${cls}">${val}</td>`;
+        }).join("") + "</tr>";
+      }).join("");
+    }
+
+    load();
+  </script>
+</body>
+</html>
