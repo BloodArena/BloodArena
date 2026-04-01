@@ -90,7 +90,7 @@ export function buildPublicSummary() {
 export function getAliveDeadSummary() {
   const alive = state.players.filter((p) => p.alive).map((p) => getPromptName(p)).join("、");
   const dead = state.players.filter((p) => !p.alive).map((p) => getPromptName(p)).join("、");
-  return `存活玩家：${alive || "无"}\n死亡玩家：${dead || "无"}`;
+  return `目前的存活玩家：${alive || "无"}\n目前的死亡玩家：${dead || "无"}`;
 }
 
 export function getDiscussionDurationSeconds() {

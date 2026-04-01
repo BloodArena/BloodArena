@@ -6,7 +6,7 @@ import { callDeepSeek } from './api.js';
 import { addChat, addLogEntry, addReplayEvent, formatPlayerPrivateChats } from './chat.js';
 import { renderAll, renderHumanInfo } from './ui-helpers.js';
 import { checkWin, switchPhase, needsHumanNightAction, isHumanActionReady, clearAutoNightTimer } from './game-logic.js';
-import { getPhaseLabel, getInfoRolePlayer, formatPrivateInfoForPrompt, formatChatForPrompt, buildPlayerPromptMessages } from './prompts.js';
+import { getPhaseLabel, getInfoRolePlayer, formatPrivateInfoForPrompt, formatChatForPrompt, buildPlayerPromptMessages, getAliveDeadSummary } from './prompts.js';
 
 /* Dependency injection for cross-module calls (kept for future use) */
 let _deps = {};
@@ -64,9 +64,11 @@ async function aiChooseSingleTarget(actor, candidates, actionLabel, extraNote = 
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(actor);
   const recentChat = formatChatForPrompt(12, actor, "json");
+  const aliveDeadSummary = getAliveDeadSummary();
   const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
@@ -90,9 +92,11 @@ async function aiChooseTwoTargets(actor, candidates, actionLabel) {
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(actor);
   const recentChat = formatChatForPrompt(12, actor, "json");
+  const aliveDeadSummary = getAliveDeadSummary();
   const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。

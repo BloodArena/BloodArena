@@ -416,6 +416,12 @@ function recordRoleChange(player, newRoleName, reason) {
 
 // --- Prompt helpers ---
 
+function getAliveDeadSummary(state) {
+  const alive = state.players.filter(p => p.alive).map(p => getPromptName(p)).join("、");
+  const dead = state.players.filter(p => !p.alive).map(p => getPromptName(p)).join("、");
+  return `目前的存活玩家：${alive || "无"}\n目前的死亡玩家：${dead || "无"}`;
+}
+
 function getPhaseLabel(state) {
   if (!state) return "未开局";
   if (state.ended) return "已结束";
@@ -1276,9 +1282,11 @@ async function aiChooseSingleTarget(state, actor, candidates, actionLabel, extra
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
   const recentChat = formatChatForPrompt(state, 12, actor, "json");
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
@@ -1297,9 +1305,11 @@ async function aiChooseTwoTargets(state, actor, candidates, actionLabel) {
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
   const recentChat = formatChatForPrompt(state, 12, actor, "json");
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
@@ -1710,9 +1720,11 @@ async function aiSpeak(state, player) {
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";
   const recentChat = formatChatForPrompt(state, 12, player, "chat");
   const dayRuleNote = getDayRuleNote(state);
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, player, "chat",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
@@ -1744,12 +1756,14 @@ async function maybeAiPrivateChat(state, player) {
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const recentChat = formatChatForPrompt(state, 8, player, "json");
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const targetNames = candidates.map(p => p.name).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 现在是白天1，你可以选择是否发起一次私聊（仅在白天1可私聊）。
 可私聊目标：${targetNames}。
 如果你是邪恶阵营，可以考虑通过私聊与邪恶同伴交换身份或协调计划。
+${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 请输出 JSON：{"private":"yes|no","target":"玩家名","message":"一小段话"}`;
@@ -1774,10 +1788,12 @@ async function aiPrivateReply(state, sender, target, text) {
   const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, target);
   const recentChat = formatChatForPrompt(state, 8, target, "chat");
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, target, "chat",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
+${aliveDeadSummary}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 ${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`);
@@ -1808,8 +1824,10 @@ async function aiNominate(state, player) {
   const recentChat = formatChatForPrompt(state, 12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
 你的私密信息增量：${privateInfo}
@@ -1831,8 +1849,10 @@ async function aiNominationReason(state, nominator, nominee) {
   const recentChat = formatChatForPrompt(state, 12, nominator, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominator);
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你提名了${nominee.name}。
 你的私密信息增量：${privateInfo}
 这是一小段公开发言，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话说明理由。`;
@@ -1847,8 +1867,10 @@ async function aiNominationDefense(state, nominee) {
   const recentChat = formatChatForPrompt(state, 12, nominee, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominee);
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你被提名了。
 你的私密信息增量：${privateInfo}
 这是公开辩解，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话辩解。`;
@@ -1864,9 +1886,11 @@ async function aiVoteSingle(state, voter, nominee) {
   const recentChat = formatChatForPrompt(state, 12, voter, "json");
   const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, voter);
+  const aliveDeadSummary = getAliveDeadSummary(state);
   const deadVoteNote = !voter.alive ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。" : "";
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}
 你的私密信息增量：${privateInfo}

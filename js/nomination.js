@@ -20,7 +20,8 @@ import {
 import {
   formatChatForPrompt,
   formatPrivateInfoForPrompt,
-  buildPlayerPromptMessages
+  buildPlayerPromptMessages,
+  getAliveDeadSummary
 } from './prompts.js';
 import { formatPlayerPrivateChats } from './chat.js';
 import {
@@ -302,8 +303,10 @@ export async function aiNominate(player) {
   const recentChat = formatChatForPrompt(12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
+  const aliveDeadSummary = getAliveDeadSummary();
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
 你的私密信息增量：${privateInfo}
@@ -425,8 +428,10 @@ export async function aiNominationReason(nominator, nominee) {
   const recentChat = formatChatForPrompt(12, nominator, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(nominator);
+  const aliveDeadSummary = getAliveDeadSummary();
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你提名了${nominee.name}。
 你的私密信息增量：${privateInfo}
 这是一小段公开发言，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话说明理由。`;
@@ -443,8 +448,10 @@ export async function aiNominationDefense(nominee) {
   const recentChat = formatChatForPrompt(12, nominee, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(nominee);
+  const aliveDeadSummary = getAliveDeadSummary();
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你被提名了。
 你的私密信息增量：${privateInfo}
 这是公开辩解，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话辩解。`;
@@ -641,11 +648,13 @@ export async function aiVoteSingle(voter) {
   if (!voter.alive && voter.deadVoteUsed) {
     return { vote: "no", reason: "遗言票已用" };
   }
+  const aliveDeadSummary = getAliveDeadSummary();
   const deadVoteNote = !voter.alive
     ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。"
     : "";
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
+${aliveDeadSummary}
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}
 你的私密信息增量：${privateInfo}

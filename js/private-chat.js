@@ -11,7 +11,8 @@ import { addPrivateChat, formatPlayerPrivateChats, isPrivateChatOpen } from './c
 import {
   buildPlayerPromptMessages,
   formatPrivateInfoForPrompt,
-  formatChatForPrompt
+  formatChatForPrompt,
+  getAliveDeadSummary
 } from './prompts.js';
 
 /* ===== DOM references (resolved lazily) ===== */
@@ -28,12 +29,14 @@ export async function respondToPrivate(player, mentionText) {
   const human = state.players.find((p) => p.isHuman);
   const privateChatHistory = formatPlayerPrivateChats(player);
   const recentChat = formatChatForPrompt(10, player, "chat");
+  const aliveDeadSummary = getAliveDeadSummary();
   const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
     player,
     "chat",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${human ? human.name : "对方"}对你说：${mentionText}
+${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`
@@ -61,12 +64,14 @@ export async function aiPrivateReply(sender, target, text) {
   const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(target);
   const recentChat = formatChatForPrompt(8, target, "chat");
+  const aliveDeadSummary = getAliveDeadSummary();
   const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
     target,
     "chat",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
+${aliveDeadSummary}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`
@@ -99,12 +104,14 @@ export async function maybeAiPrivateChat(player) {
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
   const recentChat = formatChatForPrompt(8, player, "json");
+  const aliveDeadSummary = getAliveDeadSummary();
   const targetNames = candidates.map((p) => p.name).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 现在是白天1，你可以选择是否发起一次私聊（仅在白天1可私聊）。
 可私聊目标：${targetNames}。
 如果你是邪恶阵营，可以考虑通过私聊与邪恶同伴交换身份或协调计划。
+${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
 请输出 JSON：{"private":"yes|no","target":"玩家名","message":"一小段话"}`;
