@@ -4,6 +4,60 @@
 
 const config = require('./config');
 
+/* ─── Local pricing fallback (USD per 1M tokens: [input, output]) ─── */
+const MODEL_PRICING = {
+  "deepseek-chat":        [0.27, 1.10],
+  "deepseek-reasoner":    [0.55, 2.19],
+  "deepseek-v3":          [0.27, 1.10],
+  "gemini-3-pro":         [1.25, 10.00],
+  "gemini-3-flash":       [0.10, 0.40],
+  "claude-3-haiku":       [0.25, 1.25],
+  "claude-3-5-haiku":     [0.80, 4.00],
+  "claude-haiku-4-5":     [0.80, 4.00],
+  "claude-3-7-sonnet":    [3.00, 15.00],
+  "claude-sonnet-4":      [3.00, 15.00],
+  "claude-sonnet-4-5":    [3.00, 15.00],
+  "claude-opus-4":        [15.00, 75.00],
+  "claude-opus-4-1":      [15.00, 75.00],
+  "claude-opus-4-5":      [15.00, 75.00],
+  "claude-opus-4-6":      [15.00, 75.00],
+  "gpt-5.1":              [2.00, 8.00],
+  "gpt-5":                [2.00, 8.00],
+  "gpt-5.4":              [2.00, 8.00],
+  "gpt-4.1":              [2.00, 8.00],
+  "mimo-v2-pro":          [1.00, 3.00],
+  "minimax-m2.7":         [0.50, 2.00],
+  "minimax-m1":           [0.50, 2.00],
+  "grok-4.1":             [3.00, 15.00],
+  "grok-3-mini":          [0.30, 0.50],
+  "qwen3.5-397b":         [1.20, 1.20],
+  "qwen3-235b":           [0.70, 0.70],
+  "step-3.5":             [0.50, 2.00],
+  "step-2":               [0.50, 2.00],
+  "nemotron-3-super":     [0.50, 2.00],
+  "nemotron-ultra":       [0.50, 2.00],
+  "glm-5":                [0.50, 2.00],
+  "glm-4-plus":           [0.50, 2.00],
+  "kimi-k2.5":            [0.50, 2.00],
+  "kimi-k2":              [0.50, 2.00],
+};
+
+function lookupPricing(modelName) {
+  if (!modelName) return null;
+  const name = modelName.replace(/^[^/]+\//, ""); // strip provider/ prefix
+  if (MODEL_PRICING[name]) return MODEL_PRICING[name];
+  for (const key of Object.keys(MODEL_PRICING)) {
+    if (name.startsWith(key)) return MODEL_PRICING[key];
+  }
+  return null;
+}
+
+function estimateCost(model, promptTokens, completionTokens) {
+  const pricing = lookupPricing(model);
+  if (!pricing) return 0;
+  return (promptTokens / 1e6) * pricing[0] + (completionTokens / 1e6) * pricing[1];
+}
+
 /**
  * Call LLM via OpenRouter API
  * @param {Array} messages - Chat messages array
@@ -81,12 +135,14 @@ async function callLLM(messages, model, temperature = null, retries = null) {
       const completionTokens = rawUsage.completion_tokens || 0;
       const totalTokens = rawUsage.total_tokens || (promptTokens + completionTokens);
 
-      // OpenRouter may return total_cost directly
+      // OpenRouter may return total_cost directly; fallback to local pricing
       let cost = 0;
       if (typeof data.total_cost === "number") {
         cost = data.total_cost;
       } else if (typeof rawUsage.total_cost === "number") {
         cost = rawUsage.total_cost;
+      } else {
+        cost = estimateCost(model, promptTokens, completionTokens);
       }
 
       return {
