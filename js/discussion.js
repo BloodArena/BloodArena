@@ -56,11 +56,11 @@ export async function runPostGameChatRound() {
     if (!state || !state.postGameChat || state.paused) break;
     const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
     const privateChatHistory = formatPlayerPrivateChats(player);
-    const recentChat = formatChatForPrompt(12, player);
-    const userContent = `游戏已结束，进入赛后聊天。你可以简单回顾这一局或表达感受。\n公开聊天记录：\n${recentChat}\n
+    const recentChat = formatChatForPrompt(12, player, "chat");
+    const userContent = `游戏已结束，进入赛后聊天。你可以简单回顾这一局或表达感受。\n公开聊天（最近增量）：\n${recentChat}\n
           你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${player.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 这是公开聊天，所有玩家都能看到你的发言。请用一小段话发言。`;
     const buildPrompt = buildPlayerPromptMessages(player, "chat", userContent);
     try {
@@ -90,19 +90,19 @@ export function findMentions(text) {
 export async function respondToMention(player, mentionText) {
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
-  const recentChat = formatChatForPrompt(12, player);
+  const recentChat = formatChatForPrompt(12, player, "chat");
   const dayRuleNote = getDayRuleNote();
   const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
     player,
     "chat",
-    `公开聊天记录：\n${recentChat}\n
+    `公开聊天（最近增量）：\n${recentChat}\n
           你的私聊记录：\n${privateChatHistory}\n
 你被@提问了。提问内容：${mentionText}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
 ${state.phase === "day" && state.dayStage === "discussion" && !state.ended
   ? `猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。\n`
-  : ""}你的私密信息：${privateInfo}
+  : ""}你的私密信息增量：${privateInfo}
 你自己最近说过：${player.memory.slice(-4).join(" / ") || "无"}。
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。请给出一小段回应。`
   );
@@ -130,17 +130,17 @@ export async function aiSpeak(player) {
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";
-  const recentChat = formatChatForPrompt(12, player);
+  const recentChat = formatChatForPrompt(12, player, "chat");
   const dayRuleNote = getDayRuleNote();
   const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
     player,
     "chat",
-    `公开聊天记录：\n${recentChat}\n
+    `公开聊天（最近增量）：\n${recentChat}\n
           你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 你自己之前说过：${recentSelf}\n
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息发言。请输出一小段话发言。`
   );

@@ -187,10 +187,10 @@ export const PLAYER_JSON_SYSTEM_PROMPT = [
   "不要输出心理活动、内心独白或思考过程。"
 ].join("");
 export const USE_FULL_CHAT_HISTORY = true;
-export const USE_INCREMENTAL_CHAT_CONTEXT = false;
+export const USE_INCREMENTAL_CHAT_CONTEXT = true;
 export const CHAT_DELTA_MAX_LINES = 0;
 export const CHAT_DELTA_RECENT_LINES = 10;
-export const USE_PERSISTENT_MESSAGES = false;
+export const USE_PERSISTENT_MESSAGES = true;
 export const STORYTELLER_LLM_ENABLED = true;
 export const STORYTELLER_REGISTER_LLM_ENABLED = true;
 export const HUMAN_CHAT_GRACE_MS = 650;

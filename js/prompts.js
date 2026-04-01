@@ -183,11 +183,14 @@ export function formatPrivateInfoForPrompt(actor, sessionKey = "default", limit 
 
 export function markActorPromptCursors(actor, sessionKey = "default") {
   if (!actor || !state || !USE_INCREMENTAL_CHAT_CONTEXT) return;
-  actor.publicChatCursor = Number(state.chatSeq) || 0;
+  const key = getSessionCursorKey(sessionKey);
+  if (!actor.publicChatCursorBySession || typeof actor.publicChatCursorBySession !== "object") {
+    actor.publicChatCursorBySession = {};
+  }
+  actor.publicChatCursorBySession[key] = Number(state.chatSeq) || 0;
   if (!actor.privateInfoCursorBySession || typeof actor.privateInfoCursorBySession !== "object") {
     actor.privateInfoCursorBySession = {};
   }
-  const key = getSessionCursorKey(sessionKey);
   const infoCount = Array.isArray(actor.privateInfo) ? actor.privateInfo.length : 0;
   actor.privateInfoCursorBySession[key] = infoCount;
 }
@@ -233,14 +236,19 @@ export function buildPlayerPromptMessages(actor, sessionKey, userContent, option
   return messages;
 }
 
-export function formatChatForPrompt(limit = 12, actor = null) {
+export function formatChatForPrompt(limit = 12, actor = null, sessionKey = "default") {
   const effectiveLimit = USE_FULL_CHAT_HISTORY ? null : limit;
   const fullSlice = effectiveLimit ? state.chat.slice(-effectiveLimit) : state.chat.slice();
   if (!USE_INCREMENTAL_CHAT_CONTEXT || !actor) {
     if (!fullSlice.length) return "无";
     return fullSlice.map((entry) => formatPromptChatLine(entry)).join("\n");
   }
-  const cursor = Number.isFinite(actor.publicChatCursor) ? actor.publicChatCursor : 0;
+  if (!actor.publicChatCursorBySession || typeof actor.publicChatCursorBySession !== "object") {
+    actor.publicChatCursorBySession = {};
+  }
+  const key = getSessionCursorKey(sessionKey);
+  const cursorRaw = actor.publicChatCursorBySession[key];
+  const cursor = Number.isFinite(cursorRaw) ? cursorRaw : 0;
   const unseen = state.chat.filter((entry) => (Number(entry.seq) || 0) > cursor);
   if (!unseen.length) {
     return "无新增公共发言（你已看过当前全部公开发言）";

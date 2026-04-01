@@ -108,6 +108,11 @@ const ROLE_STRATEGY_TIPS = {
 const FULL_ROLE_RULES = SCRIPT.roles.map(r => `${r.name}：${r.ability}`).join("；");
 const SLAYER_DECLARATION_TEMPLATE = "我是猎手，我要向玩家X开枪";
 const SLAYER_DECLARATION_NOTICE = `猎手声明规则：任何人都可以声称自己是猎手，但必须严格使用格式"${SLAYER_DECLARATION_TEMPLATE}"，这里的X是一个数字。只有真正的清醒且健康的猎手命中恶魔才有效果，且每名玩家每局仅首次该格式会被结算。`;
+const USE_FULL_CHAT_HISTORY = true;
+const USE_INCREMENTAL_CHAT_CONTEXT = false;
+const CHAT_DELTA_MAX_LINES = 0;
+const CHAT_DELTA_RECENT_LINES = 10;
+const USE_PERSISTENT_MESSAGES = false;
 
 const EVIL_ROLE_NAMES = SCRIPT.roles.filter(r => r.team === "minion" || r.team === "demon").map(r => r.name);
 
@@ -313,8 +318,42 @@ function createGameState() {
     claims: {}, claimHistory: [],
     tokenUsage: {}, trajectoryLog: [],
     postGameChat: false, lastDawnNarration: "",
-    winner: null, winCondition: null
+    winner: null, winCondition: null,
+    progress: {
+      mode: config.progressMode || "concise",
+      gameId: "",
+      llmCalls: 0
+    }
   };
+}
+
+function getProgressRank(mode) {
+  return { concise: 1, balanced: 2, detailed: 3 }[mode] || 1;
+}
+
+function isProgressEnabled(state, level = "concise") {
+  const current = state?.progress?.mode || config.progressMode || "concise";
+  return getProgressRank(current) >= getProgressRank(level);
+}
+
+function getProgressPrefix(state) {
+  const gameId = state?.progress?.gameId || "game";
+  return `    [${gameId}]`;
+}
+
+function progressLog(state, level, message) {
+  if (!isProgressEnabled(state, level)) return;
+  console.log(`${getProgressPrefix(state)} ${message}`);
+}
+
+function getUsageSnapshot(state) {
+  const entries = Object.values(state.tokenUsage || {});
+  return entries.reduce((acc, item) => {
+    acc.calls += item.calls || 0;
+    acc.tokens += item.totalTokens || 0;
+    acc.cost += item.cost || 0;
+    return acc;
+  }, { calls: 0, tokens: 0, cost: 0 });
 }
 
 // --- Logging helpers (pure memory, no DOM) ---
@@ -415,6 +454,81 @@ function getStrategyTips(player) {
   return tips.join(" ");
 }
 
+function summarizeChatEntriesForPrompt(entries) {
+  if (!entries.length) return "无";
+  const speakerCounts = new Map();
+  entries.forEach(entry => {
+    const speaker = entry?.speaker || "系统";
+    speakerCounts.set(speaker, (speakerCounts.get(speaker) || 0) + 1);
+  });
+  const topSpeakers = Array.from(speakerCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, count]) => `${name}(${count})`)
+    .join("、");
+  return `较早新增公共发言 ${entries.length} 条，主要发言者：${topSpeakers || "无"}`;
+}
+
+function getSessionCursorKey(sessionKey) {
+  const raw = String(sessionKey || "default").trim();
+  return raw || "default";
+}
+
+function getMessageSession(actor, sessionKey) {
+  if (!actor) return null;
+  if (!actor.messageSessions || typeof actor.messageSessions !== "object") {
+    actor.messageSessions = {};
+  }
+  const key = sessionKey || "default";
+  if (!Array.isArray(actor.messageSessions[key])) {
+    actor.messageSessions[key] = [];
+  }
+  return actor.messageSessions[key];
+}
+
+function dedupeSystemMessages(session, messages) {
+  if (!session || !session.length) return messages.slice();
+  return messages.filter((msg) => {
+    if (msg.role !== "system") return true;
+    return !session.some((m) => m.role === "system" && m.content === msg.content);
+  });
+}
+
+function buildSessionMessages(actor, sessionKey, messages) {
+  if (!USE_PERSISTENT_MESSAGES || !actor) {
+    return { finalMessages: messages, session: null, newMessages: messages };
+  }
+  const session = getMessageSession(actor, sessionKey);
+  const newMessages = dedupeSystemMessages(session, messages);
+  return {
+    finalMessages: session.concat(newMessages),
+    session,
+    newMessages
+  };
+}
+
+function markActorPromptCursors(state, actor, sessionKey = "default") {
+  if (!actor || !state || !USE_INCREMENTAL_CHAT_CONTEXT) return;
+  actor.publicChatCursor = Number(state.chatSeq) || 0;
+  if (!actor.privateInfoCursorBySession || typeof actor.privateInfoCursorBySession !== "object") {
+    actor.privateInfoCursorBySession = {};
+  }
+  const key = getSessionCursorKey(sessionKey);
+  const infoCount = Array.isArray(actor.privateInfo) ? actor.privateInfo.length : 0;
+  actor.privateInfoCursorBySession[key] = infoCount;
+}
+
+function commitSessionMessages(state, actor, sessionKey, messages, assistantContent) {
+  if (!actor) return;
+  if (USE_PERSISTENT_MESSAGES) {
+    const session = getMessageSession(actor, sessionKey);
+    const newMessages = dedupeSystemMessages(session, messages);
+    if (newMessages.length) session.push(...newMessages);
+    session.push({ role: "assistant", content: assistantContent });
+  }
+  markActorPromptCursors(state, actor, sessionKey);
+}
+
 function buildPlayerStaticSystemContext(state, actor, options = {}) {
   if (!actor) return "";
   const apparentRole = getApparentRole(actor);
@@ -447,14 +561,45 @@ function buildPlayerPromptMessages(state, actor, sessionKey, userContent, option
   return messages;
 }
 
-function formatChatForPrompt(state) {
-  if (!state.chat.length) return "无";
-  return state.chat.map(entry => formatPromptChatLine(entry)).join("\n");
+function formatChatForPrompt(state, limit = 12, actor = null) {
+  const effectiveLimit = USE_FULL_CHAT_HISTORY ? null : limit;
+  const fullSlice = effectiveLimit ? state.chat.slice(-effectiveLimit) : state.chat.slice();
+  if (!USE_INCREMENTAL_CHAT_CONTEXT || !actor) {
+    if (!fullSlice.length) return "无";
+    return fullSlice.map(entry => formatPromptChatLine(entry)).join("\n");
+  }
+  const cursor = Number.isFinite(actor.publicChatCursor) ? actor.publicChatCursor : 0;
+  const unseen = state.chat.filter(entry => (Number(entry.seq) || 0) > cursor);
+  if (!unseen.length) {
+    return "无新增公共发言（你已看过当前全部公开发言）";
+  }
+  if (CHAT_DELTA_MAX_LINES <= 0 || unseen.length <= CHAT_DELTA_MAX_LINES) {
+    return unseen.map(entry => formatPromptChatLine(entry)).join("\n");
+  }
+  const recentCount = Math.max(1, CHAT_DELTA_RECENT_LINES);
+  const older = unseen.slice(0, Math.max(0, unseen.length - recentCount));
+  const recent = unseen.slice(-recentCount);
+  const olderSummary = summarizeChatEntriesForPrompt(older);
+  return `${olderSummary}\n最近新增：\n${recent.map(entry => formatPromptChatLine(entry)).join("\n")}`;
 }
 
-function formatPrivateInfoForPrompt(actor) {
+function formatPrivateInfoForPrompt(actor, sessionKey = "default", limit = 4) {
   if (!actor || !Array.isArray(actor.privateInfo) || !actor.privateInfo.length) return "无";
-  return actor.privateInfo.join(" / ");
+  const safeLimit = Math.max(1, Math.round(limit));
+  if (!USE_INCREMENTAL_CHAT_CONTEXT) {
+    return actor.privateInfo.join(" / ") || "无";
+  }
+  if (!actor.privateInfoCursorBySession || typeof actor.privateInfoCursorBySession !== "object") {
+    actor.privateInfoCursorBySession = {};
+  }
+  const key = getSessionCursorKey(sessionKey);
+  const cursorRaw = actor.privateInfoCursorBySession[key];
+  const cursor = Number.isFinite(cursorRaw) ? cursorRaw : 0;
+  const unseen = actor.privateInfo.slice(Math.max(0, cursor));
+  if (!unseen.length) {
+    return "无新增私密信息（沿用会话中已知私密信息）";
+  }
+  return unseen.slice(-safeLimit).join(" / ");
 }
 
 function formatPlayerPrivateChats(state, actor) {
@@ -521,14 +666,59 @@ function recordTrajectoryEntry(state, actor, sessionKey, model, messages, respon
  */
 async function callPlayerLLM(state, messages, temperature, actor, sessionKey = "default") {
   const model = actor ? actor.model : config.storytellerModel;
+  const apiModel = actor
+    ? (actor.apiModel || actor.model)
+    : (config.storytellerApiModel || config.storytellerModel);
+  const sessionPayload = buildSessionMessages(actor, sessionKey, messages);
+  const actorName = actor ? actor.name : "说书人";
+  const phaseLabel = getPhaseLabel(state);
+  const nextCallNumber = (state.progress?.llmCalls || 0) + 1;
+  const startedAt = Date.now();
+  let heartbeat = null;
+
+  if (state.progress) {
+    state.progress.llmCalls = nextCallNumber;
+  }
+
+  if (isProgressEnabled(state, "detailed")) {
+    progressLog(state, "detailed", `LLM #${nextCallNumber} start | ${phaseLabel} | ${actorName} | session=${sessionKey} | api=${apiModel}`);
+  }
+  if (isProgressEnabled(state, "balanced")) {
+    heartbeat = setInterval(() => {
+      const elapsed = Math.round((Date.now() - startedAt) / 1000);
+      progressLog(state, "balanced", `LLM #${nextCallNumber} waiting ${elapsed}s | ${phaseLabel} | ${actorName} | api=${apiModel}`);
+    }, 10000);
+  }
   try {
-    const result = await callLLM(messages, model, temperature);
+    const result = await callLLM(sessionPayload.finalMessages, apiModel, temperature);
     recordTokenUsage(state, model, result.usage);
-    recordTrajectoryEntry(state, actor, sessionKey, model, messages, result.content, result.reasoning);
+    if (actor) {
+      commitSessionMessages(state, actor, sessionKey, messages, result.content);
+    }
+    recordTrajectoryEntry(state, actor, sessionKey, model, sessionPayload.newMessages, result.content, result.reasoning);
+    const last = state.trajectoryLog[state.trajectoryLog.length - 1];
+    if (last) last.apiModel = apiModel;
+    if (heartbeat) clearInterval(heartbeat);
+
+    const elapsedMs = Date.now() - startedAt;
+    const usage = getUsageSnapshot(state);
+    progressLog(
+      state,
+      "balanced",
+      `LLM #${nextCallNumber} done in ${(elapsedMs / 1000).toFixed(1)}s | ${actorName} | api=${apiModel} | total calls=${usage.calls} tokens=${usage.tokens} cost=$${usage.cost.toFixed(3)}`
+    );
+    if (isProgressEnabled(state, "detailed")) {
+      const preview = (result.content || "").replace(/\s+/g, " ").trim().slice(0, 80);
+      progressLog(state, "detailed", `LLM #${nextCallNumber} preview | ${preview || "(empty response)"}`);
+    }
     return result.content;
   } catch (error) {
+    if (heartbeat) clearInterval(heartbeat);
     console.error(`  [LLM Error] ${actor ? actor.name : "storyteller"}: ${error.message}`);
-    recordTrajectoryEntry(state, actor, sessionKey, model, messages, `ERROR: ${error.message}`, "");
+    recordTrajectoryEntry(state, actor, sessionKey, model, sessionPayload.newMessages, `ERROR: ${error.message}`, "");
+    const last = state.trajectoryLog[state.trajectoryLog.length - 1];
+    if (last) last.apiModel = apiModel;
+    progressLog(state, "balanced", `LLM #${nextCallNumber} failed in ${((Date.now() - startedAt) / 1000).toFixed(1)}s | ${actorName} | api=${apiModel} | ${error.message}`);
     throw error;
   }
 }
@@ -540,6 +730,7 @@ function setupPlayers(state, assignments) {
   state.players = Array.from({ length: count }, (_, i) => {
     const p = emptyPlayer(i);
     p.model = assignments[i].modelId;
+    p.apiModel = (config.modelRuntimeOverrides && config.modelRuntimeOverrides[p.model]) || p.model;
     return p;
   });
   state.started = false;
@@ -1071,9 +1262,9 @@ function recordFirstNightRecognition(state) {
 
 async function aiChooseSingleTarget(state, actor, candidates, actionLabel, extraNote = "") {
   if (!actor || !candidates.length) return null;
-  const privateInfo = formatPrivateInfoForPrompt(actor);
+  const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
-  const recentChat = formatChatForPrompt(state);
+  const recentChat = formatChatForPrompt(state, 12, actor);
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天记录：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
@@ -1092,9 +1283,9 @@ async function aiChooseSingleTarget(state, actor, candidates, actionLabel, extra
 
 async function aiChooseTwoTargets(state, actor, candidates, actionLabel) {
   if (!actor || candidates.length < 2) return candidates;
-  const privateInfo = formatPrivateInfoForPrompt(actor);
+  const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
-  const recentChat = formatChatForPrompt(state);
+  const recentChat = formatChatForPrompt(state, 12, actor);
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天记录：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
@@ -1116,6 +1307,7 @@ async function aiChooseTwoTargets(state, actor, candidates, actionLabel) {
 
 async function resolveNight(state) {
   if (!state.started || state.phase !== "night") return;
+  progressLog(state, "concise", `Night ${state.nightCount} start`);
   if (state.nightCount === 1 && !state.firstNightRecognitionDone) {
     recordFirstNightRecognition(state);
   }
@@ -1135,10 +1327,11 @@ async function resolveNight(state) {
   const undertaker = getInfoRolePlayer(state, "送葬者");
   const ravenkeeper = getInfoRolePlayer(state, "守鸦人");
   const spy = getInfoRolePlayer(state, "间谍");
-  const infoMap = buildInfoRegistrationMap(state);
+  const infoMap = await buildInfoRegistrationMap(state);
 
   // 1. Poisoner
   if (poisoner) {
+    progressLog(state, "detailed", `Night ${state.nightCount} action | ${poisoner.name} uses poison`);
     const candidates = state.players.slice();
     const target = await aiChooseSingleTarget(state, poisoner, candidates, "投毒一名玩家（今晚与明天白天中毒）")
       || chooseRandomTarget(state, poisoner, true, true);
@@ -1151,6 +1344,7 @@ async function resolveNight(state) {
 
   // 2. Monk (not first night)
   if (monk && state.nightCount > 1) {
+    progressLog(state, "detailed", `Night ${state.nightCount} action | ${monk.name} chooses protection`);
     const candidates = state.players.filter(p => p.alive && p.id !== monk.id);
     const target = await aiChooseSingleTarget(state, monk, candidates, "守护一名玩家（免受恶魔能力）")
       || chooseRandomTarget(state, monk, false);
@@ -1170,6 +1364,7 @@ async function resolveNight(state) {
     if (demon.demonCooldownNight === state.nightCount) {
       addReplayEvent(state, `新恶魔当夜无法出刀：${demon.name}`, "night_action");
     } else {
+      progressLog(state, "detailed", `Night ${state.nightCount} action | ${demon.name} chooses kill`);
       const candidates = state.players.slice();
       const minions = state.players.filter(p => p.alive && p.team === "minion");
       const extraNote = minions.length
@@ -1200,37 +1395,81 @@ async function resolveNight(state) {
     const chosen = candidates[Math.floor(Math.random() * candidates.length)] || townsfolkInPlay[0];
     const pair = makeRolePair(state, chosen, washerwoman.id);
     const truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosen.roleName}` : `${chosen.name} 是 ${chosen.roleName}`;
+    const relatedNames = pair.map(p => p.name);
     const fakeRole = SCRIPT.roles.find(r => r.team === "townsfolk" && !townsfolkInPlay.some(p => p.roleId === r.id));
     const fakePlayers = shuffle(state.players.filter(p => p.id !== washerwoman.id)).slice(0, 2);
     const fake = fakeRole && fakePlayers.length >= 2 ? `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole.name}` : truth;
-    const result = await resolveInfoResult(state, washerwoman, "洗衣妇信息", truth, [fake]);
+    const result = await resolveInfoResult(state, washerwoman, "洗衣妇信息", truth, [fake], { relatedNames });
     setPrivateInfo(state, washerwoman, `洗衣妇信息：${result.info}`);
     recordInfoAudit(state, washerwoman, "洗衣妇信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   if (librarian && state.nightCount === 1) {
     const outsidersInPlay = state.players.filter(p => p.team === "outsider");
+    const outsiderRoles = SCRIPT.roles.filter(r => r.team === "outsider");
     let truth = "没有外来者在场";
+    let chosenOutsider = null;
+    let relatedNames = [];
     if (outsidersInPlay.length) {
-      const chosen = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
-      const pair = makeRolePair(state, chosen, librarian.id);
-      truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosen.roleName}` : `${chosen.name} 是 ${chosen.roleName}`;
+      chosenOutsider = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
+      const pair = makeRolePair(state, chosenOutsider, librarian.id);
+      truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosenOutsider.roleName}` : `${chosenOutsider.name} 是 ${chosenOutsider.roleName}`;
+      relatedNames = pair.map(p => p.name);
     }
-    const result = await resolveInfoResult(state, librarian, "图书管理员信息", truth, []);
+    let fake = "";
+    if (outsiderRoles.length) {
+      let fakeRolePool = outsiderRoles;
+      if (chosenOutsider && outsiderRoles.length > 1) {
+        fakeRolePool = outsiderRoles.filter(r => r.name !== chosenOutsider.roleName);
+      }
+      const fakeRole = fakeRolePool[Math.floor(Math.random() * fakeRolePool.length)];
+      const baseCandidates = state.players.filter(p => p.id !== librarian.id);
+      let fakeCandidates = baseCandidates.filter(p => p.roleId !== fakeRole.id);
+      if (fakeCandidates.length < 2) {
+        fakeCandidates = baseCandidates;
+      }
+      const fakePair = shuffle(fakeCandidates).slice(0, 2);
+      if (fakePair.length === 2) {
+        fake = `${fakePair[0].name} 或 ${fakePair[1].name} 是 ${fakeRole.name}`;
+      }
+    }
+    const fallbacks = fake ? [fake] : [];
+    const result = await resolveInfoResult(state, librarian, "图书管理员信息", truth, fallbacks, { relatedNames });
     setPrivateInfo(state, librarian, `图书管理员信息：${result.info}`);
     recordInfoAudit(state, librarian, "图书管理员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   if (investigator && state.nightCount === 1) {
     const minionsInPlay = state.players.filter(p => registersAsMinion(p, infoMap));
+    const minionRoles = SCRIPT.roles.filter(r => r.team === "minion").map(r => r.name);
     let truth = "没有爪牙在场";
+    let relatedNames = [];
     if (minionsInPlay.length) {
       const chosen = minionsInPlay[Math.floor(Math.random() * minionsInPlay.length)];
       const pair = makeRolePair(state, chosen, investigator.id);
       const roleName = getMinionRoleNameForInfo(chosen, infoMap);
       truth = `${pair[0].name} 或 ${pair[1].name} 是 ${roleName}`;
+      relatedNames = pair.map(p => p.name);
     }
-    const result = await resolveInfoResult(state, investigator, "调查员信息", truth, []);
+    let fake = "没有爪牙在场";
+    if (minionsInPlay.length) {
+      const fakeRolePool = minionRoles.filter(name => name !== truth.split(" 是 ").pop());
+      const fakeRole = fakeRolePool.length
+        ? fakeRolePool[Math.floor(Math.random() * fakeRolePool.length)]
+        : (minionRoles[0] || "爪牙");
+      const fakePlayers = shuffle(state.players.filter(p => p.id !== investigator.id)).slice(0, 2);
+      if (fakePlayers.length === 2) {
+        fake = `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole}`;
+      } else {
+        fake = truth;
+      }
+    } else if (minionRoles.length) {
+      const fakePlayers = shuffle(state.players.filter(p => p.id !== investigator.id)).slice(0, 2);
+      if (fakePlayers.length === 2) {
+        fake = `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${minionRoles[0]}`;
+      }
+    }
+    const result = await resolveInfoResult(state, investigator, "调查员信息", truth, [fake], { relatedNames });
     setPrivateInfo(state, investigator, `调查员信息：${result.info}`);
     recordInfoAudit(state, investigator, "调查员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
@@ -1278,12 +1517,20 @@ async function resolveNight(state) {
 
   // 6. Ravenkeeper (if killed this night)
   if (ravenkeeper && killed && ravenkeeper.id === killed.id) {
+    progressLog(state, "detailed", `Night ${state.nightCount} action | ${ravenkeeper.name} triggers ravenkeeper`);
     const candidates = state.players.filter(p => p.alive);
     const target = await aiChooseSingleTarget(state, ravenkeeper, candidates, "守鸦人选择一名玩家得知其角色")
       || chooseRandomTarget(state, ravenkeeper, true);
     if (target) {
       const registeredRole = registerRoleForInfo(target, infoMap);
-      const result = await resolveInfoResult(state, ravenkeeper, "守鸦人信息", registeredRole, SCRIPT.roles.map(r => r.name));
+      const result = await resolveInfoResult(
+        state,
+        ravenkeeper,
+        "守鸦人信息",
+        registeredRole,
+        SCRIPT.roles.map(r => r.name),
+        { relatedNames: [target.name] }
+      );
       setPrivateInfo(state, ravenkeeper, `守鸦人信息：${target.name} 是 ${result.info}`);
       recordInfoAudit(state, ravenkeeper, "守鸦人信息", registeredRole, result.info, result.isTrue, result.droisoned, result.source, result.reason);
     }
@@ -1306,13 +1553,21 @@ async function resolveNight(state) {
     if (targets.length < 2) targets = shuffle(candidates).slice(0, 2);
     const demonHit = targets.some(t => t && (t.team === "demon" || t.id === state.redHerringId || registersAsDemon(t, infoMap)));
     const truth = demonHit ? "有恶魔" : "没有恶魔";
-    const result = await resolveInfoResult(state, fortuneTeller, "占卜师信息", truth, [demonHit ? "没有恶魔" : "有恶魔"]);
+    const result = await resolveInfoResult(
+      state,
+      fortuneTeller,
+      "占卜师信息",
+      truth,
+      [demonHit ? "没有恶魔" : "有恶魔"],
+      { relatedNames: targets.map(t => t.name) }
+    );
     setPrivateInfo(state, fortuneTeller, `占卜师信息：${targets.map(t => t.name).join(" 与 ")} -> ${result.info}`);
     recordInfoAudit(state, fortuneTeller, "占卜师信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   // 9. Butler
   if (butler && butler.alive) {
+    progressLog(state, "detailed", `Night ${state.nightCount} action | ${butler.name} chooses master`);
     const candidates = state.players.filter(p => p.alive && p.id !== butler.id);
     const target = await aiChooseSingleTarget(state, butler, candidates, "选择一名主人（次日你只能随他投票）")
       || chooseRandomTarget(state, butler, false);
@@ -1328,7 +1583,14 @@ async function resolveNight(state) {
     const executed = state.players.find(p => p.id === state.lastExecutedId);
     if (executed) {
       const registeredRole = registerRoleForInfo(executed, infoMap);
-      const result = await resolveInfoResult(state, undertaker, "送葬者信息", registeredRole, SCRIPT.roles.map(r => r.name));
+      const result = await resolveInfoResult(
+        state,
+        undertaker,
+        "送葬者信息",
+        registeredRole,
+        SCRIPT.roles.map(r => r.name),
+        { relatedNames: [executed.name] }
+      );
       setPrivateInfo(state, undertaker, `送葬者信息：${executed.name} 是 ${result.info}`);
       recordInfoAudit(state, undertaker, "送葬者信息", registeredRole, result.info, result.isTrue, result.droisoned, result.source, result.reason);
     }
@@ -1354,6 +1616,7 @@ async function resolveNight(state) {
   addChat(state, "说书人", narration, "storyteller");
   addLogEntry(state, `夜晚死亡：${killed ? killed.name : "无人"}`, "night");
   addReplayEvent(state, `夜晚死亡：${killed ? killed.name : "无人"}`, "night_action");
+  progressLog(state, "concise", `Night ${state.nightCount} end | dead=${killed ? killed.name : "none"}`);
 
   checkWin(state);
   if (!state.ended) switchPhase(state);
@@ -1430,10 +1693,11 @@ function getDayRuleNote(state) {
 
 async function aiSpeak(state, player) {
   if (state.ended) return;
-  const privateInfo = formatPrivateInfoForPrompt(player);
+  progressLog(state, "detailed", `Discussion | Day ${state.dayCount} | ${player.name} speaking`);
+  const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";
-  const recentChat = formatChatForPrompt(state);
+  const recentChat = formatChatForPrompt(state, 12, player);
   const dayRuleNote = getDayRuleNote(state);
   const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, player, "chat",
     `公开聊天记录：\n${recentChat}\n
@@ -1463,11 +1727,12 @@ ${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都�
 
 async function maybeAiPrivateChat(state, player) {
   if (!isPrivateChatOpen(state)) return;
+  progressLog(state, "detailed", `Private chat check | Day ${state.dayCount} | ${player.name}`);
   const candidates = state.players.filter(p => p.alive && p.id !== player.id);
   if (!candidates.length) return;
-  const privateInfo = formatPrivateInfoForPrompt(player);
+  const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
-  const recentChat = formatChatForPrompt(state);
+  const recentChat = formatChatForPrompt(state, 8, player);
   const targetNames = candidates.map(p => p.name).join("、");
   const userContent = `公开聊天记录：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
@@ -1488,15 +1753,16 @@ async function maybeAiPrivateChat(state, player) {
     const text = (json.message || "").trim();
     if (!text) return;
     addPrivateChat(state, player.name, target.name, text);
+    progressLog(state, "detailed", `Private chat | ${player.name} -> ${target.name}`);
     // AI-to-AI reply
     await aiPrivateReply(state, player, target, text);
   } catch (_) {}
 }
 
 async function aiPrivateReply(state, sender, target, text) {
-  const privateInfo = formatPrivateInfoForPrompt(target);
+  const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, target);
-  const recentChat = formatChatForPrompt(state);
+  const recentChat = formatChatForPrompt(state, 8, target);
   const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, target, "chat",
     `公开聊天记录：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
@@ -1516,6 +1782,7 @@ ${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注�
     if (isEvilSelfReveal(target, reply)) reply = "我没什么想说的。";
     target.memory.push(reply);
     addPrivateChat(state, target.name, sender.name, reply);
+    progressLog(state, "detailed", `Private reply | ${target.name} -> ${sender.name}`);
   } catch (_) {}
 }
 
@@ -1527,8 +1794,8 @@ async function aiNominate(state, player) {
   const nominableTargets = state.players
     .filter(p => !state.nomineeUsedIds.includes(p.id) && p.id !== player.id)
     .map(p => playerOptionLabel(p));
-  const recentChat = formatChatForPrompt(state);
-  const privateInfo = formatPrivateInfoForPrompt(player);
+  const recentChat = formatChatForPrompt(state, 12, player);
+  const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const userContent = `公开聊天记录：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
@@ -1550,8 +1817,8 @@ async function aiNominate(state, player) {
 }
 
 async function aiNominationReason(state, nominator, nominee) {
-  const recentChat = formatChatForPrompt(state);
-  const privateInfo = formatPrivateInfoForPrompt(nominator);
+  const recentChat = formatChatForPrompt(state, 12, nominator);
+  const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominator);
   const userContent = `公开聊天记录：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
@@ -1566,8 +1833,8 @@ async function aiNominationReason(state, nominator, nominee) {
 }
 
 async function aiNominationDefense(state, nominee) {
-  const recentChat = formatChatForPrompt(state);
-  const privateInfo = formatPrivateInfoForPrompt(nominee);
+  const recentChat = formatChatForPrompt(state, 12, nominee);
+  const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominee);
   const userContent = `公开聊天记录：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
@@ -1583,8 +1850,8 @@ async function aiNominationDefense(state, nominee) {
 
 async function aiVoteSingle(state, voter, nominee) {
   if (!voter.alive && voter.deadVoteUsed) return { vote: "no", reason: "遗言票已用" };
-  const recentChat = formatChatForPrompt(state);
-  const privateInfo = formatPrivateInfoForPrompt(voter);
+  const recentChat = formatChatForPrompt(state, 12, voter);
+  const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, voter);
   const deadVoteNote = !voter.alive ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。" : "";
   const userContent = `公开聊天记录：\n${recentChat}\n
@@ -1626,6 +1893,7 @@ function canButlerVote(state, voter) {
 async function runNomination(state) {
   if (state.ended) return;
   state.dayStage = "nomination";
+  progressLog(state, "concise", `Day ${state.dayCount} nomination start`);
   state.nominationUsedIds = [];
   state.nomineeUsedIds = [];
   state.dayNominationCount = 0;
@@ -1638,25 +1906,48 @@ async function runNomination(state) {
   addReplayEvent(state, "进入提名阶段", "day_action");
 
   const alivePlayers = state.players.filter(p => p.alive);
+  const maxNominations = Math.max(0, Number(config.maxNominationsPerDay) || 0);
   const nominations = [];
-  for (const player of alivePlayers) {
+  const nominationSettledResults = await Promise.allSettled(
+    alivePlayers.map(async (player) => {
+      progressLog(state, "detailed", `Nomination intent | ${player.name}`);
+      const result = await aiNominate(state, player);
+      return { playerId: player.id, result };
+    })
+  );
+
+  for (let index = 0; index < alivePlayers.length; index++) {
     if (state.ended) break;
-    if (state.nominationUsedIds.includes(player.id)) continue;
-    const result = await aiNominate(state, player);
+    if (maxNominations > 0 && nominations.length >= maxNominations) break;
+
+    const player = alivePlayers[index];
+    if (!player) continue;
     state.nominationUsedIds.push(player.id);
-    if (result && result.nomineeId && !state.nomineeUsedIds.includes(result.nomineeId)) {
-      nominations.push({ nominatorId: player.id, nomineeId: result.nomineeId, reason: result.reason });
-      state.nomineeUsedIds.push(result.nomineeId);
-    }
+
+    const settled = nominationSettledResults[index];
+    if (!settled || settled.status !== "fulfilled") continue;
+
+    const proposal = settled.value?.result;
+    if (!proposal || !proposal.nomineeId) continue;
+    if (state.nomineeUsedIds.includes(proposal.nomineeId)) continue;
+
+    nominations.push({
+      nominatorId: player.id,
+      nomineeId: proposal.nomineeId,
+      reason: proposal.reason
+    });
+    state.nomineeUsedIds.push(proposal.nomineeId);
   }
 
   for (const nom of nominations) {
     if (state.ended) break;
+    if (maxNominations > 0 && state.dayNominationCount >= maxNominations) break;
     const nominator = state.players.find(p => p.id === nom.nominatorId);
     const nominee = state.players.find(p => p.id === nom.nomineeId);
     if (!nominator || !nominee) continue;
     state.dayNominationCount++;
     state.currentNomineeId = nominee.id;
+    progressLog(state, "balanced", `Nomination | ${nominator.name} -> ${nominee.name}`);
 
     // Virgin check
     if (nominee.roleName === "贞洁者" && !nominee.virginUsed && nominator.team === "townsfolk" && !isDroisoned(nominee)) {
@@ -1669,7 +1960,10 @@ async function runNomination(state) {
         state.ended = true; state.winner = "evil"; state.winCondition = "saint_executed";
       }
       checkWin(state);
-      continue;
+      if (!state.ended) {
+        switchPhase(state);
+      }
+      return;
     }
 
     addChat(state, "说书人", `${nominator.name} 提名 ${nominee.name}。`, "storyteller");
@@ -1692,6 +1986,7 @@ async function runNomination(state) {
     });
     const voters = state.players.filter(p => !state.nominationVotes[p.id]);
     for (const voter of voters) {
+      progressLog(state, "detailed", `Vote intent | ${voter.name} on ${nominee.name}`);
       const voteResult = await aiVoteSingle(state, voter, nominee);
       state.nominationVotes[voter.id] = { vote: voteResult.vote, reason: sanitizePublicReason(voteResult.reason) };
       if (!voter.alive && voteResult.vote === "yes") voter.deadVoteUsed = true;
@@ -1706,6 +2001,7 @@ async function runNomination(state) {
       if (p.roleName === "管家" && !canButlerVote(state, p)) vote = "no";
       if (vote === "yes") yesVotes++;
     });
+    progressLog(state, "balanced", `Vote result | ${nominee.name} yes=${yesVotes}/${aliveCount}`);
     addReplayEvent(state, `投票结果：赞成${yesVotes}/${aliveCount}`, "day_action");
 
     if (yesVotes > state.dayHighestVotes) {
@@ -1729,6 +2025,7 @@ function finalizeDayExecution(state) {
     state.lastExecutedId = "";
     addChat(state, "说书人", "无人提名，进入夜晚。", "storyteller");
     addReplayEvent(state, "无人提名，进入夜晚", "day_action");
+    progressLog(state, "concise", `Day ${state.dayCount} end | no nomination`);
   } else if (state.dayHighestNomineeId && !state.dayHighestTied && state.dayHighestVotes >= threshold) {
     const nominee = state.players.find(p => p.id === state.dayHighestNomineeId);
     if (nominee && nominee.alive) {
@@ -1736,6 +2033,7 @@ function finalizeDayExecution(state) {
       state.lastExecutedId = nominee.id;
       addChat(state, "说书人", `${nominee.name} 被处决。`, "storyteller");
       addReplayEvent(state, `处决：${nominee.name}`, "day_action");
+      progressLog(state, "concise", `Day ${state.dayCount} execution | ${nominee.name}`);
       if (nominee.roleName === "圣徒") {
         state.ended = true; state.winner = "evil"; state.winCondition = "saint_executed";
       }
@@ -1745,6 +2043,7 @@ function finalizeDayExecution(state) {
     const reason = state.dayHighestTied ? "最高票平票" : `最高票不足半数（需${threshold}票）`;
     addChat(state, "说书人", `提名结束，${reason}，无人被处决。`, "storyteller");
     addReplayEvent(state, `提名结束无人被处决（${reason}）`, "day_action");
+    progressLog(state, "concise", `Day ${state.dayCount} end | no execution (${reason})`);
   }
   checkWin(state);
   if (state.ended) return;
@@ -1765,7 +2064,9 @@ async function runDiscussion(state) {
   addChat(state, "说书人", "白天讨论开始。", "storyteller");
   addLogEntry(state, "进入讨论阶段", "phase");
   const rounds = config.discussionRounds || 3;
+  progressLog(state, "concise", `Day ${state.dayCount} discussion start | rounds=${rounds}`);
   for (let round = 0; round < rounds; round++) {
+    progressLog(state, "balanced", `Day ${state.dayCount} discussion round ${round + 1}/${rounds}`);
     for (const player of state.players) {
       if (state.ended) return;
       if (!player.alive) continue;
@@ -1781,6 +2082,7 @@ async function runDiscussion(state) {
 async function runOneGame(gameConfig) {
   const startTime = Date.now();
   const state = createGameState();
+  state.progress.gameId = gameConfig.gameId;
 
   // 1. Setup players and assign roles
   setupPlayers(state, gameConfig.assignments);
@@ -1790,6 +2092,7 @@ async function runOneGame(gameConfig) {
   state.nightCount = 1;
 
   console.log(`    Players: ${state.players.map(p => `${p.name}(${p.roleName})`).join(", ")}`);
+  progressLog(state, "concise", `Game start | seed=${gameConfig.seed}`);
 
   // 2. First night
   await resolveNight(state);
@@ -1815,9 +2118,15 @@ async function runOneGame(gameConfig) {
     state.winner = "draw";
     state.winCondition = "max_days_exceeded";
     addChat(state, "系统", `游戏超过${config.maxDays}天，强制结束（平局）。`, "system");
+    progressLog(state, "concise", `Game forced end | max_days_exceeded`);
   }
 
   const durationMs = Date.now() - startTime;
+  progressLog(
+    state,
+    "concise",
+    `Game end | winner=${state.winner} condition=${state.winCondition} days=${state.dayCount} cost=$${Object.values(state.tokenUsage).reduce((sum, u) => sum + (u.cost || 0), 0).toFixed(3)} duration=${Math.round(durationMs / 1000)}s`
+  );
 
   // Build result
   return {
@@ -1829,6 +2138,7 @@ async function runOneGame(gameConfig) {
     players: state.players.map((p, i) => ({
       seat: i + 1,
       model: p.model,
+      apiModel: p.apiModel || p.model,
       name: p.name,
       role: p.roleName,
       apparentRole: p.apparentRoleName,

@@ -27,15 +27,15 @@ export async function respondToPrivate(player, mentionText) {
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const human = state.players.find((p) => p.isHuman);
   const privateChatHistory = formatPlayerPrivateChats(player);
-  const recentChat = formatChatForPrompt(10, player);
+  const recentChat = formatChatForPrompt(10, player, "chat");
   const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
     player,
     "chat",
-    `公开聊天记录：\n${recentChat}\n
+    `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${human ? human.name : "对方"}对你说：${mentionText}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`
   );
   try {
@@ -60,15 +60,15 @@ export async function aiPrivateReply(sender, target, text) {
   if (!state || !sender || !target) return;
   const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(target);
-  const recentChat = formatChatForPrompt(8, target);
+  const recentChat = formatChatForPrompt(8, target, "chat");
   const buildPrompt = (extraInstruction = "") => buildPlayerPromptMessages(
     target,
     "chat",
-    `公开聊天记录：\n${recentChat}\n
+    `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`
   );
   try {
@@ -98,15 +98,15 @@ export async function maybeAiPrivateChat(player) {
   if (!candidates.length) return;
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
-  const recentChat = formatChatForPrompt(8, player);
+  const recentChat = formatChatForPrompt(8, player, "json");
   const targetNames = candidates.map((p) => p.name).join("、");
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 现在是白天1，你可以选择是否发起一次私聊（仅在白天1可私聊）。
 可私聊目标：${targetNames}。
 如果你是邪恶阵营，可以考虑通过私聊与邪恶同伴交换身份或协调计划。
 你的当前状态：${player.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 请输出 JSON：{"private":"yes|no","target":"玩家名","message":"一小段话"}`;
   const prompt = buildPlayerPromptMessages(player, "json", userContent, {
     systemPrompt: PLAYER_JSON_SYSTEM_PROMPT

@@ -387,7 +387,7 @@ export function startGame() {
   state.humanVoted = false;
   state.votingToken = (state.votingToken || 0) + 1;
   state.players.forEach((player) => {
-    player.publicChatCursor = 0;
+    player.publicChatCursorBySession = {};
     player.privateInfoCursorBySession = {};
     player.messageSessions = {};
   });

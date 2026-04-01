@@ -88,7 +88,7 @@ export function emptyPlayer(index) {
     deadVoteUsed: false,
     modelChoice: "default",
     lastPrivateDay: 0,
-    publicChatCursor: 0,
+    publicChatCursorBySession: {},
     privateInfoCursorBySession: {},
     messageSessions: {},
     roleHistory: [],
@@ -234,8 +234,8 @@ export function normalizeState() {
       if (typeof player.deadVoteUsed !== "boolean") player.deadVoteUsed = false;
       if (typeof player.modelChoice !== "string") player.modelChoice = "default";
       if (typeof player.lastPrivateDay !== "number") player.lastPrivateDay = 0;
-      if (typeof player.publicChatCursor !== "number" || !Number.isFinite(player.publicChatCursor)) {
-        player.publicChatCursor = 0;
+      if (!player.publicChatCursorBySession || typeof player.publicChatCursorBySession !== "object") {
+        player.publicChatCursorBySession = {};
       }
       if (!player.privateInfoCursorBySession || typeof player.privateInfoCursorBySession !== "object") {
         player.privateInfoCursorBySession = {};

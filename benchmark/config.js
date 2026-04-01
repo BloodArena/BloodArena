@@ -11,6 +11,7 @@ module.exports = {
   seed: 42,
   maxDays: 20,
   discussionRounds: 3,    // 每个白天讨论轮数
+  maxNominationsPerDay: 3,
 
   // OpenRouter 配置
   openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
@@ -22,7 +23,7 @@ module.exports = {
   maxRetries: 3,
 
   // 说书人模型（用于夜晚信息判定和叙述生成）
-  storytellerModel: "deepseek/deepseek-chat-v3-0324",
+  storytellerModel: "xiaomi/mimo-v2-pro",
 
   // 参与评测的 12 个模型
   models: [
@@ -31,12 +32,12 @@ module.exports = {
     { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6" },
     { id: "xiaomi/mimo-v2-pro", label: "MiMo V2 Pro" },
     { id: "minimax/minimax-m2.7", label: "MiniMax M2.7" },
-    { id: "x-ai/grok-4.1-fast", label: "Grok 4.1 fast" },
+    { id: "x-ai/grok-4.20-beta", label: "Grok 4.20 Beta" },
     { id: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2" },
     { id: "qwen/qwen3.5-397b-a17b", label: "Qwen3.5 397B" },
+    { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6" },
     { id: "stepfun/step-3.5-flash", label: "step 3.5 flash" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "nemotron 3 super" },
-    { id: "zhipu/glm-5", label: "GLM-5" },
+    { id: "z-ai/glm-5", label: "GLM-5" },
     { id: "moonshotai/kimi-k2.5", label: "kimi k2.5" }
   ],
 

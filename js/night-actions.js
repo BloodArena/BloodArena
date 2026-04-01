@@ -63,12 +63,12 @@ async function aiChooseSingleTarget(actor, candidates, actionLabel, extraNote = 
   if (!actor || !candidates.length) return null;
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(actor);
-  const recentChat = formatChatForPrompt(12, actor);
+  const recentChat = formatChatForPrompt(12, actor, "json");
   const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
 可选目标：${targetNames}。只能从列表中选择一个目标。${extraNote || ""}
 请输出 JSON：{"target":"玩家名"}`;
@@ -89,12 +89,12 @@ async function aiChooseTwoTargets(actor, candidates, actionLabel) {
   if (!actor || candidates.length < 2) return candidates;
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(actor);
-  const recentChat = formatChatForPrompt(12, actor);
+  const recentChat = formatChatForPrompt(12, actor, "json");
   const targetNames = candidates.map((p) => playerOptionLabel(p)).join("、");
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
 可选目标：${targetNames}。只能从列表中选择两名不同目标。
 请输出 JSON：{"target1":"玩家名","target2":"玩家名"}`;

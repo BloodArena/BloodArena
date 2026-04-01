@@ -299,14 +299,14 @@ export async function aiNominate(player) {
   const nominableTargets = state.players
     .filter((p) => !state.nomineeUsedIds.includes(p.id) && p.id !== player.id)
     .map((p) => `${p.name}${p.alive ? "" : "（已死亡）"}`);
-  const recentChat = formatChatForPrompt(12, player);
+  const recentChat = formatChatForPrompt(12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 请输出 JSON：{"nominate":"yes|no","target":"玩家名","reason":"一小段话"}。如果不提名，target为空字符串。`;
   const prompt = buildPlayerPromptMessages(player, "json", userContent, {
     systemPrompt: PLAYER_JSON_SYSTEM_PROMPT
@@ -422,13 +422,13 @@ export async function handleNominationDefenseDone() {
 /* ─── AI reason / defense ────────────────────────────────────── */
 
 export async function aiNominationReason(nominator, nominee) {
-  const recentChat = formatChatForPrompt(12, nominator);
+  const recentChat = formatChatForPrompt(12, nominator, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(nominator);
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 你提名了${nominee.name}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 这是一小段公开发言，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话说明理由。`;
   const prompt = buildPlayerPromptMessages(nominator, "chat", userContent);
   try {
@@ -440,13 +440,13 @@ export async function aiNominationReason(nominator, nominee) {
 }
 
 export async function aiNominationDefense(nominee) {
-  const recentChat = formatChatForPrompt(12, nominee);
+  const recentChat = formatChatForPrompt(12, nominee, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(nominee);
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 你被提名了。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 这是公开辩解，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话辩解。`;
   const prompt = buildPlayerPromptMessages(nominee, "chat", userContent);
   try {
@@ -635,7 +635,7 @@ export function sanitizePublicReason(reason) {
 
 export async function aiVoteSingle(voter) {
   const nominee = state.players.find((p) => p.id === state.currentNomineeId);
-  const recentChat = formatChatForPrompt(12, voter);
+  const recentChat = formatChatForPrompt(12, voter, "json");
   const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(voter);
   if (!voter.alive && voter.deadVoteUsed) {
@@ -644,11 +644,11 @@ export async function aiVoteSingle(voter) {
   const deadVoteNote = !voter.alive
     ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。"
     : "";
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
         你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 你需要对提名${nominee ? nominee.name : "某玩家"}投票。若你已知邪恶队友，请谨慎投他们，除非有明确牺牲/转移视线的理由。
 reason 是公开可说的一小段话，可留空；不要泄露私密信息，不要输出心理活动/内心独白，不要在括号里写心里话。
 请输出 JSON：{"vote":"yes|no","reason":"一小段话或空字符串"}`;
