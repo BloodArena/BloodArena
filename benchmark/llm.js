@@ -10,6 +10,7 @@ const MODEL_PRICING = {
   "deepseek-reasoner":    [0.55, 2.19],
   "deepseek-v3":          [0.27, 1.10],
   "gemini-3-pro":         [1.25, 10.00],
+  "gemini-3.1-pro":       [1.25, 10.00],
   "gemini-3-flash":       [0.10, 0.40],
   "claude-3-haiku":       [0.25, 1.25],
   "claude-3-5-haiku":     [0.80, 4.00],
