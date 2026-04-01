@@ -92,8 +92,9 @@ export const ROLE_STRATEGY_TIPS = {
   "男爵": "扰乱外来者数量，可自爆吸引火力或伪装外来者。",
   "小恶魔": "优先击杀强信息位。必要时可以自杀传刀给爪牙。"
 };
+const TEAM_LABEL = { townsfolk: "镇民", outsider: "外来者", minion: "爪牙", demon: "恶魔" };
 export const FULL_ROLE_RULES = SCRIPT.roles
-  .map((role) => `${role.name}：${role.ability}`)
+  .map((role) => `${role.name}（${TEAM_LABEL[role.team] || role.team}）：${role.ability}`)
   .join("；");
 export const SLAYER_DECLARATION_TEMPLATE = "我是猎手，我要向玩家X开枪";
 export const SLAYER_DECLARATION_NOTICE =

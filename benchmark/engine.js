@@ -105,14 +105,15 @@ const ROLE_STRATEGY_TIPS = {
   "小恶魔": "优先击杀强信息位。必要时可以自杀传刀给爪牙。"
 };
 
-const FULL_ROLE_RULES = SCRIPT.roles.map(r => `${r.name}：${r.ability}`).join("；");
+const TEAM_LABEL = { townsfolk: "镇民", outsider: "外来者", minion: "爪牙", demon: "恶魔" };
+const FULL_ROLE_RULES = SCRIPT.roles.map(r => `${r.name}（${TEAM_LABEL[r.team] || r.team}）：${r.ability}`).join("；");
 const SLAYER_DECLARATION_TEMPLATE = "我是猎手，我要向玩家X开枪";
 const SLAYER_DECLARATION_NOTICE = `猎手声明规则：任何人都可以声称自己是猎手，但必须严格使用格式"${SLAYER_DECLARATION_TEMPLATE}"，这里的X是一个数字。只有真正的清醒且健康的猎手命中恶魔才有效果，且每名玩家每局仅首次该格式会被结算。`;
 const USE_FULL_CHAT_HISTORY = true;
-const USE_INCREMENTAL_CHAT_CONTEXT = false;
+const USE_INCREMENTAL_CHAT_CONTEXT = true;
 const CHAT_DELTA_MAX_LINES = 0;
 const CHAT_DELTA_RECENT_LINES = 10;
-const USE_PERSISTENT_MESSAGES = false;
+const USE_PERSISTENT_MESSAGES = true;
 
 const EVIL_ROLE_NAMES = SCRIPT.roles.filter(r => r.team === "minion" || r.team === "demon").map(r => r.name);
 
@@ -288,7 +289,7 @@ function emptyPlayer(index) {
     virginUsed: false, slayerUsed: false, slayerClaimed: false,
     demonCooldownNight: 0, butlerMasterId: "",
     deadVoteUsed: false, modelChoice: "default",
-    lastPrivateDay: 0, publicChatCursor: 0,
+    lastPrivateDay: 0, publicChatCursorBySession: {},
     privateInfoCursorBySession: {}, messageSessions: {},
     roleHistory: [], memory: [], privateInfo: [],
     model: ""  // benchmark: the OpenRouter model ID for this player
@@ -509,11 +510,14 @@ function buildSessionMessages(actor, sessionKey, messages) {
 
 function markActorPromptCursors(state, actor, sessionKey = "default") {
   if (!actor || !state || !USE_INCREMENTAL_CHAT_CONTEXT) return;
-  actor.publicChatCursor = Number(state.chatSeq) || 0;
+  const key = getSessionCursorKey(sessionKey);
+  if (!actor.publicChatCursorBySession || typeof actor.publicChatCursorBySession !== "object") {
+    actor.publicChatCursorBySession = {};
+  }
+  actor.publicChatCursorBySession[key] = Number(state.chatSeq) || 0;
   if (!actor.privateInfoCursorBySession || typeof actor.privateInfoCursorBySession !== "object") {
     actor.privateInfoCursorBySession = {};
   }
-  const key = getSessionCursorKey(sessionKey);
   const infoCount = Array.isArray(actor.privateInfo) ? actor.privateInfo.length : 0;
   actor.privateInfoCursorBySession[key] = infoCount;
 }
@@ -538,12 +542,14 @@ function buildPlayerStaticSystemContext(state, actor, options = {}) {
   const guidelines = getTeamGuidelines(actor);
   const strategyTips = getStrategyTips(actor);
   const roster = buildPromptRoster(state);
+  const campLabel = (actor.team === "minion" || actor.team === "demon") ? "邪恶阵营" : "善良阵营";
   const lines = [
     options.prefix || "玩家静态档案（会话内长期有效）",
     `你是：${actor.name}`,
     `玩家座次：${roster}`,
     `你的身份（仅供内部）：${roleName}`,
-    `你的阵营：${actor.team || "未知"}`,
+    `你的角色类型：${TEAM_LABEL[actor.team] || "未知"}`,
+    `你的阵营：${campLabel}`,
     `你的角色能力：${roleAbility}`,
     `规则提示：${roleHint}`
   ];
@@ -561,14 +567,19 @@ function buildPlayerPromptMessages(state, actor, sessionKey, userContent, option
   return messages;
 }
 
-function formatChatForPrompt(state, limit = 12, actor = null) {
+function formatChatForPrompt(state, limit = 12, actor = null, sessionKey = "default") {
   const effectiveLimit = USE_FULL_CHAT_HISTORY ? null : limit;
   const fullSlice = effectiveLimit ? state.chat.slice(-effectiveLimit) : state.chat.slice();
   if (!USE_INCREMENTAL_CHAT_CONTEXT || !actor) {
     if (!fullSlice.length) return "无";
     return fullSlice.map(entry => formatPromptChatLine(entry)).join("\n");
   }
-  const cursor = Number.isFinite(actor.publicChatCursor) ? actor.publicChatCursor : 0;
+  if (!actor.publicChatCursorBySession || typeof actor.publicChatCursorBySession !== "object") {
+    actor.publicChatCursorBySession = {};
+  }
+  const key = getSessionCursorKey(sessionKey);
+  const cursorRaw = actor.publicChatCursorBySession[key];
+  const cursor = Number.isFinite(cursorRaw) ? cursorRaw : 0;
   const unseen = state.chat.filter(entry => (Number(entry.seq) || 0) > cursor);
   if (!unseen.length) {
     return "无新增公共发言（你已看过当前全部公开发言）";
@@ -1264,12 +1275,12 @@ async function aiChooseSingleTarget(state, actor, candidates, actionLabel, extra
   if (!actor || !candidates.length) return null;
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
-  const recentChat = formatChatForPrompt(state, 12, actor);
+  const recentChat = formatChatForPrompt(state, 12, actor, "json");
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
 可选目标：${targetNames}。只能从列表中选择一个目标。${extraNote || ""}
 请输出 JSON：{"target":"玩家名"}`;
@@ -1285,12 +1296,12 @@ async function aiChooseTwoTargets(state, actor, candidates, actionLabel) {
   if (!actor || candidates.length < 2) return candidates;
   const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
-  const recentChat = formatChatForPrompt(state, 12, actor);
+  const recentChat = formatChatForPrompt(state, 12, actor, "json");
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${actor.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
 可选目标：${targetNames}。只能从列表中选择两名不同目标。
 请输出 JSON：{"target1":"玩家名","target2":"玩家名"}`;
@@ -1697,15 +1708,15 @@ async function aiSpeak(state, player) {
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";
-  const recentChat = formatChatForPrompt(state, 12, player);
+  const recentChat = formatChatForPrompt(state, 12, player, "chat");
   const dayRuleNote = getDayRuleNote(state);
   const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, player, "chat",
-    `公开聊天记录：\n${recentChat}\n
+    `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 你自己之前说过：${recentSelf}\n
 ${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息发言。请输出一小段话发言。`);
   try {
@@ -1732,15 +1743,15 @@ async function maybeAiPrivateChat(state, player) {
   if (!candidates.length) return;
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
-  const recentChat = formatChatForPrompt(state, 8, player);
+  const recentChat = formatChatForPrompt(state, 8, player, "json");
   const targetNames = candidates.map(p => p.name).join("、");
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 现在是白天1，你可以选择是否发起一次私聊（仅在白天1可私聊）。
 可私聊目标：${targetNames}。
 如果你是邪恶阵营，可以考虑通过私聊与邪恶同伴交换身份或协调计划。
 你的当前状态：${player.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 请输出 JSON：{"private":"yes|no","target":"玩家名","message":"一小段话"}`;
   const prompt = buildPlayerPromptMessages(state, player, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
   try {
@@ -1762,13 +1773,13 @@ async function maybeAiPrivateChat(state, player) {
 async function aiPrivateReply(state, sender, target, text) {
   const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, target);
-  const recentChat = formatChatForPrompt(state, 8, target);
+  const recentChat = formatChatForPrompt(state, 8, target, "chat");
   const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, target, "chat",
-    `公开聊天记录：\n${recentChat}\n
+    `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 ${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`);
   try {
     let usedPrompt = buildPrompt("");
@@ -1794,14 +1805,14 @@ async function aiNominate(state, player) {
   const nominableTargets = state.players
     .filter(p => !state.nomineeUsedIds.includes(p.id) && p.id !== player.id)
     .map(p => playerOptionLabel(p));
-  const recentChat = formatChatForPrompt(state, 12, player);
+  const recentChat = formatChatForPrompt(state, 12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 请输出 JSON：{"nominate":"yes|no","target":"玩家名","reason":"一小段话"}。如果不提名，target为空字符串。`;
   const prompt = buildPlayerPromptMessages(state, player, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
   try {
@@ -1817,13 +1828,13 @@ async function aiNominate(state, player) {
 }
 
 async function aiNominationReason(state, nominator, nominee) {
-  const recentChat = formatChatForPrompt(state, 12, nominator);
+  const recentChat = formatChatForPrompt(state, 12, nominator, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominator);
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 你提名了${nominee.name}。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 这是一小段公开发言，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话说明理由。`;
   const prompt = buildPlayerPromptMessages(state, nominator, "chat", userContent);
   try {
@@ -1833,13 +1844,13 @@ async function aiNominationReason(state, nominator, nominee) {
 }
 
 async function aiNominationDefense(state, nominee) {
-  const recentChat = formatChatForPrompt(state, 12, nominee);
+  const recentChat = formatChatForPrompt(state, 12, nominee, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominee);
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 你被提名了。
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 这是公开辩解，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话辩解。`;
   const prompt = buildPlayerPromptMessages(state, nominee, "chat", userContent);
   try {
@@ -1850,15 +1861,15 @@ async function aiNominationDefense(state, nominee) {
 
 async function aiVoteSingle(state, voter, nominee) {
   if (!voter.alive && voter.deadVoteUsed) return { vote: "no", reason: "遗言票已用" };
-  const recentChat = formatChatForPrompt(state, 12, voter);
+  const recentChat = formatChatForPrompt(state, 12, voter, "json");
   const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, voter);
   const deadVoteNote = !voter.alive ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。" : "";
-  const userContent = `公开聊天记录：\n${recentChat}\n
+  const userContent = `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}
-你的私密信息：${privateInfo}
+你的私密信息增量：${privateInfo}
 你需要对提名${nominee ? nominee.name : "某玩家"}投票。若你已知邪恶队友，请谨慎投他们，除非有明确牺牲/转移视线的理由。
 reason 是公开可说的一小段话，可留空；不要泄露私密信息，不要输出心理活动/内心独白，不要在括号里写心里话。
 请输出 JSON：{"vote":"yes|no","reason":"一小段话或空字符串"}`;

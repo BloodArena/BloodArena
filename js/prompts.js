@@ -207,12 +207,15 @@ export function buildPlayerStaticSystemContext(actor, options = {}) {
   const includeStrategy = options.includeStrategy === true;
   const includeGuidelines = options.includeGuidelines !== false;
   const prefix = options.prefix || "玩家静态档案（会话内长期有效）";
+  const teamLabel = { townsfolk: "镇民", outsider: "外来者", minion: "爪牙", demon: "恶魔" };
+  const campLabel = (actor.team === "minion" || actor.team === "demon") ? "邪恶阵营" : "善良阵营";
   const lines = [
     prefix,
     `你是：${actor.name}`,
     `玩家座次：${roster}`,
     `你的身份（仅供内部）：${roleName}`,
-    `你的阵营：${actor.team || "未知"}`,
+    `你的角色类型：${teamLabel[actor.team] || "未知"}`,
+    `你的阵营：${campLabel}`,
     `你的角色能力：${roleAbility}`,
     `规则提示：${roleHint}`
   ];
