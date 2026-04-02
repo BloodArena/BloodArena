@@ -19,8 +19,8 @@ module.exports = {
 
   // LLM 参数
   temperature: 0.7,
-  timeoutMs: 60000,
-  maxRetries: 3,
+  timeoutMs: 120000,
+  maxRetries: 5,
 
   // 说书人模型（用于夜晚信息判定和叙述生成）
   storytellerModel: "xiaomi/mimo-v2-pro",
@@ -29,13 +29,13 @@ module.exports = {
   models: [
     { id: "openai/gpt-5.4", label: "GPT-5.4" },
     { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
-    { id: "anthropic/claude-opus-4.6", label: "Claude Opus 4.6" },
+    { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6" },
     { id: "xiaomi/mimo-v2-pro", label: "MiMo V2 Pro" },
     { id: "minimax/minimax-m2.7", label: "MiniMax M2.7" },
     { id: "x-ai/grok-4.20-beta", label: "Grok 4.20 Beta" },
     { id: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2" },
     { id: "qwen/qwen3.5-397b-a17b", label: "Qwen3.5 397B" },
-    { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6" },
+    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron 3 Super 120B" },
     { id: "stepfun/step-3.5-flash", label: "step 3.5 flash" },
     { id: "z-ai/glm-5", label: "GLM-5" },
     { id: "moonshotai/kimi-k2.5", label: "kimi k2.5" }

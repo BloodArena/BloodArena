@@ -126,8 +126,9 @@ async function callLLM(messages, model, temperature = null, retries = null) {
         }
 
         if (response.status >= 500 && attempt < maxRetries) {
-          console.warn(`  [LLM] Server error (${response.status}), retrying in ${800 * (attempt + 1)}ms...`);
-          await sleep(800 * (attempt + 1));
+          const waitMs = 3000 * Math.pow(2, attempt);
+          console.warn(`  [LLM] Server error (${response.status}), retrying in ${waitMs}ms...`);
+          await sleep(waitMs);
           continue;
         }
 
@@ -165,14 +166,11 @@ async function callLLM(messages, model, temperature = null, retries = null) {
 
       if (error.name === "AbortError") {
         console.warn(`  [LLM] Timeout, retrying (${attempt + 1}/${maxRetries})...`);
-        if (attempt < maxRetries) {
-          await sleep(800 * (attempt + 1));
-          continue;
-        }
       }
 
       if (attempt < maxRetries) {
-        await sleep(800 * (attempt + 1));
+        const waitMs = 3000 * Math.pow(2, attempt);
+        await sleep(waitMs);
         continue;
       }
 

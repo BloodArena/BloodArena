@@ -20,7 +20,7 @@ const args = process.argv.slice(2);
 let limit = Infinity;
 let skipProbe = false;
 let runTag = "";
-let timestamped = false;
+let timestamped = true;   // default: on
 let progressMode = "concise";
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--limit' && args[i + 1]) {
@@ -34,6 +34,9 @@ for (let i = 0; i < args.length; i++) {
   }
   if (args[i] === '--timestamped') {
     timestamped = true;
+  }
+  if (args[i] === '--no-timestamp') {
+    timestamped = false;
   }
   if ((args[i] === '--progress-mode' || args[i] === '--progress') && args[i + 1]) {
     progressMode = args[i + 1];
@@ -176,6 +179,55 @@ async function runModelProbe() {
   console.log("Model connectivity probe passed.\n");
 }
 
+/**
+ * Export per-player trajectory JSONL files (same format as frontend exportTrajectories).
+ * Creates results/raw/game_001_trajectories/ with one .jsonl per player + storyteller.
+ */
+function exportTrajectories(result, gameId) {
+  if (!result.trajectoryLog || !result.trajectoryLog.length) return;
+
+  const trajDir = path.join(config.rawDir, `${gameId}_trajectories`);
+  fs.mkdirSync(trajDir, { recursive: true });
+
+  const sanitize = (value) => String(value || "unknown").replace(/[\\/:*?"<>|\s]+/g, "_");
+
+  // Group by actorId
+  const groups = new Map();
+  result.trajectoryLog.forEach((entry) => {
+    const key = entry.actorId || entry.actor || "unknown";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(entry);
+  });
+
+  groups.forEach((entries) => {
+    const sorted = entries.slice().sort((a, b) => String(a.time).localeCompare(String(b.time)));
+    const actorName = sorted[0]?.actor || "unknown";
+    const models = new Set(sorted.map(e => e.model).filter(Boolean));
+    const modelLabel = models.size === 1 ? Array.from(models)[0] : "mixed";
+    const filename = `${sanitize(actorName)}_${sanitize(modelLabel)}.jsonl`;
+
+    const lines = [];
+    sorted.forEach((entry) => {
+      const messages = Array.isArray(entry.messages) ? entry.messages : [];
+      messages.forEach((msg) => {
+        if (!msg || !msg.role) return;
+        lines.push(JSON.stringify({ role: msg.role, content: String(msg.content || "") }));
+      });
+      if (entry.response) {
+        const assistantPayload = { role: "assistant", content: String(entry.response) };
+        if (entry.reasoning_content) {
+          assistantPayload.reasoning_content = String(entry.reasoning_content);
+        }
+        lines.push(JSON.stringify(assistantPayload));
+      }
+    });
+
+    fs.writeFileSync(path.join(trajDir, filename), lines.join("\n"));
+  });
+
+  console.log(`    Trajectories saved to ${trajDir}/ (${groups.size} files)`);
+}
+
 async function main() {
   console.log("=== Blood on the Clocktower — AI Benchmark ===\n");
 
@@ -254,9 +306,12 @@ async function main() {
     try {
       const result = await runOneGame(gameConfig);
 
-      // Save result
+      // Save full result (with trajectoryLog)
       const outPath = path.join(config.rawDir, `${gameConfig.gameId}.json`);
       fs.writeFileSync(outPath, JSON.stringify(result, null, 2));
+
+      // Save per-player trajectory JSONL files
+      exportTrajectories(result, gameConfig.gameId);
 
       const cost = result.totalCost || 0;
       totalCost += cost;
