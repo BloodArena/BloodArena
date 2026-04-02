@@ -298,7 +298,7 @@ export function maybeStartNextNomination() {
 export async function aiNominate(player) {
   if (state && state.paused) return null;
   const nominableTargets = state.players
-    .filter((p) => !state.nomineeUsedIds.includes(p.id) && p.id !== player.id)
+    .filter((p) => !state.nomineeUsedIds.includes(p.id))
     .map((p) => `${p.name}${p.alive ? "" : "（已死亡）"}`);
   const recentChat = formatChatForPrompt(12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);

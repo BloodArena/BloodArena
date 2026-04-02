@@ -1826,7 +1826,7 @@ ${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注�
 
 async function aiNominate(state, player) {
   const nominableTargets = state.players
-    .filter(p => !state.nomineeUsedIds.includes(p.id) && p.id !== player.id)
+    .filter(p => !state.nomineeUsedIds.includes(p.id))
     .map(p => playerOptionLabel(p));
   const recentChat = formatChatForPrompt(state, 12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
