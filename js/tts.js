@@ -3,16 +3,12 @@
  * Extracted from singleplayer_demo.html
  */
 
-// --- State imports ---
 import { catalogApiKeys } from "./state.js";
-
-/* ===== TTS ENGINE (mimo-v2-tts) ===== */
 
 const TTS_ENDPOINT = "https://api.xiaomimimo.com/v1/chat/completions";
 const TTS_MODEL = "mimo-v2-tts";
-const MAX_QUEUE = 6; /* drop oldest when queue exceeds this */
+const MAX_QUEUE = 6;
 
-/* voice style pool — each AI player gets a random unique style */
 const VOICE_STYLES = [
   "成熟男性 低沉磁性",
   "年轻女性 温柔甜美",
@@ -32,35 +28,39 @@ const VOICE_STYLES = [
 ];
 
 const ttsToggle = document.getElementById("ttsToggle");
+const ttsAutoToggle = document.getElementById("ttsAutoToggle");
+const ttsPauseBtn = document.getElementById("ttsPauseBtn");
 const ttsVolumeSlider = document.getElementById("ttsVolumeSlider");
 const ttsStatusEl = document.getElementById("ttsStatus");
+const bgmAudio = document.getElementById("bgmAudio");
 
-/* persistent settings */
 const TTS_STORAGE_KEY = "tts_settings";
+
 function loadTtsSettings() {
   try {
     return JSON.parse(localStorage.getItem(TTS_STORAGE_KEY)) || {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
+
 function saveTtsSettings() {
   localStorage.setItem(TTS_STORAGE_KEY, JSON.stringify({
-    enabled: ttsToggle.checked,
-    volume: parseFloat(ttsVolumeSlider.value),
+    enabled: Boolean(ttsToggle?.checked),
+    autoPlay: ttsAutoToggle ? ttsAutoToggle.checked !== false : true,
+    volume: parseFloat(ttsVolumeSlider?.value) || 0.8,
   }));
 }
 
 const saved = loadTtsSettings();
-if (saved.enabled) ttsToggle.checked = true;
-if (saved.volume !== undefined) ttsVolumeSlider.value = saved.volume;
-
-ttsToggle.addEventListener("change", saveTtsSettings);
-ttsVolumeSlider.addEventListener("input", saveTtsSettings);
+if (ttsToggle) ttsToggle.checked = Boolean(saved.enabled);
+if (ttsAutoToggle) ttsAutoToggle.checked = saved.autoPlay !== false;
+if (ttsVolumeSlider && saved.volume !== undefined) ttsVolumeSlider.value = saved.volume;
 
 function getMimoApiKey() {
   return catalogApiKeys.mimo || "";
 }
 
-/* map speaker name → style */
 const speakerStyleMap = {};
 let usedStyleIndices = [];
 
@@ -69,24 +69,22 @@ function getStyleForSpeaker(name) {
   if (usedStyleIndices.length >= VOICE_STYLES.length) {
     usedStyleIndices = [];
   }
-  const available = VOICE_STYLES.map((_, i) => i)
-    .filter((i) => !usedStyleIndices.includes(i));
+  const available = VOICE_STYLES.map((_, index) => index)
+    .filter((index) => !usedStyleIndices.includes(index));
   const pick = available[Math.floor(Math.random() * available.length)];
   usedStyleIndices.push(pick);
   speakerStyleMap[name] = VOICE_STYLES[pick];
   return speakerStyleMap[name];
 }
 
-/* ---- pre-fetch pipeline ---- */
-/*  Each queue entry: { speaker, text, audioPromise }
- *  audioPromise starts the API call immediately on enqueue,
- *  so the next audio is already being fetched while current one plays. */
 const queue = [];
 let playing = false;
+let paused = false;
 let bgmLowered = false;
 let cancelled = false;
 let currentAudio = null;
-const bgmAudio = document.getElementById("bgmAudio");
+let currentEntry = null;
+let resumeWaiters = [];
 
 function lowerBgm() {
   if (bgmLowered || !bgmAudio) return;
@@ -104,13 +102,67 @@ function restoreBgm() {
   }
 }
 
-function updateStatus(msg, cls) {
+function updateStatus(message = "", cls = "") {
   if (!ttsStatusEl) return;
-  ttsStatusEl.textContent = msg;
-  ttsStatusEl.className = "tts-status" + (cls ? " " + cls : "");
+  ttsStatusEl.textContent = message;
+  ttsStatusEl.className = "tts-status" + (cls ? ` ${cls}` : "");
 }
 
-/* fetch audio from API, returns blob URL (or throws) */
+function describeEntry(entry) {
+  if (!entry) return "";
+  const remaining = Math.max(0, queue.length);
+  return `${entry.speaker} 语音${remaining ? `（剩余 ${remaining}）` : ""}`;
+}
+
+function updatePauseButton() {
+  if (!ttsPauseBtn) return;
+  const hasWork = Boolean(currentEntry || currentAudio || queue.length);
+  ttsPauseBtn.disabled = !hasWork;
+  ttsPauseBtn.textContent = paused ? "继续播放" : "暂停播放";
+}
+
+function refreshStatus() {
+  if (paused && (currentEntry || currentAudio || queue.length)) {
+    updateStatus(`语音已暂停：${describeEntry(currentEntry) || "等待继续"}`, "paused");
+    updatePauseButton();
+    return;
+  }
+  if (playing && currentEntry) {
+    updateStatus(`🔊 ${describeEntry(currentEntry)}`, "active");
+    updatePauseButton();
+    return;
+  }
+  if (queue.length) {
+    const next = queue[0];
+    updateStatus(`等待播放：${describeEntry(next)}`, "active");
+    updatePauseButton();
+    return;
+  }
+  updateStatus("");
+  updatePauseButton();
+}
+
+function resolveResumeWaiters() {
+  const pending = resumeWaiters.slice();
+  resumeWaiters = [];
+  pending.forEach((resolve) => resolve());
+}
+
+function waitUntilResumed() {
+  if (!paused) return Promise.resolve();
+  return new Promise((resolve) => {
+    resumeWaiters.push(resolve);
+  });
+}
+
+function isTtsEnabled() {
+  return Boolean(ttsToggle?.checked);
+}
+
+function shouldAutoSpeak() {
+  return isTtsEnabled() && (ttsAutoToggle ? ttsAutoToggle.checked !== false : true);
+}
+
 async function fetchTtsAudio(speaker, text) {
   const apiKey = getMimoApiKey();
   if (!apiKey || apiKey === "YOUR_MIMO_API_KEY") {
@@ -119,7 +171,6 @@ async function fetchTtsAudio(speaker, text) {
 
   const style = getStyleForSpeaker(speaker);
   const styledText = `<style>${style}</style>${text}`;
-
   const body = {
     model: TTS_MODEL,
     messages: [
@@ -138,7 +189,7 @@ async function fetchTtsAudio(speaker, text) {
     },
   };
 
-  const resp = await fetch(TTS_ENDPOINT, {
+  const response = await fetch(TTS_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -147,12 +198,12 @@ async function fetchTtsAudio(speaker, text) {
     body: JSON.stringify(body),
   });
 
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => "");
-    throw new Error(`API ${resp.status}: ${errText.slice(0, 200)}`);
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`API ${response.status}: ${errorText.slice(0, 200)}`);
   }
 
-  const data = await resp.json();
+  const data = await response.json();
   const audioB64 = data?.choices?.[0]?.message?.audio?.data;
   if (!audioB64) {
     throw new Error("API 返回中无音频数据");
@@ -160,83 +211,214 @@ async function fetchTtsAudio(speaker, text) {
 
   const raw = atob(audioB64);
   const bytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  for (let index = 0; index < raw.length; index += 1) {
+    bytes[index] = raw.charCodeAt(index);
+  }
   const blob = new Blob([bytes], { type: "audio/wav" });
   return URL.createObjectURL(blob);
 }
 
-/* play a blob URL, returns promise */
 function playBlobUrl(url) {
   return new Promise((resolve, reject) => {
     const audio = new Audio(url);
     currentAudio = audio;
-    audio.volume = parseFloat(ttsVolumeSlider.value) || 0.8;
-    audio.onended = () => { currentAudio = null; URL.revokeObjectURL(url); resolve(); };
-    audio.onerror = (e) => { currentAudio = null; URL.revokeObjectURL(url); reject(e); };
-    audio.play().catch(reject);
+    audio.volume = parseFloat(ttsVolumeSlider?.value) || 0.8;
+    audio.onended = () => {
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    audio.onerror = (event) => {
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      reject(event);
+    };
+    audio.play().catch((error) => {
+      currentAudio = null;
+      URL.revokeObjectURL(url);
+      reject(error);
+    });
   });
 }
 
+function dropOverflowQueue() {
+  while (queue.length > MAX_QUEUE) {
+    const dropped = queue.shift();
+    dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+  }
+}
+
+function enqueueSpeech(speaker, text, options = {}) {
+  const entry = {
+    speaker,
+    text,
+    audioPromise: fetchTtsAudio(speaker, text),
+  };
+  if (options.priority) {
+    queue.unshift(entry);
+  } else {
+    queue.push(entry);
+  }
+  dropOverflowQueue();
+  refreshStatus();
+  processQueue();
+}
+
 async function processQueue() {
-  if (playing || queue.length === 0) return;
+  if (playing || !queue.length) return;
   playing = true;
   cancelled = false;
-  lowerBgm();
 
   while (queue.length > 0 && !cancelled) {
     const entry = queue.shift();
-    updateStatus(`🔊 ${entry.speaker} 语音播报中…（剩余 ${queue.length}）`, "active");
+    currentEntry = entry;
+    refreshStatus();
     try {
       const blobUrl = await entry.audioPromise;
-      if (cancelled) { URL.revokeObjectURL(blobUrl); break; }
+      if (cancelled) {
+        URL.revokeObjectURL(blobUrl);
+        break;
+      }
+      if (paused) {
+        refreshStatus();
+        await waitUntilResumed();
+        if (cancelled) {
+          URL.revokeObjectURL(blobUrl);
+          break;
+        }
+      }
+      lowerBgm();
       await playBlobUrl(blobUrl);
-    } catch (e) {
-      console.warn("[TTS] error:", e);
-      updateStatus(`语音播报失败: ${e.message || e}`, "error");
+    } catch (error) {
+      console.warn("[TTS] error:", error);
+      updateStatus(`语音播报失败: ${error?.message || error}`, "error");
+    } finally {
+      currentEntry = null;
+      refreshStatus();
     }
   }
 
   playing = false;
   currentAudio = null;
+  currentEntry = null;
   restoreBgm();
-  if (!cancelled) updateStatus("");
+  if (!cancelled) {
+    refreshStatus();
+  }
 }
 
-/* public interface */
-export function ttsSpeak(speaker, text) {
-  if (!ttsToggle.checked) return;
-  if (!text) return;
-
-  /* start API call immediately (pre-fetch) */
-  const audioPromise = fetchTtsAudio(speaker, text);
-  queue.push({ speaker, text, audioPromise });
-
-  /* drop oldest entries if queue too long to prevent unbounded lag */
-  while (queue.length > MAX_QUEUE) {
-    const dropped = queue.shift();
-    dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+function setPaused(nextPaused) {
+  if (paused === nextPaused) return paused;
+  paused = nextPaused;
+  if (paused) {
+    if (currentAudio && !currentAudio.paused) {
+      try { currentAudio.pause(); } catch {}
+    }
+    restoreBgm();
+    refreshStatus();
+    return paused;
   }
 
-  processQueue();
+  resolveResumeWaiters();
+  if (currentAudio && currentAudio.paused) {
+    lowerBgm();
+    currentAudio.play().catch((error) => {
+      console.warn("[TTS] resume failed:", error);
+      updateStatus(`继续播放失败: ${error?.message || error}`, "error");
+    });
+  } else if (!playing && queue.length) {
+    processQueue();
+  }
+  refreshStatus();
+  return paused;
 }
 
-/* allow clearing queue (e.g. on game reset) */
+export function ttsSpeak(speaker, text, options = {}) {
+  const cleanedText = String(text || "").trim();
+  if (!cleanedText) return;
+  if (!isTtsEnabled()) {
+    if (options.manual) {
+      updateStatus("请先开启 AI 语音功能。", "error");
+    }
+    return;
+  }
+  if (!options.manual && !shouldAutoSpeak()) {
+    return;
+  }
+  cancelled = false;
+  enqueueSpeech(speaker, cleanedText, { priority: Boolean(options.priority) });
+}
+
+export function ttsPlayManual(speaker, text) {
+  ttsSpeak(speaker, text, { manual: true, priority: true });
+}
+
+export function ttsTogglePause(forcePaused = null) {
+  const nextPaused = typeof forcePaused === "boolean" ? forcePaused : !paused;
+  return setPaused(nextPaused);
+}
+
 export function ttsClearQueue() {
   cancelled = true;
-  /* clean up pending fetches */
+  resolveResumeWaiters();
   while (queue.length > 0) {
     const dropped = queue.shift();
     dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
   }
   if (currentAudio) {
-    try { currentAudio.pause(); } catch {}
+    try {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    } catch {}
     currentAudio = null;
   }
+  currentEntry = null;
   playing = false;
+  paused = false;
   restoreBgm();
-  updateStatus("");
+  refreshStatus();
 }
 
-/* Keep window assignments for backward compatibility */
+export function ttsShouldAutoSpeak() {
+  return shouldAutoSpeak();
+}
+
+if (ttsToggle) {
+  ttsToggle.addEventListener("change", () => {
+    if (!ttsToggle.checked) {
+      ttsClearQueue();
+    }
+    saveTtsSettings();
+    refreshStatus();
+  });
+}
+
+if (ttsAutoToggle) {
+  ttsAutoToggle.addEventListener("change", () => {
+    saveTtsSettings();
+    refreshStatus();
+  });
+}
+
+if (ttsVolumeSlider) {
+  ttsVolumeSlider.addEventListener("input", () => {
+    if (currentAudio) {
+      currentAudio.volume = parseFloat(ttsVolumeSlider.value) || 0.8;
+    }
+    saveTtsSettings();
+  });
+}
+
+if (ttsPauseBtn) {
+  ttsPauseBtn.addEventListener("click", () => {
+    ttsTogglePause();
+  });
+}
+
+refreshStatus();
+
 window.ttsSpeak = ttsSpeak;
+window.ttsPlayManual = ttsPlayManual;
 window.ttsClearQueue = ttsClearQueue;
+window.ttsTogglePause = ttsTogglePause;
+window.ttsShouldAutoSpeak = ttsShouldAutoSpeak;

@@ -1197,6 +1197,7 @@ export function resetSeatCircleView() {
 export function renderAll() {
   if (!state || !state.players) {
     renderConfigSummary();
+    renderTokenUsageDisplay();
     if (typeof _deps.updateHeaderPhase === "function") _deps.updateHeaderPhase();
     return;
   }
@@ -1210,6 +1211,7 @@ export function renderAll() {
   renderPublicLog();
   if (typeof _deps.renderReplay === "function") _deps.renderReplay();
   renderConfigSummary();
+  renderTokenUsageDisplay();
   renderStatus();
   renderTaskCardStatus();
   if (typeof _deps.updatePrivateChatControls === "function") _deps.updatePrivateChatControls();
@@ -1256,4 +1258,3 @@ export function renderPlayerModelList() {
     playerModelListEl.appendChild(row);
   });
 }
-

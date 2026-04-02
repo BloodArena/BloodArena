@@ -125,7 +125,8 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊
     player.memory.push(text);
     addChat(player.name, text, "player");
   } catch (error) {
-    addChat("系统", `${player.name} 未能回应。`, "system");
+    const reason = error?.message ? `（${String(error.message).slice(0, 120)}）` : "";
+    addChat("系统", `${player.name} 未能回应${reason}。`, "system");
   }
 }
 
@@ -189,7 +190,8 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊
     addChat(player.name, text, "player");
     maybeAiPrivateChat(player);
   } catch (error) {
-    addChat("系统", `${player.name} 发言失败。`, "system");
+    const reason = error?.message ? `（${String(error.message).slice(0, 120)}）` : "";
+    addChat("系统", `${player.name} 发言失败${reason}。`, "system");
   }
 }
 

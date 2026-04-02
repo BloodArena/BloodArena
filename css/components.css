@@ -105,6 +105,11 @@ button:disabled {
   flex: 1;
   accent-color: var(--brass);
 }
+.tts-action-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 8px;
+}
 .tts-status {
   min-height: 16px;
   font-size: 12px;
@@ -116,6 +121,9 @@ button:disabled {
 }
 .tts-status.active {
   color: var(--brass);
+}
+.tts-status.paused {
+  color: #d8b06b;
 }
 
 .status {

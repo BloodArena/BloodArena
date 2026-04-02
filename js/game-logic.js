@@ -20,6 +20,7 @@ import {
   setDayDiscussionTimer
 } from './state.js';
 import { shuffle, getRoleById, getApparentRole } from './utils.js';
+import { probeGameStartConnections } from './api.js';
 import { renderAll, renderStatus, renderHumanAction } from './ui-helpers.js';
 import { hideModal, showDawnNarration } from './overlays.js';
 import { addChat, addLogEntry, addReplayEvent } from './chat.js';
@@ -42,6 +43,7 @@ const autoNightToggle = document.getElementById("autoNightToggle");
 const pauseBtn = document.getElementById("pauseBtn");
 const trajectoryToggle = document.getElementById("trajectoryToggle");
 const modelSelect = document.getElementById("modelSelect");
+const startBtn = document.getElementById("startBtn");
 
 /* ---- Forward-declared module-level references ---- */
 
@@ -344,7 +346,7 @@ export function assignRoles() {
  *  startGame
  * ================================================================ */
 
-export function startGame() {
+export async function startGame() {
   if (!state) return;
   if (!state.players.some((p) => p.roleId)) {
     alert("请先随机发牌。");
@@ -354,6 +356,23 @@ export function startGame() {
   if (!modelReady.ok) {
     alert(modelReady.message);
     return;
+  }
+  const originalStartLabel = startBtn ? startBtn.textContent : "";
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.textContent = "检测模型...";
+  }
+  try {
+    const probe = await probeGameStartConnections();
+    if (!probe.ok) {
+      alert(probe.message);
+      return;
+    }
+  } finally {
+    if (startBtn) {
+      startBtn.disabled = false;
+      startBtn.textContent = originalStartLabel || "开局";
+    }
   }
   state.started = true;
   state.ended = false;

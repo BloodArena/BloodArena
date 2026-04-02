@@ -214,6 +214,131 @@ export async function fetchWithRetry(url, options, timeoutMs, maxRetries = 2) {
   throw lastError || new Error("API 请求失败");
 }
 
+export async function probeModelConnection(actor = null, timeoutMs = 8000) {
+  const config = getModelConfig(actor);
+  const requiresKey = config.requiresKey !== false;
+  if (!config.endpoint) {
+    return { ok: false, provider: config.provider, model: config.model, message: "缺少请求端点" };
+  }
+  if (requiresKey && !config.apiKey) {
+    return { ok: false, provider: config.provider, model: config.model, message: "缺少 API Key" };
+  }
+
+  const useClaude = config.protocol === "claude" || isClaudeMessagesEndpoint(config.endpoint);
+  try {
+    if (useClaude) {
+      const headers = {
+        "content-type": "application/json",
+        "x-api-key": config.apiKey || "",
+        "anthropic-version": "2023-06-01"
+      };
+      Object.assign(headers, config.headers || {});
+      const response = await fetchWithTimeout(config.endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 8,
+          temperature: 0
+        })
+      }, timeoutMs);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        return {
+          ok: false,
+          provider: config.provider,
+          model: config.model,
+          message: `HTTP ${response.status}${errorText ? `: ${errorText.slice(0, 120)}` : ""}`
+        };
+      }
+      return { ok: true, provider: config.provider, model: config.model, message: "" };
+    }
+
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    Object.assign(headers, config.headers || {});
+    if (config.apiKey) {
+      headers.Authorization = `Bearer ${config.apiKey}`;
+    }
+    const response = await fetchWithTimeout(config.endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: config.model,
+        messages: [{ role: "user", content: "ping" }],
+        temperature: 0,
+        max_tokens: 8,
+        stream: false
+      })
+    }, timeoutMs);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      return {
+        ok: false,
+        provider: config.provider,
+        model: config.model,
+        message: `HTTP ${response.status}${errorText ? `: ${errorText.slice(0, 120)}` : ""}`
+      };
+    }
+    return { ok: true, provider: config.provider, model: config.model, message: "" };
+  } catch (error) {
+    return {
+      ok: false,
+      provider: config.provider,
+      model: config.model,
+      message: error?.name === "AbortError" ? "连接超时" : (error?.message || "请求失败")
+    };
+  }
+}
+
+export async function probeGameStartConnections() {
+  const targets = [{ label: "说书人", actor: null }];
+  if (state && Array.isArray(state.players)) {
+    state.players
+      .filter((player) => !player.isHuman)
+      .forEach((player) => targets.push({ label: player.name, actor: player }));
+  }
+
+  const uniqueTargets = [];
+  const seen = new Set();
+  targets.forEach((entry) => {
+    const config = getModelConfig(entry.actor);
+    const key = `${config.provider}:${config.model}`;
+    if (!config.provider || seen.has(key)) return;
+    seen.add(key);
+    uniqueTargets.push({ ...entry, config });
+  });
+
+  const failures = [];
+  for (const entry of uniqueTargets) {
+    const result = await probeModelConnection(entry.actor);
+    if (!result.ok) {
+      failures.push({
+        label: entry.label,
+        provider: result.provider,
+        model: result.model,
+        message: result.message
+      });
+    }
+  }
+
+  if (!failures.length) {
+    return { ok: true, failures: [], message: "" };
+  }
+
+  const summary = failures
+    .slice(0, 3)
+    .map((item) => `${item.provider || "未知 provider"} / ${item.model || "未知模型"}：${item.message}`)
+    .join("\n");
+  return {
+    ok: false,
+    failures,
+    message: `开局前模型连通性检查失败：\n${summary}${failures.length > 3 ? `\n另有 ${failures.length - 3} 个失败项。` : ""}`
+  };
+}
+
 /* ─── main API call ───────────────────────────────────────── */
 
 export async function callDeepSeek(messages, temperature, actor = null, sessionKey = "default", persist = true, options = null) {

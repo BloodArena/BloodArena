@@ -75,6 +75,32 @@
   letter-spacing: 0.3px;
 }
 
+.chat-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.chat-item-header .meta {
+  margin-bottom: 0;
+}
+
+.chat-item-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-item-tts-btn {
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  border-radius: 999px;
+}
+
 .chat-lock-hint {
   margin-top: 6px;
   color: #d8b06b;

@@ -20,6 +20,7 @@ import {
   CHAT_NEAR_BOTTOM_THRESHOLD,
   ROLE_NAME_LIST
 } from './constants.js';
+import { ttsSpeak, ttsPlayManual } from './tts.js';
 
 import {
   chatBox,
@@ -317,15 +318,59 @@ export function addChat(speaker, text, type = "player") {
   if (type === "player") {
     _maybeHandleSlayerClaim(speaker, text);
     updateClaimsFromChat(speaker, text);
-    /* TTS: queue speech for AI player messages */
-    if (typeof window.ttsSpeak === "function") {
-      const speakerPlayer = state.players.find((p) => p.name === speaker);
-      if (speakerPlayer && !speakerPlayer.isHuman) {
-        window.ttsSpeak(speaker, text);
-      }
+    const speakerPlayer = state.players.find((p) => p.name === speaker);
+    if (speakerPlayer && !speakerPlayer.isHuman) {
+      ttsSpeak(speaker, text);
     }
   }
   saveState();
+}
+
+function canPlayTtsForSpeaker(speaker) {
+  if (!state || !speaker) return false;
+  const speakerPlayer = state.players.find((p) => p.name === speaker);
+  return Boolean(speakerPlayer && !speakerPlayer.isHuman);
+}
+
+function buildChatTextNode(text) {
+  const body = document.createElement("div");
+  body.className = "chat-item-body";
+  body.textContent = text;
+  return body;
+}
+
+function buildChatHeader(metaText, speaker = "", text = "") {
+  const header = document.createElement("div");
+  header.className = "chat-item-header";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = metaText;
+  header.appendChild(meta);
+
+  if (canPlayTtsForSpeaker(speaker)) {
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "secondary chat-item-tts-btn";
+    playBtn.textContent = "播放";
+    playBtn.title = `播放 ${speaker} 的这条发言`;
+    playBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      ttsPlayManual(speaker, text);
+    });
+    header.appendChild(playBtn);
+  }
+
+  return header;
+}
+
+function appendRenderedChatItem(container, metaText, text, className, speaker = "") {
+  const div = document.createElement("div");
+  div.className = className;
+  div.appendChild(buildChatHeader(metaText, speaker, text));
+  div.appendChild(buildChatTextNode(text));
+  container.appendChild(div);
 }
 
 /* ─── private chat ───────────────────────────────────────── */
@@ -411,23 +456,17 @@ export function renderChat(options = {}) {
     return haystack.includes(search);
   });
   if (!filtered.length) {
-    const div = document.createElement("div");
-    div.className = "chat-item system";
     const label = search
       ? `没有匹配"${searchRaw.trim()}"的发言。`
       : (filter === "all" ? "暂无发言。" : `暂无 ${filter} 的发言。`);
-    div.innerHTML = `<div class="meta">提示</div><div>${label}</div>`;
-    chatBox.appendChild(div);
+    appendRenderedChatItem(chatBox, "提示", label, "chat-item system");
     updateChatToolbarStatus(0);
     return;
   }
   filtered.forEach((item) => {
-    const div = document.createElement("div");
     const isSelf = human && item.speaker === human.name && item.type === "player";
-    div.className = `chat-item ${item.type}${isSelf ? " self-msg" : ""}`;
-    if (search) div.classList.add("search-hit");
-    div.innerHTML = `<div class="meta">${item.phase} · ${item.speaker}</div><div>${item.text}</div>`;
-    chatBox.appendChild(div);
+    const className = `chat-item ${item.type}${isSelf ? " self-msg" : ""}${search ? " search-hit" : ""}`;
+    appendRenderedChatItem(chatBox, `${item.phase} · ${item.speaker}`, item.text, className, item.speaker);
   });
   const shouldStickBottom =
     forceScroll ||
@@ -453,19 +492,19 @@ export function renderPrivateChat() {
     ? items.filter((item) => item.senderId === human.id || item.targetId === human.id)
     : items;
   if (!visibleItems.length) {
-    const div = document.createElement("div");
-    div.className = "chat-item system";
     const hasOtherChats = items.length > 0;
     const hint = hasOtherChats ? "暂无与你相关的私聊。" : "首个白天可进行私聊。";
-    div.innerHTML = `<div class="meta">暂无私聊</div><div>${hint}</div>`;
-    privateChatBox.appendChild(div);
+    appendRenderedChatItem(privateChatBox, "暂无私聊", hint, "chat-item system");
     return;
   }
   visibleItems.slice(-80).forEach((item) => {
-    const div = document.createElement("div");
-    div.className = "chat-item";
-    div.innerHTML = `<div class="meta">${item.phase} · ${item.sender} -> ${item.target}</div><div>${item.text}</div>`;
-    privateChatBox.appendChild(div);
+    appendRenderedChatItem(
+      privateChatBox,
+      `${item.phase} · ${item.sender} -> ${item.target}`,
+      item.text,
+      "chat-item",
+      item.sender
+    );
   });
   privateChatBox.scrollTop = privateChatBox.scrollHeight;
 }

@@ -456,6 +456,7 @@ resetBtn.addEventListener("click", () => {
   humanActionBox.textContent = "无夜晚行动";
   phaseStatus.textContent = "未开局";
   renderConfigSummary();
+  renderTokenUsageDisplay();
   renderTaskCardStatus();
   updateHeaderPhase();
   if (typeof window.syncAutoBgmForState === "function") {

@@ -821,31 +821,32 @@ export async function resolveNight() {
     return;
   }
   clearAutoNightTimer();
-  if (state.nightCount === 1 && !state.firstNightRecognitionDone) {
-    recordFirstNightRecognition();
-  }
-  applyPoison();
-  state.players.forEach((p) => {
-    p.protected = false;
-  });
+  try {
+    if (state.nightCount === 1 && !state.firstNightRecognitionDone) {
+      recordFirstNightRecognition();
+    }
+    applyPoison();
+    state.players.forEach((p) => {
+      p.protected = false;
+    });
 
-  const human = state.players.find((p) => p.isHuman);
-  const demon = state.players.find((p) => p.team === "demon" && p.alive);
-  const poisoner = state.players.find((p) => p.roleName === "投毒者" && p.alive);
-  const monk = state.players.find((p) => p.roleName === "僧侣" && p.alive);
-  const butler = state.players.find((p) => p.roleName === "管家" && p.alive);
-  const fortuneTeller = getInfoRolePlayer("占卜师");
-  const empath = getInfoRolePlayer("共情者");
-  const chef = getInfoRolePlayer("厨师");
-  const washerwoman = getInfoRolePlayer("洗衣妇");
-  const librarian = getInfoRolePlayer("图书管理员");
-  const investigator = getInfoRolePlayer("调查员");
-  const undertaker = getInfoRolePlayer("送葬者");
-  const ravenkeeper = getInfoRolePlayer("守鸦人");
-  const spy = getInfoRolePlayer("间谍");
-  const infoRegistrationMap = await buildInfoRegistrationMap();
+    const human = state.players.find((p) => p.isHuman);
+    const demon = state.players.find((p) => p.team === "demon" && p.alive);
+    const poisoner = state.players.find((p) => p.roleName === "投毒者" && p.alive);
+    const monk = state.players.find((p) => p.roleName === "僧侣" && p.alive);
+    const butler = state.players.find((p) => p.roleName === "管家" && p.alive);
+    const fortuneTeller = getInfoRolePlayer("占卜师");
+    const empath = getInfoRolePlayer("共情者");
+    const chef = getInfoRolePlayer("厨师");
+    const washerwoman = getInfoRolePlayer("洗衣妇");
+    const librarian = getInfoRolePlayer("图书管理员");
+    const investigator = getInfoRolePlayer("调查员");
+    const undertaker = getInfoRolePlayer("送葬者");
+    const ravenkeeper = getInfoRolePlayer("守鸦人");
+    const spy = getInfoRolePlayer("间谍");
+    const infoRegistrationMap = await buildInfoRegistrationMap();
 
-  if (poisoner) {
+    if (poisoner) {
     let target = null;
     if (human && human.roleName === "投毒者" && state.humanActionTarget) {
       target = state.players.find((p) => p.id === state.humanActionTarget);
@@ -861,7 +862,7 @@ export async function resolveNight() {
     }
   }
 
-  if (monk && state.nightCount > 1) {
+    if (monk && state.nightCount > 1) {
     let target = null;
     if (human && human.roleName === "僧侣" && state.humanActionTarget) {
       target = state.players.find((p) => p.id === state.humanActionTarget);
@@ -881,8 +882,8 @@ export async function resolveNight() {
     }
   }
 
-  let demonTarget = null;
-  if (demon && state.nightCount > 1) {
+    let demonTarget = null;
+    if (demon && state.nightCount > 1) {
     if (demon.demonCooldownNight === state.nightCount) {
       addReplayEvent(`新恶魔当夜无法出刀：${demon.name}`, "night_action");
     } else {
@@ -903,7 +904,7 @@ export async function resolveNight() {
     }
   }
 
-  if (chef && state.nightCount === 1) {
+    if (chef && state.nightCount === 1) {
     let pairs = 0;
     for (let i = 0; i < state.players.length; i += 1) {
       const next = (i + 1) % state.players.length;
@@ -922,7 +923,7 @@ export async function resolveNight() {
     recordInfoDistortion(chef, "厨师信息", truth, result.info);
   }
 
-  if (washerwoman && state.nightCount === 1) {
+    if (washerwoman && state.nightCount === 1) {
     const townsfolkInPlay = state.players.filter((p) => p.team === "townsfolk");
     const townsfolkCandidates = townsfolkInPlay.filter((p) => p.id !== washerwoman.id);
     const chosen =
@@ -942,7 +943,7 @@ export async function resolveNight() {
     recordInfoDistortion(washerwoman, "洗衣妇信息", truth, result.info);
   }
 
-  if (librarian && state.nightCount === 1) {
+    if (librarian && state.nightCount === 1) {
     const outsidersInPlay = state.players.filter((p) => p.team === "outsider");
     const outsiderRoles = SCRIPT.roles.filter((r) => r.team === "outsider");
     let chosenOutsider = null;
@@ -981,7 +982,7 @@ export async function resolveNight() {
     recordInfoDistortion(librarian, "图书管理员信息", truth, result.info);
   }
 
-  if (investigator && state.nightCount === 1) {
+    if (investigator && state.nightCount === 1) {
     const minionsInPlay = state.players.filter((p) => registersAsMinion(p, infoRegistrationMap));
     const minionRoles = SCRIPT.roles.filter((r) => r.team === "minion").map((r) => r.name);
     let truth = "没有爪牙在场";
@@ -1017,8 +1018,8 @@ export async function resolveNight() {
     recordInfoDistortion(investigator, "调查员信息", truth, result.info);
   }
 
-  let killed = null;
-  if (state.nightCount > 1 && demonTarget && demonTarget.alive) {
+    let killed = null;
+    if (state.nightCount > 1 && demonTarget && demonTarget.alive) {
     const targetRole = getRoleById(demonTarget.roleId);
     if (targetRole && targetRole.name === "镇长" && !isDroisoned(demonTarget) && Math.random() > 0.5) {
       const alternatives = state.players.filter(
@@ -1057,7 +1058,7 @@ export async function resolveNight() {
     }
   }
 
-  if (ravenkeeper && killed && ravenkeeper.id === killed.id) {
+    if (ravenkeeper && killed && ravenkeeper.id === killed.id) {
     let target = null;
     if (human && human.roleName === "守鸦人") {
       target = chooseRandomTarget(ravenkeeper, true);
@@ -1081,7 +1082,7 @@ export async function resolveNight() {
     }
   }
 
-  if (empath && empath.alive) {
+    if (empath && empath.alive) {
     const neighbors = getAliveNeighbors(state.players.indexOf(empath));
     const evilCount = neighbors.filter((p) => registersAsEvil(p, infoRegistrationMap)).length;
     const truth = `${evilCount}`;
@@ -1091,7 +1092,7 @@ export async function resolveNight() {
     recordInfoDistortion(empath, "共情者信息", truth, result.info);
   }
 
-  if (fortuneTeller && fortuneTeller.alive) {
+    if (fortuneTeller && fortuneTeller.alive) {
     let targets = [];
     const humanApparent = human ? getApparentRole(human) : null;
     if (human && humanApparent && humanApparent.name === "占卜师" && state.humanActionTarget2) {
@@ -1122,7 +1123,7 @@ export async function resolveNight() {
     recordInfoDistortion(fortuneTeller, "占卜师信息", truth, result.info);
   }
 
-  if (butler && butler.alive) {
+    if (butler && butler.alive) {
     let target = null;
     if (human && human.roleName === "管家" && state.humanActionTarget) {
       target = state.players.find((p) => p.id === state.humanActionTarget);
@@ -1140,7 +1141,7 @@ export async function resolveNight() {
     }
   }
 
-  if (undertaker && undertaker.alive && state.lastExecutedId) {
+    if (undertaker && undertaker.alive && state.lastExecutedId) {
     const executed = state.players.find((p) => p.id === state.lastExecutedId);
     if (executed) {
       const registeredRole = registerRoleForInfo(executed, infoRegistrationMap);
@@ -1157,7 +1158,7 @@ export async function resolveNight() {
     }
   }
 
-  if (spy && spy.alive) {
+    if (spy && spy.alive) {
     const grimoire = state.players.map((p) => formatSpyGrimoireEntry(p)).join("、");
     setPrivateInfo(spy, `魔典：${grimoire}`);
     const auditEntries = (state.infoAudit || []).filter((entry) => entry.night === state.nightCount);
@@ -1175,7 +1176,7 @@ export async function resolveNight() {
     }
   }
 
-  const storytellerPrompt = [
+    const storytellerPrompt = [
     {
       role: "system",
       content: "你是血染钟楼的说书人。请输出 JSON，不要输出其它内容。narration 要求 2-3 句、戏剧化、暗黑风格，不泄露任何身份或私密信息；publicAnnouncement 要求一小段简短公开信息。"
@@ -1189,30 +1190,38 @@ export async function resolveNight() {
 {\"narration\":\"夜晚叙述\",\"publicAnnouncement\":\"白天公开信息\"}`
     }
   ];
-  let narration = "";
-  let publicAnnouncement = "";
-  try {
-    const content = await callDeepSeek(storytellerPrompt, getTempValue());
-    const json = extractJson(content);
-    if (json) {
-      narration = json.narration || "";
-      publicAnnouncement = json.publicAnnouncement || "";
-    } else {
-      narration = content;
+    let narration = "";
+    let publicAnnouncement = "";
+    try {
+      const content = await callDeepSeek(storytellerPrompt, getTempValue());
+      const json = extractJson(content);
+      if (json) {
+        narration = json.narration || "";
+        publicAnnouncement = json.publicAnnouncement || "";
+      } else {
+        narration = content;
+      }
+    } catch (error) {
+      narration = `夜晚结束。${killed ? killed.name + " 死亡。" : ""}`;
+      publicAnnouncement = narration;
+    }
+    state.lastDawnNarration = narration || publicAnnouncement || "";
+    if (narration) addChat("说书人", narration, "storyteller");
+    if (publicAnnouncement) addChat("说书人", publicAnnouncement, "storyteller");
+    addLogEntry(`夜晚死亡：${killed ? killed.name : "无人"}`, "night");
+    addReplayEvent(`夜晚死亡：${killed ? killed.name : "无人"}`, "night_action");
+    renderAll();
+    checkWin();
+    if (!state.ended) {
+      switchPhase();
     }
   } catch (error) {
-    narration = `夜晚结束。${killed ? killed.name + " 死亡。" : ""}`;
-    publicAnnouncement = narration;
-  }
-  state.lastDawnNarration = narration || publicAnnouncement || "";
-  if (narration) addChat("说书人", narration, "storyteller");
-  if (publicAnnouncement) addChat("说书人", publicAnnouncement, "storyteller");
-  addLogEntry(`夜晚死亡：${killed ? killed.name : "无人"}`, "night");
-  addReplayEvent(`夜晚死亡：${killed ? killed.name : "无人"}`, "night_action");
-  renderAll();
-  checkWin();
-  if (!state.ended) {
-    switchPhase();
+    console.error("[Night] resolveNight failed:", error);
+    addChat("系统", `夜晚结算异常：${error?.message || error}。已尝试继续流程。`, "system");
+    addLogEntry(`夜晚结算异常：${error?.message || error}`, "system");
+    renderAll();
+    if (state && state.started && !state.ended && state.phase === "night") {
+      switchPhase();
+    }
   }
 }
-
