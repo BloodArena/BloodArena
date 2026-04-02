@@ -209,11 +209,18 @@ export function buildPlayerStaticSystemContext(actor, options = {}) {
   const prefix = options.prefix || "玩家静态档案（会话内长期有效）";
   const teamLabel = { townsfolk: "镇民", outsider: "外来者", minion: "爪牙", demon: "恶魔" };
   const campLabel = (actor.team === "minion" || actor.team === "demon") ? "邪恶阵营" : "善良阵营";
+  const count = state.players.length;
+  const dist = PLAYER_DISTRIBUTION[count];
+  const distLine = dist
+    ? `本局配置：${count}人局（${dist.townsfolk}镇民 + ${dist.outsider}外来者 + ${dist.minion}爪牙 + ${dist.demon}恶魔）`
+    : `本局配置：${count}人局`;
   const lines = [
     prefix,
     `你是：${actor.name}`,
     `玩家座次：${roster}`,
-    `你的身份（仅供内部）：${roleName}`,
+    distLine,
+    "注意：若有男爵在场，会+2外来者、-2镇民。",
+    `你的身份：${roleName}`,
     `你的角色类型：${teamLabel[actor.team] || "未知"}`,
     `你的阵营：${campLabel}`,
     `你的角色能力：${roleAbility}`,

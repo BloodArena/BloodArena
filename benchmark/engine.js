@@ -549,11 +549,18 @@ function buildPlayerStaticSystemContext(state, actor, options = {}) {
   const strategyTips = getStrategyTips(actor);
   const roster = buildPromptRoster(state);
   const campLabel = (actor.team === "minion" || actor.team === "demon") ? "邪恶阵营" : "善良阵营";
+  const count = state.players.length;
+  const dist = PLAYER_DISTRIBUTION[count];
+  const distLine = dist
+    ? `本局配置：${count}人局（${dist.townsfolk}镇民 + ${dist.outsider}外来者 + ${dist.minion}爪牙 + ${dist.demon}恶魔）`
+    : `本局配置：${count}人局`;
   const lines = [
     options.prefix || "玩家静态档案（会话内长期有效）",
     `你是：${actor.name}`,
     `玩家座次：${roster}`,
-    `你的身份（仅供内部）：${roleName}`,
+    distLine,
+    "注意：若有男爵在场，会+2外来者、-2镇民。",
+    `你的身份：${roleName}`,
     `你的角色类型：${TEAM_LABEL[actor.team] || "未知"}`,
     `你的阵营：${campLabel}`,
     `你的角色能力：${roleAbility}`,
@@ -1730,7 +1737,7 @@ ${aliveDeadSummary}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
 你的私密信息增量：${privateInfo}
 你自己之前说过：${recentSelf}\n
-${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息发言。请输出一小段话发言。`);
+${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话**公聊**发言。`);
   try {
     let usedPrompt = buildPrompt("");
     let content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "chat");

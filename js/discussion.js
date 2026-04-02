@@ -149,7 +149,7 @@ ${aliveDeadSummary}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
 你的私密信息增量：${privateInfo}
 你自己之前说过：${recentSelf}\n
-${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息发言。请输出一小段话发言。`
+${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话**公聊**发言。`
   );
   try {
     let usedPrompt = buildPrompt("");
