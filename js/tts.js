@@ -8,6 +8,7 @@ import { catalogApiKeys } from "./state.js";
 const TTS_ENDPOINT = "https://api.xiaomimimo.com/v1/chat/completions";
 const TTS_MODEL = "mimo-v2-tts";
 const MAX_QUEUE = 6;
+const MAX_AUDIO_CACHE = 48;
 
 const VOICE_STYLES = [
   "成熟男性 低沉磁性",
@@ -30,8 +31,11 @@ const VOICE_STYLES = [
 const ttsToggle = document.getElementById("ttsToggle");
 const ttsAutoToggle = document.getElementById("ttsAutoToggle");
 const ttsPauseBtn = document.getElementById("ttsPauseBtn");
+const ttsQuickPauseBtn = document.getElementById("ttsQuickPauseBtn");
+const ttsQuickClearBtn = document.getElementById("ttsQuickClearBtn");
 const ttsVolumeSlider = document.getElementById("ttsVolumeSlider");
 const ttsStatusEl = document.getElementById("ttsStatus");
+const ttsQuickStatusEl = document.getElementById("ttsQuickStatus");
 const bgmAudio = document.getElementById("bgmAudio");
 
 const TTS_STORAGE_KEY = "tts_settings";
@@ -61,6 +65,14 @@ function getMimoApiKey() {
   return catalogApiKeys.mimo || "";
 }
 
+function isTtsEnabled() {
+  return Boolean(ttsToggle?.checked);
+}
+
+function shouldAutoSpeak() {
+  return isTtsEnabled() && (ttsAutoToggle ? ttsAutoToggle.checked !== false : true);
+}
+
 const speakerStyleMap = {};
 let usedStyleIndices = [];
 
@@ -78,6 +90,7 @@ function getStyleForSpeaker(name) {
 }
 
 const queue = [];
+const audioCache = new Map();
 let playing = false;
 let paused = false;
 let bgmLowered = false;
@@ -85,6 +98,42 @@ let cancelled = false;
 let currentAudio = null;
 let currentEntry = null;
 let resumeWaiters = [];
+
+function getSpeechCacheKey(speaker, text) {
+  return `${speaker}\u0000${String(text || "").trim()}`;
+}
+
+function trimAudioCache() {
+  while (audioCache.size > MAX_AUDIO_CACHE) {
+    const oldestKey = audioCache.keys().next().value;
+    if (!oldestKey) break;
+    audioCache.delete(oldestKey);
+  }
+}
+
+function getCachedAudioPromise(speaker, text) {
+  const key = getSpeechCacheKey(speaker, text);
+  if (audioCache.has(key)) {
+    const cachedPromise = audioCache.get(key);
+    audioCache.delete(key);
+    audioCache.set(key, cachedPromise);
+    return { key, promise: cachedPromise, cached: true };
+  }
+  const promise = fetchTtsAudioBlob(speaker, text).catch((error) => {
+    audioCache.delete(key);
+    throw error;
+  });
+  audioCache.set(key, promise);
+  trimAudioCache();
+  return { key, promise, cached: false };
+}
+
+export function ttsPrefetch(speaker, text) {
+  const cleanedText = String(text || "").trim();
+  if (!cleanedText || !isTtsEnabled()) return false;
+  getCachedAudioPromise(speaker, cleanedText);
+  return true;
+}
 
 function lowerBgm() {
   if (bgmLowered || !bgmAudio) return;
@@ -102,10 +151,19 @@ function restoreBgm() {
   }
 }
 
+function getIdleStatusText() {
+  return isTtsEnabled() ? "语音待命" : "语音未启用";
+}
+
 function updateStatus(message = "", cls = "") {
-  if (!ttsStatusEl) return;
-  ttsStatusEl.textContent = message;
-  ttsStatusEl.className = "tts-status" + (cls ? ` ${cls}` : "");
+  const finalMessage = message || getIdleStatusText();
+  if (ttsStatusEl) {
+    ttsStatusEl.textContent = finalMessage;
+    ttsStatusEl.className = "tts-status" + (cls ? ` ${cls}` : "");
+  }
+  if (ttsQuickStatusEl) {
+    ttsQuickStatusEl.textContent = finalMessage;
+  }
 }
 
 function describeEntry(entry) {
@@ -115,10 +173,15 @@ function describeEntry(entry) {
 }
 
 function updatePauseButton() {
-  if (!ttsPauseBtn) return;
   const hasWork = Boolean(currentEntry || currentAudio || queue.length);
-  ttsPauseBtn.disabled = !hasWork;
-  ttsPauseBtn.textContent = paused ? "继续播放" : "暂停播放";
+  [ttsPauseBtn, ttsQuickPauseBtn].forEach((button) => {
+    if (!button) return;
+    button.disabled = !hasWork;
+    button.textContent = paused ? "继续播放" : "暂停播放";
+  });
+  if (ttsQuickClearBtn) {
+    ttsQuickClearBtn.disabled = !hasWork;
+  }
 }
 
 function refreshStatus() {
@@ -128,13 +191,18 @@ function refreshStatus() {
     return;
   }
   if (playing && currentEntry) {
-    updateStatus(`🔊 ${describeEntry(currentEntry)}`, "active");
+    if (currentEntry.phase === "loading") {
+      updateStatus(`正在请求：${describeEntry(currentEntry)}`, "active");
+    } else {
+      updateStatus(`🔊 正在播放：${describeEntry(currentEntry)}`, "active");
+    }
     updatePauseButton();
     return;
   }
   if (queue.length) {
     const next = queue[0];
-    updateStatus(`等待播放：${describeEntry(next)}`, "active");
+    const prefix = next.cached ? "已排队" : "等待请求";
+    updateStatus(`${prefix}：${describeEntry(next)}`, "active");
     updatePauseButton();
     return;
   }
@@ -155,15 +223,7 @@ function waitUntilResumed() {
   });
 }
 
-function isTtsEnabled() {
-  return Boolean(ttsToggle?.checked);
-}
-
-function shouldAutoSpeak() {
-  return isTtsEnabled() && (ttsAutoToggle ? ttsAutoToggle.checked !== false : true);
-}
-
-async function fetchTtsAudio(speaker, text) {
+async function fetchTtsAudioBlob(speaker, text) {
   const apiKey = getMimoApiKey();
   if (!apiKey || apiKey === "YOUR_MIMO_API_KEY") {
     throw new Error("请在 model_catalog.yaml 中填写 mimo API Key");
@@ -214,12 +274,12 @@ async function fetchTtsAudio(speaker, text) {
   for (let index = 0; index < raw.length; index += 1) {
     bytes[index] = raw.charCodeAt(index);
   }
-  const blob = new Blob([bytes], { type: "audio/wav" });
-  return URL.createObjectURL(blob);
+  return new Blob([bytes], { type: "audio/wav" });
 }
 
-function playBlobUrl(url) {
+function playAudioBlob(blob) {
   return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     currentAudio = audio;
     audio.volume = parseFloat(ttsVolumeSlider?.value) || 0.8;
@@ -243,16 +303,18 @@ function playBlobUrl(url) {
 
 function dropOverflowQueue() {
   while (queue.length > MAX_QUEUE) {
-    const dropped = queue.shift();
-    dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+    queue.shift();
   }
 }
 
 function enqueueSpeech(speaker, text, options = {}) {
+  const { promise, cached } = getCachedAudioPromise(speaker, text);
   const entry = {
     speaker,
     text,
-    audioPromise: fetchTtsAudio(speaker, text),
+    cached,
+    audioPromise: promise,
+    phase: "loading",
   };
   if (options.priority) {
     queue.unshift(entry);
@@ -260,8 +322,15 @@ function enqueueSpeech(speaker, text, options = {}) {
     queue.push(entry);
   }
   dropOverflowQueue();
+  if (options.manual) {
+    updateStatus(
+      cached ? `已加入播放队列：${speaker} 语音` : `正在请求：${speaker} 语音`,
+      "active"
+    );
+  }
   refreshStatus();
   processQueue();
+  return { queued: true, cached };
 }
 
 async function processQueue() {
@@ -272,23 +341,24 @@ async function processQueue() {
   while (queue.length > 0 && !cancelled) {
     const entry = queue.shift();
     currentEntry = entry;
+    currentEntry.phase = "loading";
     refreshStatus();
     try {
-      const blobUrl = await entry.audioPromise;
+      const blob = await entry.audioPromise;
       if (cancelled) {
-        URL.revokeObjectURL(blobUrl);
         break;
       }
       if (paused) {
         refreshStatus();
         await waitUntilResumed();
         if (cancelled) {
-          URL.revokeObjectURL(blobUrl);
           break;
         }
       }
+      currentEntry.phase = "playing";
+      refreshStatus();
       lowerBgm();
-      await playBlobUrl(blobUrl);
+      await playAudioBlob(blob);
     } catch (error) {
       console.warn("[TTS] error:", error);
       updateStatus(`语音播报失败: ${error?.message || error}`, "error");
@@ -335,22 +405,26 @@ function setPaused(nextPaused) {
 
 export function ttsSpeak(speaker, text, options = {}) {
   const cleanedText = String(text || "").trim();
-  if (!cleanedText) return;
+  if (!cleanedText) return { accepted: false, cached: false };
   if (!isTtsEnabled()) {
     if (options.manual) {
       updateStatus("请先开启 AI 语音功能。", "error");
     }
-    return;
+    return { accepted: false, cached: false };
   }
   if (!options.manual && !shouldAutoSpeak()) {
-    return;
+    return { accepted: false, cached: false };
   }
   cancelled = false;
-  enqueueSpeech(speaker, cleanedText, { priority: Boolean(options.priority) });
+  const queued = enqueueSpeech(speaker, cleanedText, {
+    priority: Boolean(options.priority),
+    manual: Boolean(options.manual)
+  });
+  return { accepted: true, cached: Boolean(queued.cached) };
 }
 
 export function ttsPlayManual(speaker, text) {
-  ttsSpeak(speaker, text, { manual: true, priority: true });
+  return ttsSpeak(speaker, text, { manual: true, priority: true });
 }
 
 export function ttsTogglePause(forcePaused = null) {
@@ -361,10 +435,7 @@ export function ttsTogglePause(forcePaused = null) {
 export function ttsClearQueue() {
   cancelled = true;
   resolveResumeWaiters();
-  while (queue.length > 0) {
-    const dropped = queue.shift();
-    dropped.audioPromise.then((url) => URL.revokeObjectURL(url)).catch(() => {});
-  }
+  queue.length = 0;
   if (currentAudio) {
     try {
       currentAudio.pause();
@@ -409,15 +480,23 @@ if (ttsVolumeSlider) {
   });
 }
 
-if (ttsPauseBtn) {
-  ttsPauseBtn.addEventListener("click", () => {
+[ttsPauseBtn, ttsQuickPauseBtn].forEach((button) => {
+  if (!button) return;
+  button.addEventListener("click", () => {
     ttsTogglePause();
+  });
+});
+
+if (ttsQuickClearBtn) {
+  ttsQuickClearBtn.addEventListener("click", () => {
+    ttsClearQueue();
   });
 }
 
 refreshStatus();
 
 window.ttsSpeak = ttsSpeak;
+window.ttsPrefetch = ttsPrefetch;
 window.ttsPlayManual = ttsPlayManual;
 window.ttsClearQueue = ttsClearQueue;
 window.ttsTogglePause = ttsTogglePause;

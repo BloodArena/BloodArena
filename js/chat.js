@@ -20,7 +20,7 @@ import {
   CHAT_NEAR_BOTTOM_THRESHOLD,
   ROLE_NAME_LIST
 } from './constants.js';
-import { ttsSpeak, ttsPlayManual } from './tts.js';
+import { ttsPrefetch, ttsSpeak, ttsPlayManual, ttsShouldAutoSpeak } from './tts.js';
 
 import {
   chatBox,
@@ -320,6 +320,9 @@ export function addChat(speaker, text, type = "player") {
     updateClaimsFromChat(speaker, text);
     const speakerPlayer = state.players.find((p) => p.name === speaker);
     if (speakerPlayer && !speakerPlayer.isHuman) {
+      if (!ttsShouldAutoSpeak()) {
+        ttsPrefetch(speaker, text);
+      }
       ttsSpeak(speaker, text);
     }
   }
@@ -333,10 +336,45 @@ function canPlayTtsForSpeaker(speaker) {
 }
 
 function buildChatTextNode(text) {
+  const voteResultNode = buildVoteResultNode(text);
+  if (voteResultNode) {
+    return voteResultNode;
+  }
   const body = document.createElement("div");
   body.className = "chat-item-body";
   body.textContent = text;
   return body;
+}
+
+function buildVoteResultNode(text) {
+  const content = String(text || "").trim();
+  const match = content.match(
+    /^<div class="vote-result-bar"><span>([^<]+)<\/span><div class="vote-bar-track"><div class="vote-bar-fill" style="width:(\d+)%"><\/div><\/div><span class="vote-bar-label">(\d+)\/(\d+) \((\d+)%\)<\/span><\/div>$/
+  );
+  if (!match) return null;
+
+  const [, nomineeName, widthPct, yesVotes, aliveCount, labelPct] = match;
+  const wrapper = document.createElement("div");
+  wrapper.className = "vote-result-bar";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.textContent = nomineeName;
+  wrapper.appendChild(nameSpan);
+
+  const track = document.createElement("div");
+  track.className = "vote-bar-track";
+  const fill = document.createElement("div");
+  fill.className = "vote-bar-fill";
+  fill.style.width = `${Number(widthPct) || 0}%`;
+  track.appendChild(fill);
+  wrapper.appendChild(track);
+
+  const label = document.createElement("span");
+  label.className = "vote-bar-label";
+  label.textContent = `${yesVotes}/${aliveCount} (${labelPct}%)`;
+  wrapper.appendChild(label);
+
+  return wrapper;
 }
 
 function buildChatHeader(metaText, speaker = "", text = "") {
@@ -357,7 +395,20 @@ function buildChatHeader(metaText, speaker = "", text = "") {
     playBtn.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      ttsPlayManual(speaker, text);
+      const result = ttsPlayManual(speaker, text);
+      if (!result || !result.accepted) {
+        playBtn.textContent = "不可用";
+      } else {
+        playBtn.textContent = result.cached ? "已排队" : "加载中";
+      }
+      playBtn.disabled = true;
+      playBtn.classList.add("loading");
+      window.setTimeout(() => {
+        if (!playBtn.isConnected) return;
+        playBtn.textContent = "播放";
+        playBtn.disabled = false;
+        playBtn.classList.remove("loading");
+      }, result && result.cached ? 1000 : 1600);
     });
     header.appendChild(playBtn);
   }

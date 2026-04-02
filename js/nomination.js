@@ -699,7 +699,6 @@ export function resolveNominationVotes() {
   const nominee = state.players.find((p) => p.id === state.currentNomineeId);
   addReplayEvent(`投票结果：赞成${yesVotes}/${aliveCount}`, "day_action");
   addPublicLogEntry(`投票结果：赞成${yesVotes}/${aliveCount}`);
-  // Inject vote result bar into chat
   const pct = aliveCount > 0 ? Math.round((yesVotes / aliveCount) * 100) : 0;
   const voteBarHtml = `<div class="vote-result-bar"><span>${nominee ? nominee.name : "?"}</span><div class="vote-bar-track"><div class="vote-bar-fill" style="width:${pct}%"></div></div><span class="vote-bar-label">${yesVotes}/${aliveCount} (${pct}%)</span></div>`;
   addChat("系统", voteBarHtml, "system");
