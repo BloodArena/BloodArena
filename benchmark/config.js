@@ -9,7 +9,7 @@ module.exports = {
   playerCount: 12,
   concurrency: 1,
   seed: 42,
-  maxDays: 20,
+  maxDays: 10,
   discussionRounds: 3,    // 每个白天讨论轮数
   maxNominationsPerDay: 3,
 
