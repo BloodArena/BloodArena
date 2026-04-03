@@ -217,6 +217,7 @@ export async function fetchWithRetry(url, options, timeoutMs, maxRetries = 2) {
 export async function probeModelConnection(actor = null, timeoutMs = 8000) {
   const config = getModelConfig(actor);
   const requiresKey = config.requiresKey !== false;
+  const probeMaxTokens = 64;
   if (!config.endpoint) {
     return { ok: false, provider: config.provider, model: config.model, message: "缺少请求端点" };
   }
@@ -239,7 +240,7 @@ export async function probeModelConnection(actor = null, timeoutMs = 8000) {
         body: JSON.stringify({
           model: config.model,
           messages: [{ role: "user", content: "ping" }],
-          max_tokens: 8,
+          max_tokens: probeMaxTokens,
           temperature: 0
         })
       }, timeoutMs);
@@ -269,7 +270,7 @@ export async function probeModelConnection(actor = null, timeoutMs = 8000) {
         model: config.model,
         messages: [{ role: "user", content: "ping" }],
         temperature: 0,
-        max_tokens: 8,
+        max_tokens: probeMaxTokens,
         stream: false
       })
     }, timeoutMs);

@@ -33,6 +33,11 @@ categoryEls.forEach((categoryEl) => {
 
 audio.volume = parseFloat(volumeSlider.value);
 
+function isIntroBlockingBgm() {
+  const introOverlay = document.getElementById("introOverlay");
+  return document.body.classList.contains("prestart") || Boolean(introOverlay && introOverlay.classList.contains("show"));
+}
+
 export function pauseBgmForVoice() {
   if (!audio || !audio.src) {
     voicePausedBgm = false;
@@ -148,6 +153,7 @@ function pickRandomTrack(pool) {
 
 export function syncAutoBgmForState(options = {}) {
   const { force = false } = options;
+  if (isIntroBlockingBgm()) return;
   const category = getCategoryByState();
   if (!force && category === lastAutoCategory) return;
   const pool = tracksByCategory[category];

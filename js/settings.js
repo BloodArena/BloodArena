@@ -25,6 +25,7 @@ import {
   renderAll
 } from './ui-helpers.js';
 import { addChat } from './chat.js';
+import { getProviderHealth } from './model-catalog.js';
 
 /* ===== restoreSettings ===== */
 
@@ -57,13 +58,23 @@ export function randomizeAiModels() {
     alert("请先生成玩家。");
     return;
   }
-  const pool = MODEL_OPTIONS.map((option) => option.value);
-  if (!pool.length) return;
+  const pool = MODEL_OPTIONS
+    .filter((option) => {
+      const [providerId] = String(option.value || "").split(":");
+      if (!providerId) return false;
+      const health = getProviderHealth(providerId);
+      return Boolean(health && health.status !== "error");
+    })
+    .map((option) => option.value);
+  if (!pool.length) {
+    alert("当前没有通过健康检查的可用模型，无法随机分配。");
+    return;
+  }
   state.players.forEach((player) => {
     if (player.isHuman) return;
     player.modelChoice = pool[Math.floor(Math.random() * pool.length)];
   });
-  addChat("系统", "已随机分配 AI 模型。", "system");
+  addChat("系统", `已从 ${pool.length} 个健康模型中随机分配 AI 模型。`, "system");
   renderAll();
 }
 

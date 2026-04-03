@@ -18,6 +18,8 @@ import { showModal as _showModal } from "./overlays.js";
 const voiceStatus = document.getElementById("voiceStatus");
 const voiceBtn = document.getElementById("voiceBtn");
 const humanInput = document.getElementById("humanInput");
+let statementCaptureActive = false;
+let cancelStatementCapture = null;
 
 /* ===== BGM bridge helpers ===== */
 
@@ -41,8 +43,9 @@ export function updateVoiceUi(message = "", isError = false) {
     voiceStatus.classList.toggle("error", Boolean(isError));
   }
   if (voiceBtn) {
-    voiceBtn.classList.toggle("active", speechActive);
-    voiceBtn.textContent = speechActive ? "停止语音" : "语音输入";
+    const active = speechActive || statementCaptureActive;
+    voiceBtn.classList.toggle("active", active);
+    voiceBtn.textContent = active ? "取消语音" : "语音输入";
   }
 }
 
@@ -123,6 +126,10 @@ export function initSpeechRecognition() {
 }
 
 export function toggleVoiceInput() {
+  if (typeof cancelStatementCapture === "function") {
+    cancelStatementCapture();
+    return;
+  }
   if (!canUseVoiceInput()) {
     showModal("当前阶段暂不支持语音输入。");
     return;
@@ -154,6 +161,8 @@ export async function captureSpeechForStatement(title = "") {
     const finish = (text = "") => {
       if (done) return;
       done = true;
+      statementCaptureActive = false;
+      cancelStatementCapture = null;
       try {
         recognition.onresult = null;
         recognition.onerror = null;
@@ -166,8 +175,13 @@ export async function captureSpeechForStatement(title = "") {
       resolve(String(text || "").trim());
     };
     recognition.onstart = () => {
+      statementCaptureActive = true;
+      cancelStatementCapture = () => {
+        updateVoiceUi("已取消语音输入。");
+        finish("");
+      };
       pauseBgmForVoiceInput();
-      updateVoiceUi(title ? `${title}（语音识别中）` : "语音识别中…");
+      updateVoiceUi(title ? `${title}（语音识别中，再点一次可取消）` : "语音识别中…再次点击可取消");
     };
     recognition.onresult = (event) => {
       let interimText = "";
@@ -193,6 +207,8 @@ export async function captureSpeechForStatement(title = "") {
     try {
       recognition.start();
     } catch (error) {
+      statementCaptureActive = false;
+      cancelStatementCapture = null;
       resumeBgmAfterVoiceInput();
       resolve("");
     }

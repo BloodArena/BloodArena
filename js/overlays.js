@@ -41,11 +41,18 @@ export function finishIntroPlayback() {
     introVideo.currentTime = 0;
   }
   document.body.classList.remove("prestart");
+  if (typeof window.syncAutoBgmForState === "function") {
+    window.syncAutoBgmForState({ force: true });
+  }
 }
 
 export function startIntroPlayback() {
   if (startOverlay) startOverlay.classList.remove("show");
   if (introOverlay) introOverlay.classList.add("show");
+  const bgmAudio = document.getElementById("bgmAudio");
+  if (bgmAudio && !bgmAudio.paused) {
+    bgmAudio.pause();
+  }
   if (introVideo) {
     const playPromise = introVideo.play();
     if (playPromise && typeof playPromise.catch === "function") {
