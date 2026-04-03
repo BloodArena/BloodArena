@@ -222,7 +222,7 @@ export function buildPlayerStaticSystemContext(actor, options = {}) {
     distLine,
     "注意：若有男爵在场，会+2外来者、-2镇民。",
     `你的身份：${roleName}`,
-    `你的角色类型：${teamLabel[actor.team] || "未知"}`,
+    `你的角色类型：${teamLabel[apparentRole?.team || actor.team] || "未知"}`,
     `你的阵营：${campLabel}`,
     `你的角色能力：${roleAbility}`,
     `规则提示：${roleHint}`
