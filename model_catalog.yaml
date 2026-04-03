@@ -60,6 +60,16 @@ providers:
       - "gpt-5.1-2025-11-13"
       - "gpt-5-chat-2025-08-07"
 
+  mimo:
+    label: "MiMo"
+    base_url: "https://api.xiaomimimo.com/v1"
+    api_key: "${mimo}"
+    protocol: "openai"
+    models:
+      - "mimo-v2-pro"
+      - "mimo-v2-omni"
+    default_model: "mimo-v2-pro"
+
   openrouter:
     label: "OpenRouter"
     base_url: "https://openrouter.ai/api/v1"

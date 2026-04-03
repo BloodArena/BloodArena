@@ -431,7 +431,9 @@ function getPhaseLabel(state) {
 }
 
 function buildPromptRoster(state) {
-  return state.players.map((p, idx) => `${idx + 1}号=${getPromptName(p)}`).join("，");
+  const n = state.players.length;
+  const list = state.players.map((p, idx) => `${idx + 1}号=${getPromptName(p)}`).join("，");
+  return `${list}（座位围成一圈，比如1号的左右两边是${n}号和2号）`;
 }
 
 function getTeamGuidelines(player) {
