@@ -41,6 +41,9 @@ for (let i = 0; i < args.length; i++) {
   if ((args[i] === '--progress-mode' || args[i] === '--progress') && args[i + 1]) {
     progressMode = args[i + 1];
   }
+  if ((args[i] === '--board-group' || args[i] === '--board') && args[i + 1]) {
+    config.boardGroup = parseInt(args[i + 1], 10);
+  }
 }
 
 function makeTimestampTag() {

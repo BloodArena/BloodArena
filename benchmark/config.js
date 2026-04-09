@@ -9,6 +9,8 @@ module.exports = {
   playerCount: 12,
   concurrency: 1,
   seed: 42,
+  boardFile: "./benchmark/role_boards.json",  // 预设配板文件路径，设为 "" 则用随机配板
+  boardGroup: 1,                               // 使用第几组配板（1-5）
   maxDays: 10,
   discussionRounds: 3,    // 每个白天讨论轮数
   maxNominationsPerDay: 3,
@@ -17,10 +19,14 @@ module.exports = {
   openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
   openrouterBaseUrl: "https://openrouter.ai/api/v1",
 
+  // MiMo 直连配置（mimo-v2-pro / mimo-v2-omni 走此通道）
+  mimoApiKey: process.env.MIMO_API_KEY,
+  mimoBaseUrl: "https://api.xiaomimimo.com/v1",
+
   // LLM 参数
   temperature: 0.7,
   timeoutMs: 120000,
-  maxRetries: 5,
+  maxRetries: 3,
 
   // 说书人模型（用于夜晚信息判定和叙述生成）
   storytellerModel: "xiaomi/mimo-v2-pro",
@@ -30,12 +36,12 @@ module.exports = {
     { id: "openai/gpt-5.4", label: "GPT-5.4" },
     { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
     { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6" },
-    { id: "xiaomi/mimo-v2-pro", label: "MiMo V2 Pro" },
+    { id: "mimo-v2-pro", label: "MiMo V2 Pro" },
     { id: "minimax/minimax-m2.7", label: "MiniMax M2.7" },
     { id: "x-ai/grok-4.20-beta", label: "Grok 4.20 Beta" },
     { id: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2" },
     { id: "qwen/qwen3.5-397b-a17b", label: "Qwen3.5 397B" },
-    { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron 3 Super 120B" },
+    { id: "bytedance-seed/seed-2.0-lite", label: "Seed 2.0 Lite" },
     { id: "stepfun/step-3.5-flash", label: "step 3.5 flash" },
     { id: "z-ai/glm-5", label: "GLM-5" },
     { id: "moonshotai/kimi-k2.5", label: "kimi k2.5" }

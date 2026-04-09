@@ -7,6 +7,8 @@
  * - 90 games as good (townsfolk + outsider)
  */
 
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 
 // Seeded PRNG: mulberry32
@@ -29,12 +31,94 @@ function seededShuffle(array, rng) {
   return arr;
 }
 
+/* ── Role-team lookup (mirrors SCRIPT.roles in engine.js) ── */
+const ROLE_TEAM = {
+  "洗衣妇":"townsfolk","图书管理员":"townsfolk","调查员":"townsfolk","厨师":"townsfolk",
+  "共情者":"townsfolk","占卜师":"townsfolk","送葬者":"townsfolk","僧侣":"townsfolk",
+  "守鸦人":"townsfolk","贞洁者":"townsfolk","猎手":"townsfolk","士兵":"townsfolk","镇长":"townsfolk",
+  "管家":"outsider","酒鬼":"outsider","陌客":"outsider","圣徒":"outsider",
+  "投毒者":"minion","间谍":"minion","红唇女郎":"minion","男爵":"minion",
+  "小恶魔":"demon"
+};
+
+function factionFromTeam(team) {
+  if (team === "demon") return "demon";
+  if (team === "minion") return "minion";
+  return "good";
+}
+
+/**
+ * Generate schedule from a preset board file (role_boards.json).
+ * Each board defines 12 seats with fixed roles. 12 models rotate through
+ * all 12 seats across 12 games, so every model plays every role once.
+ */
+function generateBoardSchedule() {
+  const { models, boardFile, boardGroup } = config;
+  if (models.length !== 12) throw new Error(`Expected 12 models, got ${models.length}`);
+
+  const boardPath = path.resolve(boardFile);
+  const boards = JSON.parse(fs.readFileSync(boardPath, "utf-8"));
+  const board = boards[boardGroup - 1];
+  if (!board) throw new Error(`Board group ${boardGroup} not found (file has ${boards.length} groups)`);
+
+  const modelIds = models.map(m => m.id);
+  const schedule = [];
+
+  for (let i = 0; i < 12; i++) {
+    const gameId = `game_${String(i + 1).padStart(3, "0")}`;
+    const assignments = [];
+
+    for (let seat = 0; seat < 12; seat++) {
+      const modelIndex = (seat - i + 12) % 12;
+      const bp = board.players[seat]; // board player entry
+      const team = ROLE_TEAM[bp.roleName];
+      if (!team) throw new Error(`Unknown role "${bp.roleName}" at board ${boardGroup} seat ${bp.seat}`);
+
+      assignments.push({
+        seat,
+        modelId: modelIds[modelIndex],
+        faction: factionFromTeam(team),
+        roleName: bp.roleName,
+        apparentRoleName: bp.apparentRoleName || "",
+      });
+    }
+
+    schedule.push({
+      gameId,
+      groupIndex: 0,
+      gameInGroup: i,
+      seed: config.seed * 1000 + i,
+      assignments,
+      bluffs: board.bluffs || [],
+      redHerringSeat: board.redHerringSeat != null ? board.redHerringSeat : -1,
+    });
+  }
+
+  // Verify: each model occupies each seat exactly once
+  for (let seat = 0; seat < 12; seat++) {
+    const modelsAtSeat = new Set(schedule.map(g => g.assignments[seat].modelId));
+    if (modelsAtSeat.size !== 12) throw new Error(`Seat ${seat + 1} does not have 12 unique models`);
+  }
+  for (const mid of modelIds) {
+    const seats = schedule.map(g => g.assignments.findIndex(a => a.modelId === mid));
+    if (new Set(seats).size !== 12) throw new Error(`Model ${mid} does not occupy 12 unique seats`);
+  }
+
+  console.log(`  [Schedule] Board mode: group ${boardGroup}, 12 games (rotation)`);
+  console.log(`  [Schedule] Board verification passed`);
+  return schedule;
+}
+
 /**
  * Generate the game schedule.
- * totalGames must be a multiple of 12 (one group = 12 games).
+ * If config.boardFile is set, uses preset board rotation.
+ * Otherwise, totalGames must be a multiple of 12 (one group = 12 games).
  * Each group ensures every model plays exactly 1 demon, 2 minion, 9 good.
  */
 function generateSchedule() {
+  if (config.boardFile) {
+    return generateBoardSchedule();
+  }
   const { models, seed, totalGames, playerCount, groups } = config;
 
   if (models.length !== 12) {

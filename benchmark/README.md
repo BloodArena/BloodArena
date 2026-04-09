@@ -4,14 +4,24 @@
 
 这是一个纯 Node.js 的全 AI 对战评测脚本。12 个不同的大模型各扮演一个玩家，在「暗流涌动」剧本下进行 12 人局的血染钟楼对战。脚本自动运行完整的游戏流程（夜晚结算 → 白天讨论 → 提名投票 → 处决），最终统计每个模型的胜率并生成排行榜。
 
-**当前配置：每次 12 局（1 组），每个模型恰好当 1 次恶魔、2 次爪牙、9 次好人。可多次运行后汇总。**
+**当前配置：使用专业说书人预设配板（5 组可选），每组配板 12 局轮转，每个模型把 12 个角色各玩一遍。**
+
+### 核心特性
+
+- **预设配板模式**：由专业说书人精心设计的 5 组均衡配板，避免随机配板导致的天然不公平
+- **公平轮转**：每组 12 局，12 个模型轮转 12 个座位，每个模型恰好扮演每个角色一次
+- **多模型路由**：MiMo 模型走直连 API，其他模型走 OpenRouter
+- **推理链记录**：所有 LLM 调用启用 reasoning（effort=high），思维链完整记录到轨迹文件
+- **每日总结压缩**：每个白天结束时自动压缩会话历史，防止长局 context 超限
+- **断点续跑**：中断后重新运行相同命令即可继续
 
 ---
 
 ## 环境要求
 
 - **Node.js 18+**（需要内置 `fetch` 支持）
-- **OpenRouter API Key**（一个 Key 调用所有模型）
+- **OpenRouter API Key**（调用大部分模型）
+- **MiMo API Key**（调用 MiMo 系列模型，可选）
 
 检查 Node 版本：
 ```bash
@@ -22,13 +32,14 @@ node --version  # 需要 v18.0.0 或更高
 
 ## 快速开始
 
-### 第一步：设置 API Key
+### 第一步：设置 API Key 
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-你的key"
+export MIMO_API_KEY="你的mimo-key"  # 可选，不设则 MiMo 模型使用 config.js 中的默认 key
 ```
 
-去 [openrouter.ai](https://openrouter.ai) 注册获取。确保账户有余额。
+OpenRouter Key 去 [openrouter.ai](https://openrouter.ai) 注册获取。确保账户有余额。
 
 ### 第二步：先跑 1 局试试
 
@@ -36,7 +47,13 @@ export OPENROUTER_API_KEY="sk-or-v1-你的key"
 node benchmark/run.js --limit 1
 ```
 
-运行前会先进行**模型连通性探测**（probe），逐个检查 12 个参赛模型和说书人模型是否可用。不可用的模型会自动 fallback 到备用模型。如果想跳过探测：
+默认使用第 1 组预设配板。可以通过 `--board-group` 指定其他组：
+
+```bash
+node benchmark/run.js --limit 1 --board-group 3
+```
+
+运行前会先进行**模型连通性探测**（probe），逐个检查 12 个参赛模型和说书人模型是否可用。如果想跳过探测：
 
 ```bash
 node benchmark/run.js --limit 1 --skip-probe
@@ -58,13 +75,16 @@ Running model connectivity probe...
 Model connectivity probe passed.
 
 Generating schedule...
-  [Schedule] Verification passed (12 games, 1 groups)
+  [Schedule] Board mode: group 1, 12 games (rotation)
+  [Schedule] Board verification passed
 
 [1/1] Running game_001...
     [game_001] Game start | seed=42000
     [game_001] Night 1 start
     [game_001] Night 1 end | dead=none
     [game_001] Day 1 discussion start | rounds=3
+    [game_001] Day 1 session compression start
+    [game_001] Day 1 session compression done
     [game_001] Day 1 nomination start
     [game_001] Day 1 execution | 玩家5
     ...
@@ -81,7 +101,7 @@ Generating schedule...
 ```bash
 # 查看基本信息
 node -e "
-  const g = require('./results/20260402_143025/raw/game_001.json');
+  const g = require('./results/<timestamp>/raw/game_001.json');
   console.log('胜方:', g.winner, '(' + g.winCondition + ')');
   console.log('天数:', g.totalDays, '夜数:', g.totalNights);
   console.log('花费: \$' + (g.totalCost || 0).toFixed(3));
@@ -95,26 +115,14 @@ node -e "
 每局结束后会自动生成**每个玩家的独立轨迹文件**：
 
 ```
-results/20260402_143025/raw/game_001_trajectories/
+results/<timestamp>/raw/game_001_trajectories/
 ├── 玩家1_openai_gpt-5.4.jsonl
 ├── 玩家2_google_gemini-3.1-pro-preview.jsonl
 ├── ...
 └── 说书人_xiaomi_mimo-v2-pro.jsonl
 ```
 
-每个 `.jsonl` 文件按时间顺序记录该玩家的所有 LLM 调用（system prompt + user message + assistant response），可用来分析 AI 的推理过程。
-
-也可以查看汇总的轨迹统计：
-```bash
-node -e "
-  const g = require('./results/20260402_143025/raw/game_001.json');
-  console.log('LLM调用总数:', g.trajectoryLog.length);
-  console.log('Token用量:');
-  Object.entries(g.tokenUsage).forEach(([model, u]) =>
-    console.log('  ' + model + ': ' + u.calls + '次, ' + u.totalTokens + ' tokens, \$' + (u.cost||0).toFixed(4))
-  );
-"
-```
+每个 `.jsonl` 文件按时间顺序记录该玩家的所有 LLM 调用（system prompt + user message + assistant response）。如果模型支持推理，还会包含 `reasoning_content` 字段记录思维链。
 
 **检查要点：**
 - 游戏是否正常结束（winner 不是 "draw"）
@@ -136,19 +144,16 @@ node benchmark/run.js --run-tag my_run_01
 node benchmark/run.js --run-tag my_run_01
 ```
 
-### 第六步：多批次运行与汇总
+### 第六步：多组配板运行与汇总
 
-每次运行 12 局使用不同的 seed，可以测多批次：
+5 组预设配板，每组可跑一批 12 局：
 
 ```bash
-# 第 1 批（seed=42，默认）
-node benchmark/run.js
+# 第 1 组配板
+node benchmark/run.js --board-group 1
 
-# 修改 config.js 的 seed 为 43
-node benchmark/run.js
-
-# 修改 config.js 的 seed 为 44
-node benchmark/run.js
+# 第 2 组配板
+node benchmark/run.js --board-group 2
 
 # 汇总所有批次，生成总排行榜
 node benchmark/stats.js --scan-all
@@ -160,7 +165,7 @@ node benchmark/stats.js --scan-all
 node benchmark/stats.js --scan-all --out results/my_leaderboard.json
 ```
 
-### 第七步：查看排行榜网页
+### 第七步：查看排行榜与数据浏览器
 
 ```bash
 # 在项目根目录启动 HTTP 服务器
@@ -168,7 +173,10 @@ cd /mnt/user-ssd/yangqibin/The-Bloody
 python3 -m http.server 8000
 ```
 
-浏览器打开 `http://localhost:8000/leaderboard.html`。排行榜默认读取 `results/leaderboard.json`。如果用了 `--scan-all`，需要把生成的文件复制过去：
+- **排行榜**：浏览器打开 `http://localhost:8000/leaderboard.html`
+- **数据浏览器**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`）
+
+排行榜默认读取 `results/leaderboard.json`。如果用了 `--scan-all`，需要把生成的文件复制过去：
 
 ```bash
 cp results/leaderboard_all.json results/leaderboard.json
@@ -187,6 +195,7 @@ node benchmark/run.js [options]
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--limit N` | 无限制 | 只跑前 N 局 |
+| `--board-group N` / `--board N` | 1 | 使用第几组预设配板（1-5） |
 | `--progress MODE` | concise | 日志详细程度：`concise` / `balanced` / `detailed` |
 | `--run-tag TAG` | 无 | 指定运行标签（用于结果目录名和断点续跑） |
 | `--timestamped` | 默认开启 | 使用时间戳作为运行标签 |
@@ -196,8 +205,8 @@ node benchmark/run.js [options]
 **Progress 模式说明：**
 
 - **`concise`**：只显示游戏级别关键节点（夜晚开始/结束、白天讨论/提名/处决）
-- **`balanced`**：增加每次 LLM 调用完成通知、讨论轮次、提名和投票详情
-- **`detailed`**：增加每次 LLM 调用的开始、回复预览、私聊检测、夜晚具体行动
+- **`balanced`**：增加每次 LLM 调用完成通知、讨论轮次、提名和投票详情、每日总结压缩状态
+- **`detailed`**：增加每次 LLM 调用的开始、回复预览、私聊检测、夜晚具体行动、会话压缩详情
 
 ```bash
 # 调试时用 detailed 查看完整日志
@@ -216,19 +225,30 @@ node benchmark/stats.js [options]
 | `--out PATH` | 指定排行榜输出路径（默认 `results/leaderboard_all.json`） |
 | 无参数 | 只读取 `config.rawDir` 下的结果 |
 
+### `gen-index.js`
+
+```bash
+node benchmark/gen-index.js
+```
+
+扫描 `results/` 目录生成 `results/file_index.json`，供 `viewer.html` 数据浏览器使用。每次有新游戏结果后重新运行即可更新索引。
+
 ---
 
 ## 文件说明
 
 ```
 benchmark/
-├── config.js      # 配置：模型列表、局数、API参数、说书人模型
-├── llm.js         # OpenRouter API 调用封装（含本地定价 fallback）
-├── schedule.js    # 角色分配调度器（保证公平轮换）
-├── engine.js      # 游戏引擎（核心逻辑）
-├── run.js         # 主入口（模型探测 + 运行评测 + 保存结果和轨迹）
-├── stats.js       # 统计汇总（生成排行榜 JSON，支持多批次汇总）
-└── README.md      # 本文档
+├── config.js            # 配置：模型列表、配板、API参数、说书人模型
+├── llm.js               # LLM 调用封装（OpenRouter + MiMo 直连，含推理链支持）
+├── schedule.js          # 角色分配调度器（预设配板轮转 / 随机配板）
+├── engine.js            # 游戏引擎（核心逻辑 + 每日总结压缩）
+├── run.js               # 主入口（模型探测 + 运行评测 + 保存结果和轨迹）
+├── stats.js             # 统计汇总（生成排行榜 JSON，支持多批次汇总）
+├── gen-index.js         # 生成文件索引（供数据浏览器使用）
+├── role_boards.json     # 5 组预设配板（JSON 格式）
+├── role_assignment.txt  # 原始配板描述（人类可读版本）
+└── README.md            # 本文档
 
 results/
 ├── <timestamp>/           # 每次运行的独立目录
@@ -239,10 +259,13 @@ results/
 │   │   │   └── ...
 │   │   └── ...
 │   └── leaderboard.json   # 该批次的排行榜
+├── file_index.json        # gen-index.js 生成的文件索引
 ├── leaderboard_all.json   # --scan-all 汇总排行榜
 └── leaderboard.json       # 排行榜网页读取的文件
 
-leaderboard.html           # 排行榜网页（项目根目录）
+# 项目根目录
+leaderboard.html           # 排行榜网页
+viewer.html                # 数据浏览器网页
 ```
 
 ---
@@ -253,13 +276,60 @@ leaderboard.html           # 排行榜网页（项目根目录）
 |------|--------|------|
 | `totalGames` | 12 | 总局数（必须是 12 的倍数） |
 | `groups` | 1 | 分组数（totalGames / 12） |
-| `seed` | 42 | 随机种子（控制角色分配，改 seed 可跑不同分配） |
+| `seed` | 42 | 随机种子 |
+| `boardFile` | `"./benchmark/role_boards.json"` | 预设配板文件路径，设为 `""` 则用随机配板 |
+| `boardGroup` | 1 | 使用第几组配板（1-5），可被 `--board-group` 覆盖 |
 | `discussionRounds` | 3 | 每个白天讨论轮数 |
 | `maxNominationsPerDay` | 3 | 每天最多提名次数 |
 | `temperature` | 0.7 | LLM 温度 |
-| `maxDays` | 20 | 单局最大天数（防死循环） |
-| `storytellerModel` | xiaomi/mimo-v2-pro | 说书人用的模型（裁判，不参与排名） |
+| `maxDays` | 10 | 单局最大天数（防死循环） |
+| `timeoutMs` | 120000 | 单次 LLM 调用超时（毫秒） |
+| `maxRetries` | 5 | LLM 调用最大重试次数 |
+| `storytellerModel` | `xiaomi/mimo-v2-pro` | 说书人模型（裁判，不参与排名） |
 | `models` | 12 个模型 | 参赛模型列表（必须恰好 12 个） |
+| `openrouterApiKey` | 环境变量 | OpenRouter API Key |
+| `mimoApiKey` | 环境变量 | MiMo 直连 API Key |
+
+---
+
+## 预设配板模式
+
+系统默认使用预设配板模式（`boardFile` 非空时启用）。`role_boards.json` 中有 5 组由专业说书人设计的均衡配板，每组指定了：
+
+- 12 个座位各自的角色（包括酒鬼的表观角色）
+- 恶魔的 3 个不在场身份（bluffs）
+- 占卜师的干扰项（red herring）
+
+每组配板生成 12 局轮转赛程：第 i 局中，模型按 `(座位 - i + 12) % 12` 的公式轮转，确保每个模型恰好扮演每个座位一次。
+
+如需回退到随机配板模式，将 `config.js` 中的 `boardFile` 设为 `""`。
+
+---
+
+## 模型路由
+
+LLM 调用会根据模型名自动路由：
+
+| 模型 | API 通道 | 说明 |
+|------|----------|------|
+| `mimo-v2-pro` / `mimo-v2-omni` | MiMo 直连（`api.xiaomimimo.com`） | 自动去掉 `xiaomi/` 前缀 |
+| 其他所有模型 | OpenRouter | 使用 OpenRouter 统一接口 |
+
+所有调用均启用推理链（reasoning effort=high, max_tokens=16384）。支持推理的模型会返回 `reasoning_content` 字段，记录到轨迹文件中。
+
+---
+
+## 每日总结压缩
+
+为防止长局游戏中会话历史超出模型 context 限制，系统在**每个白天结束时**自动压缩会话历史：
+
+1. 对每个存活玩家的 "chat" 和 "json" 两个会话分别处理
+2. 保留 system messages（角色档案、规则等），压缩 user/assistant 对话历史
+3. 调用玩家自己的模型生成一段总结，以该玩家的视角保留所有关键信息
+4. 用总结替换原有对话历史，后续调用在总结基础上继续追加
+5. 每天的总结都会保留，不会被后续压缩覆盖
+
+每个白天结束时都会执行压缩（只要有对话历史）。压缩失败不影响游戏继续。
 
 ---
 
@@ -267,7 +337,7 @@ leaderboard.html           # 排行榜网页（项目根目录）
 
 每次运行前会自动探测所有模型是否可用：
 
-- **参赛模型**：逐个发送测试请求。不可用的模型会自动 fallback 到 `xiaomi/mimo-v2-pro`（统一备用模型）
+- **参赛模型**：逐个发送测试请求。不可用的模型会自动 fallback 到备用模型
 - **说书人模型**：同理，不可用时也 fallback
 - 运行日志会明确显示哪些模型被替换了
 
@@ -282,6 +352,9 @@ leaderboard.html           # 排行榜网页（项目根目录）
 ### Q: 报错 "OPENROUTER_API_KEY not set"
 设置环境变量：`export OPENROUTER_API_KEY="你的key"`
 
+### Q: 报错 "MIMO_API_KEY not set"
+设置环境变量：`export MIMO_API_KEY="你的key"`，或在 `config.js` 中直接配置 `mimoApiKey`。
+
 ### Q: 报错 "fetch is not defined"
 Node.js 版本低于 18，请升级。
 
@@ -291,8 +364,13 @@ Node.js 版本低于 18，请升级。
 ### Q: 跑到一半中断了
 用 `--run-tag` 指定相同标签即可续跑：`node benchmark/run.js --run-tag 之前的标签`
 
-### Q: 想跑多批次不同角色分配
-每次修改 `config.js` 的 `seed`，然后运行。最后用 `node benchmark/stats.js --scan-all` 汇总。
+### Q: 想换配板组
+```bash
+node benchmark/run.js --board-group 3  # 使用第 3 组配板
+```
+
+### Q: 想用随机配板而不是预设配板
+将 `config.js` 中的 `boardFile` 设为 `""`，然后正常运行。随机模式下每个模型恰好当 1 次恶魔、2 次爪牙、9 次好人。
 
 ### Q: 一局要跑多久
 12 人局通常 5-15 分钟/局，12 局大约 1-3 小时。
@@ -301,7 +379,7 @@ Node.js 版本低于 18，请升级。
 12 局预计 $1-10。运行时终端会实时显示每局花费。
 
 ### Q: 想换模型怎么办
-编辑 `config.js` 的 `models` 数组。必须恰好 12 个。模型 ID 使用 OpenRouter 格式（如 `"openai/gpt-5.4"`）。
+编辑 `config.js` 的 `models` 数组。必须恰好 12 个。MiMo 模型可以不带前缀（如 `"mimo-v2-pro"`），其他模型使用 OpenRouter 格式（如 `"openai/gpt-5.4"`）。
 
 ### Q: 想只重新生成排行榜（不重跑游戏）
 ```bash
@@ -317,3 +395,10 @@ node benchmark/stats.js --scan-all
 node benchmark/run.js --no-timestamp
 ```
 结果会写入 `results/raw/`，每次运行会跳过已完成的局。
+
+### Q: 如何使用数据浏览器
+```bash
+node benchmark/gen-index.js           # 生成文件索引
+python3 -m http.server 8000           # 启动 HTTP 服务
+# 浏览器打开 http://localhost:8000/viewer.html
+```

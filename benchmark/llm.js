@@ -75,27 +75,47 @@ function estimateCost(model, promptTokens, completionTokens) {
  * @param {number} retries - Max retries
  * @returns {{ content: string, reasoning: string, usage: { promptTokens: number, completionTokens: number, totalTokens: number, cost: number } }}
  */
+function isMimoModel(model) {
+  const name = model.replace(/^[^/]+\//, "");
+  return name === "mimo-v2-pro" || name === "mimo-v2-omni";
+}
+
 async function callLLM(messages, model, temperature = null, retries = null) {
   const temp = temperature ?? config.temperature;
   const maxRetries = retries ?? config.maxRetries;
-  const apiKey = config.openrouterApiKey;
 
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY not set");
+  // Route mimo models to MiMo direct API, others to OpenRouter
+  let apiKey, baseUrl, apiModel, extraHeaders;
+  if (isMimoModel(model)) {
+    apiKey = config.mimoApiKey;
+    baseUrl = config.mimoBaseUrl;
+    apiModel = model.replace(/^[^/]+\//, ""); // "xiaomi/mimo-v2-pro" → "mimo-v2-pro"
+    extraHeaders = {};
+    if (!apiKey) throw new Error("MIMO_API_KEY not set");
+  } else {
+    apiKey = config.openrouterApiKey;
+    baseUrl = config.openrouterBaseUrl;
+    apiModel = model;
+    extraHeaders = { "HTTP-Referer": "https://github.com/The-Bloody" };
+    if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
   }
 
-  const url = `${config.openrouterBaseUrl}/chat/completions`;
+  const url = `${baseUrl}/chat/completions`;
   const headers = {
     "Authorization": `Bearer ${apiKey}`,
     "Content-Type": "application/json",
-    "HTTP-Referer": "https://github.com/The-Bloody"
+    ...extraHeaders
   };
 
   const body = {
-    model,
+    model: apiModel,
     messages,
     temperature: temp,
-    stream: false
+    stream: false,
+    reasoning: {
+      effort: "high",
+      max_tokens: 16384,
+    }
   };
 
   let lastError = null;

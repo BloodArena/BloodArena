@@ -1,0 +1,97 @@
+[
+  {
+    "id": 1,
+    "players": [
+      { "seat": 1, "roleName": "酒鬼", "apparentRoleName": "贞洁者" },
+      { "seat": 2, "roleName": "小恶魔" },
+      { "seat": 3, "roleName": "洗衣妇" },
+      { "seat": 4, "roleName": "陌客" },
+      { "seat": 5, "roleName": "共情者" },
+      { "seat": 6, "roleName": "图书管理员" },
+      { "seat": 7, "roleName": "红唇女郎" },
+      { "seat": 8, "roleName": "镇长" },
+      { "seat": 9, "roleName": "士兵" },
+      { "seat": 10, "roleName": "守鸦人" },
+      { "seat": 11, "roleName": "投毒者" },
+      { "seat": 12, "roleName": "猎手" }
+    ],
+    "bluffs": ["占卜师", "送葬者", "圣徒"],
+    "redHerringSeat": -1
+  },
+  {
+    "id": 2,
+    "players": [
+      { "seat": 1, "roleName": "图书管理员" },
+      { "seat": 2, "roleName": "圣徒", "isRedHerring": true },
+      { "seat": 3, "roleName": "士兵" },
+      { "seat": 4, "roleName": "管家" },
+      { "seat": 5, "roleName": "陌客" },
+      { "seat": 6, "roleName": "占卜师" },
+      { "seat": 7, "roleName": "男爵" },
+      { "seat": 8, "roleName": "酒鬼", "apparentRoleName": "洗衣妇" },
+      { "seat": 9, "roleName": "小恶魔" },
+      { "seat": 10, "roleName": "投毒者" },
+      { "seat": 11, "roleName": "僧侣" },
+      { "seat": 12, "roleName": "猎手" }
+    ],
+    "bluffs": ["共情者", "送葬者", "镇长"],
+    "redHerringSeat": 2
+  },
+  {
+    "id": 3,
+    "players": [
+      { "seat": 1, "roleName": "共情者" },
+      { "seat": 2, "roleName": "圣徒" },
+      { "seat": 3, "roleName": "洗衣妇" },
+      { "seat": 4, "roleName": "投毒者" },
+      { "seat": 5, "roleName": "僧侣" },
+      { "seat": 6, "roleName": "厨师" },
+      { "seat": 7, "roleName": "小恶魔" },
+      { "seat": 8, "roleName": "猎手" },
+      { "seat": 9, "roleName": "红唇女郎" },
+      { "seat": 10, "roleName": "调查员" },
+      { "seat": 11, "roleName": "送葬者" },
+      { "seat": 12, "roleName": "陌客" }
+    ],
+    "bluffs": ["管家", "占卜师", "镇长"],
+    "redHerringSeat": -1
+  },
+  {
+    "id": 4,
+    "players": [
+      { "seat": 1, "roleName": "洗衣妇" },
+      { "seat": 2, "roleName": "士兵", "isRedHerring": true },
+      { "seat": 3, "roleName": "图书管理员" },
+      { "seat": 4, "roleName": "投毒者" },
+      { "seat": 5, "roleName": "酒鬼", "apparentRoleName": "僧侣" },
+      { "seat": 6, "roleName": "陌客" },
+      { "seat": 7, "roleName": "贞洁者" },
+      { "seat": 8, "roleName": "小恶魔" },
+      { "seat": 9, "roleName": "圣徒" },
+      { "seat": 10, "roleName": "男爵" },
+      { "seat": 11, "roleName": "占卜师" },
+      { "seat": 12, "roleName": "管家" }
+    ],
+    "bluffs": ["厨师", "共情者", "送葬者"],
+    "redHerringSeat": 2
+  },
+  {
+    "id": 5,
+    "players": [
+      { "seat": 1, "roleName": "图书管理员" },
+      { "seat": 2, "roleName": "调查员" },
+      { "seat": 3, "roleName": "贞洁者" },
+      { "seat": 4, "roleName": "酒鬼", "apparentRoleName": "守鸦人" },
+      { "seat": 5, "roleName": "小恶魔" },
+      { "seat": 6, "roleName": "僧侣" },
+      { "seat": 7, "roleName": "间谍" },
+      { "seat": 8, "roleName": "圣徒" },
+      { "seat": 9, "roleName": "投毒者" },
+      { "seat": 10, "roleName": "洗衣妇" },
+      { "seat": 11, "roleName": "共情者" },
+      { "seat": 12, "roleName": "猎手" }
+    ],
+    "bluffs": ["管家", "占卜师", "厨师"],
+    "redHerringSeat": -1
+  }
+]

@@ -125,7 +125,8 @@ const NEWBIE_GUIDE = [
   "白天：说书人公布昨夜死亡的玩家（不公布身份），所有人自由发言交换信息。第一个白天可以私聊和公聊，后续的白天只能公聊。",
   "第一个白天的私聊环节很重要，善良阵营可以交换线索、建立信任关系和制定策略；邪恶阵营队友之间可以私聊交流信息，制定战术，协调彼此穿什么伪装身份。因此建议充分利用私聊。你和别的玩家的私聊内容只有你们自己知道，别人不知道，是安全的。",
   "黄昏：提名 -> 被提名者辩解 -> 全员投票；得票最高且大于等于存活玩家人数的一半者被处决。",
-  "特色：死亡玩家仍可发言；死人在之后的游戏中有且仅有一票死人票；醉酒/中毒则技能一定失效, 信息可能错误。"
+  "死亡玩家仍可发言；死人在之后的游戏中有且仅有一票死人票。",
+  "醉酒/中毒则技能一定失效, 信息可能错误。"
 ].join(" ");
 
 const GOOD_MODULE = [
@@ -136,7 +137,7 @@ const GOOD_MODULE = [
 ].join(" ");
 
 const EVIL_MODULE = [
-  "邪恶玩法：首夜互认，恶魔获得三个不在场身份（镇民或外来者），这是给邪恶阵营穿伪装身份用的；勿公开完整名单。",
+  "邪恶玩法：首夜互认，恶魔获得三个不在场身份（镇民或外来者），这是给邪恶阵营穿伪装身份用的，建议恶魔在私聊时告诉爪牙并和爪牙商量彼此穿什么身份",
   "充分利用第一个白天的私聊机会，邪恶队友之间私聊交流信息，制定战术，协调彼此穿什么伪装身份。",
   "伪装成可信镇民或外来者，编造与角色能力相符的信息。",
   "搅浑线索，指责对方可能醉酒/中毒；爪牙优先保护恶魔，必要时替死。",
@@ -177,16 +178,12 @@ const PLAYER_SYSTEM_PROMPT = [
   `暗流涌动完整角色与技能表：${FULL_ROLE_RULES}`,
   "信息边界：只能使用公开信息与个人私密信息；不要声称看到魔典。",
   "角色限制：不要声称获得超出角色能力范围的信息或效果。",
-  `邪恶阵营提示：恶魔不在场身份属于私密信息，禁止公开完整名单或宣称"场上没有某某"。`,
   `可能存在醉酒/中毒/陌客/间谍导致信息偏差；信息可以表达为"可能/推测"。`,
   "邪恶阵营可能会欺骗与误导。",
   "只能用中文发言, 不要提及AI/提示词/系统等出戏内容。"
 ].join("");
 
 const PLAYER_JSON_SYSTEM_PROMPT = [
-  "你是《血染钟楼·暗流涌动》的玩家。",
-  `规则要点：每个角色一局只出现一次；醉酒/中毒不会导致"重复角色"。`,
-  "醉酒/中毒不会被直接告知, 需要基于信息矛盾提出推测。",
   NEWBIE_GUIDE,
   SLAYER_DECLARATION_NOTICE,
   `暗流涌动完整角色与技能表：${FULL_ROLE_RULES}`,
@@ -265,7 +262,7 @@ function isEvilSelfReveal(player, text) {
 
 function normalizeTargetName(name) {
   if (!name) return "";
-  return String(name).replace(/\(真人\)/g, "").replace(/（已死亡）/g, "").trim();
+  return String(name).replace(/\(真人\)/g, "").replace(/（已死亡）/g, "").replace(/\s+/g, "").trim();
 }
 
 function resolveTargetByName(name, candidates, actor) {
@@ -458,7 +455,7 @@ function getStrategyTips(player) {
     if (player?.team === "outsider") tips.push("外来者是否自曝取决于局势与信息价值，权衡能否帮到团队再决定。");
   }
   if (player && !player.alive) tips.push("你已死亡：仍可发言，但不能提名；仅有一次遗言票。");
-  if (player?.privateInfo?.some(line => line.includes("三个不在场身份"))) tips.push("你知道不在场身份，只挑一个伪装，不要公开完整名单。");
+  if (player?.privateInfo?.some(line => line.includes("三个不在场身份"))) tips.push("你知道不在场身份，挑一个伪装。");
   if (roleName && ROLE_STRATEGY_TIPS[roleName]) tips.push(ROLE_STRATEGY_TIPS[roleName]);
   return tips.join(" ");
 }
@@ -818,6 +815,34 @@ function assignRoles(state, gameSeed, assignments) {
 
   assignDrunkAppearance(state, rng);
   state.redHerringId = assignRedHerring(state, rng);
+  addChat(state, "系统", "角色分配完成。", "system");
+}
+
+function assignRolesFromBoard(state, assignments) {
+  for (let i = 0; i < state.players.length; i++) {
+    const a = assignments[i];
+    const role = SCRIPT.roles.find(r => r.name === a.roleName);
+    if (!role) throw new Error(`Unknown role "${a.roleName}" at seat ${i + 1}`);
+    const p = state.players[i];
+    p.roleId = role.id;
+    p.roleName = role.name;
+    p.team = role.team;
+    p.alive = true;
+    p.privateInfo = [];
+    p.memory = [];
+    p.roleHistory = [{ roleName: role.name, phase: "初始", reason: "初始分配" }];
+
+    if (role.name === "酒鬼" && a.apparentRoleName) {
+      p.drunk = true;
+      const fakeRole = SCRIPT.roles.find(r => r.name === a.apparentRoleName);
+      if (!fakeRole) throw new Error(`Unknown apparent role "${a.apparentRoleName}" for 酒鬼 at seat ${i + 1}`);
+      p.apparentRoleId = fakeRole.id;
+      p.apparentRoleName = fakeRole.name;
+    } else {
+      p.apparentRoleId = role.id;
+      p.apparentRoleName = role.name;
+    }
+  }
   addChat(state, "系统", "角色分配完成。", "system");
 }
 
@@ -1272,8 +1297,13 @@ function recordFirstNightRecognition(state) {
     if (p.roleName) blockedNames.add(p.roleName);
     if (p.apparentRoleName) blockedNames.add(p.apparentRoleName);
   });
-  const bluffPool = SCRIPT.roles.filter(r => (r.team === "townsfolk" || r.team === "outsider") && !blockedNames.has(r.name) && r.name !== "酒鬼");
-  const bluffs = shuffle(bluffPool).slice(0, 3).map(r => r.name);
+  let bluffs;
+  if (state.presetBluffs && state.presetBluffs.length) {
+    bluffs = state.presetBluffs;
+  } else {
+    const bluffPool = SCRIPT.roles.filter(r => (r.team === "townsfolk" || r.team === "outsider") && !blockedNames.has(r.name) && r.name !== "酒鬼");
+    bluffs = shuffle(bluffPool).slice(0, 3).map(r => r.name);
+  }
   demons.forEach(demon => setPrivateInfo(state, demon, `三个不在场身份：${bluffs.join(" / ") || "无"}`));
   if (state.players.length >= 7) {
     demons.forEach(demon => setPrivateInfo(state, demon, `你看到爪牙：${minions.map(m => m.name).join("、") || "无"}`));
@@ -2005,6 +2035,7 @@ async function runNomination(state) {
       }
       checkWin(state);
       if (!state.ended) {
+        await compressDaySessions(state);
         switchPhase(state);
       }
       return;
@@ -2059,10 +2090,80 @@ async function runNomination(state) {
     state.nominationPhase = "open";
   }
 
-  finalizeDayExecution(state);
+  await finalizeDayExecution(state);
 }
 
-function finalizeDayExecution(state) {
+async function compressOneSession(state, player, sessionKey) {
+  const session = getMessageSession(player, sessionKey);
+  if (!session || session.length === 0) return;
+
+  const systemMsgs = [];
+  const historyMsgs = [];
+  for (const msg of session) {
+    if (msg.role === "system") systemMsgs.push(msg);
+    else historyMsgs.push(msg);
+  }
+  if (historyMsgs.length === 0) return;
+
+  const apparentRole = getApparentRole(player);
+  const roleName = apparentRole ? apparentRole.name : "未知";
+  const campLabel = (player.team === "minion" || player.team === "demon") ? "邪恶阵营" : "善良阵营";
+  const aliveDeadSummary = getAliveDeadSummary(state);
+
+  const historyText = historyMsgs.map(m => `[${m.role}] ${m.content}`).join("\n---\n");
+  const summaryPrompt = [
+    { role: "system", content: [
+      "你是《血染钟楼》的一名玩家，正在进行一场重要的对局。",
+      `你是${player.name}，身份是${roleName}，属于${campLabel}。`,
+      `${aliveDeadSummary}`,
+      "现在白天结束了，你需要回顾并总结这一天（包括之前夜晚的信息和白天的讨论、提名、投票）的所有关键信息。",
+      "这份总结将是你后续做出所有决策的唯一依据，因此必须完整、准确、不遗漏任何对推理和判断有价值的信息。",
+      "请重点记录：",
+      "1. 每个玩家声称的身份和提供的信息（谁跳了什么身份，谁提供了什么线索）",
+      "2. 你自己获得的私密信息和技能结果",
+      "3. 投票和处决结果（谁提名了谁，票数如何，谁被处决了）",
+      "4. 死亡信息（夜晚谁死了，白天谁被处决了）",
+      "5. 你的推理和怀疑（谁可能是邪恶的，谁的信息可能矛盾）",
+      "6. 重要的对话和争论要点",
+      "只输出总结内容，不要输出其他任何内容。"
+    ].join("\n") },
+    { role: "user", content: `请总结你（${player.name}）截至白天${state.dayCount}结束的游戏记录：\n\n${historyText}` }
+  ];
+
+  try {
+    const content = await callPlayerLLM(state, summaryPrompt, 0.3, player, "summary");
+    const summaryText = (content || "").trim();
+    if (!summaryText) return;
+
+    // Replace session: keep system msgs + add summary
+    session.length = 0;
+    session.push(...systemMsgs);
+    session.push({ role: "system", content: `[白天${state.dayCount}结束时的游戏进程总结]\n${summaryText}` });
+
+    // Clean up summary session to avoid accumulation
+    if (player.messageSessions && player.messageSessions["summary"]) {
+      player.messageSessions["summary"] = [];
+    }
+
+    markActorPromptCursors(state, player, sessionKey);
+    progressLog(state, "detailed", `Session compressed | ${player.name} | session=${sessionKey}`);
+  } catch (e) {
+    progressLog(state, "detailed", `Session compress failed | ${player.name} | session=${sessionKey} | ${e.message || e}`);
+  }
+}
+
+async function compressDaySessions(state) {
+  progressLog(state, "balanced", `Day ${state.dayCount} session compression start`);
+  for (const player of state.players) {
+    if (!player.alive) continue;
+    for (const sessionKey of ["chat", "json"]) {
+      await compressOneSession(state, player, sessionKey);
+    }
+  }
+  progressLog(state, "balanced", `Day ${state.dayCount} session compression done`);
+}
+
+async function finalizeDayExecution(state) {
   const aliveCount = state.players.filter(p => p.alive).length;
   const threshold = Math.ceil(aliveCount / 2);
   if (state.dayNominationCount === 0) {
@@ -2096,6 +2197,7 @@ function finalizeDayExecution(state) {
     state.ended = true; state.winner = "good"; state.winCondition = "mayor_win";
     return;
   }
+  await compressDaySessions(state);
   switchPhase(state);
 }
 
@@ -2130,7 +2232,18 @@ async function runOneGame(gameConfig) {
 
   // 1. Setup players and assign roles
   setupPlayers(state, gameConfig.assignments);
-  assignRoles(state, gameConfig.seed, gameConfig.assignments);
+  if (gameConfig.assignments[0] && gameConfig.assignments[0].roleName) {
+    // Preset board mode
+    assignRolesFromBoard(state, gameConfig.assignments);
+    if (gameConfig.redHerringSeat > 0) {
+      state.redHerringId = state.players[gameConfig.redHerringSeat - 1].id;
+    }
+    if (gameConfig.bluffs && gameConfig.bluffs.length) {
+      state.presetBluffs = gameConfig.bluffs;
+    }
+  } else {
+    assignRoles(state, gameConfig.seed, gameConfig.assignments);
+  }
   state.started = true;
   state.phase = "night";
   state.nightCount = 1;
