@@ -1840,12 +1840,13 @@ ${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注�
     let usedPrompt = buildPrompt("");
     let content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "chat");
     let reply = content.trim() || "我没什么想说的。";
-    if (isEvilSelfReveal(target, reply)) {
+    const bothEvil = (target.team === "minion" || target.team === "demon") && (sender.team === "minion" || sender.team === "demon");
+    if (!bothEvil && isEvilSelfReveal(target, reply)) {
       usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。");
       content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "chat");
       reply = content.trim() || "我没什么想说的。";
     }
-    if (isEvilSelfReveal(target, reply)) reply = "我没什么想说的。";
+    if (!bothEvil && isEvilSelfReveal(target, reply)) reply = "我没什么想说的。";
     target.memory.push(reply);
     addPrivateChat(state, target.name, sender.name, reply);
     progressLog(state, "detailed", `Private reply | ${target.name} -> ${sender.name}`);
