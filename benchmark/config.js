@@ -24,7 +24,7 @@ module.exports = {
   mimoBaseUrl: "https://api.xiaomimimo.com/v1",
 
   // LLM 参数
-  temperature: 0.7,
+  temperature: 0.6,
   timeoutMs: 120000,
   maxRetries: 3,
 
