@@ -379,7 +379,7 @@ node benchmark/run.js --board-group 3  # 使用第 3 组配板
 12 局预计 $1-10。运行时终端会实时显示每局花费。
 
 ### Q: 想换模型怎么办
-编辑 `config.js` 的 `models` 数组。必须恰好 12 个。MiMo 模型可以不带前缀（如 `"mimo-v2-pro"`），其他模型使用 OpenRouter 格式（如 `"openai/gpt-5.4"`）。
+编辑 `config.js` 的 `models` 数组。必须恰好 12 个。MiMo 模型可以不带前缀（如 `"mimo-v2-pro"`），其他模型使用 OpenRouter 格式（如 `"openai/gpt-5.4"`）。支持重复模型——例如用 11 个 `mimo-v2-pro` + 1 个 `deepseek-v3.2` 来测试特定模型的表现，系统会自动为重复的模型 ID 添加 `#1`、`#2` 等后缀以区分，API 调用时会自动去掉后缀。
 
 ### Q: 想只重新生成排行榜（不重跑游戏）
 ```bash

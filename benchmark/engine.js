@@ -752,7 +752,8 @@ function setupPlayers(state, assignments) {
   state.players = Array.from({ length: count }, (_, i) => {
     const p = emptyPlayer(i);
     p.model = assignments[i].modelId;
-    p.apiModel = (config.modelRuntimeOverrides && config.modelRuntimeOverrides[p.model]) || p.model;
+    const baseModel = p.model.replace(/#\d+$/, "");  // strip dedup suffix (e.g. "mimo-v2-pro#2" → "mimo-v2-pro")
+    p.apiModel = (config.modelRuntimeOverrides && config.modelRuntimeOverrides[p.model]) || baseModel;
     return p;
   });
   state.started = false;

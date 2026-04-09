@@ -48,6 +48,23 @@ function factionFromTeam(team) {
 }
 
 /**
+ * Deduplicate model IDs by appending #1, #2, etc. to duplicates.
+ * E.g. ["a", "a", "b"] → ["a#1", "a#2", "b"]
+ */
+function deduplicateModelIds(ids) {
+  const counts = {};
+  ids.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+  const hasDupes = Object.values(counts).some(c => c > 1);
+  if (!hasDupes) return ids;
+  const seen = {};
+  return ids.map(id => {
+    if (counts[id] === 1) return id;
+    seen[id] = (seen[id] || 0) + 1;
+    return `${id}#${seen[id]}`;
+  });
+}
+
+/**
  * Generate schedule from a preset board file (role_boards.json).
  * Each board defines 12 seats with fixed roles. 12 models rotate through
  * all 12 seats across 12 games, so every model plays every role once.
@@ -61,7 +78,8 @@ function generateBoardSchedule() {
   const board = boards[boardGroup - 1];
   if (!board) throw new Error(`Board group ${boardGroup} not found (file has ${boards.length} groups)`);
 
-  const modelIds = models.map(m => m.id);
+  // Deduplicate model IDs: if duplicates exist, append #1, #2, etc.
+  const modelIds = deduplicateModelIds(models.map(m => m.id));
   const schedule = [];
 
   for (let i = 0; i < 12; i++) {
