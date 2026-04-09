@@ -2235,7 +2235,6 @@ async function compressPlayerSessions(state, player) {
 async function compressDaySessions(state) {
   progressLog(state, "balanced", `Day ${state.dayCount} session compression start`);
   for (const player of state.players) {
-    if (!player.alive) continue;
     await compressPlayerSessions(state, player);
   }
   progressLog(state, "balanced", `Day ${state.dayCount} session compression done`);
