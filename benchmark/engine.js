@@ -182,13 +182,6 @@ const PLAYER_SYSTEM_PROMPT = [
   "只能用中文发言, 不要提及AI/提示词/系统等出戏内容。"
 ].join("");
 
-const PLAYER_JSON_SYSTEM_PROMPT = [
-  NEWBIE_GUIDE,
-  SLAYER_DECLARATION_NOTICE,
-  `暗流涌动完整角色与技能表：${FULL_ROLE_RULES}`,
-  "严格遵守规则与信息边界, 只输出JSON, 不要输出其它内容。",
-  "不要输出心理活动、内心独白或思考过程。"
-].join("");
 
 /* ═══════════════════════════════════════════════════════════
  *  SECTION 2: UTILITY FUNCTIONS (from js/utils.js)
@@ -367,10 +360,7 @@ function addChat(state, speaker, text, type = "player") {
     phase: getPhaseLabel(state),
     speaker, type, text, seq: nextSeq
   });
-  // Slayer claim detection hook
-  if (type === "player") {
-    maybeHandleSlayerClaim(state, speaker, text);
-  }
+  // Slayer claim detection is handled by callers via maybeHandleSlayerClaim (async)
 }
 
 function addLogEntry(state, text, type = "note") {
@@ -1318,9 +1308,9 @@ function recordFirstNightRecognition(state) {
 
 async function aiChooseSingleTarget(state, actor, candidates, actionLabel, extraNote = "") {
   if (!actor || !candidates.length) return null;
-  const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
+  const privateInfo = formatPrivateInfoForPrompt(actor, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
-  const recentChat = formatChatForPrompt(state, 12, actor, "json");
+  const recentChat = formatChatForPrompt(state, 12, actor, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
@@ -1330,10 +1320,10 @@ ${aliveDeadSummary}
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
 可选目标：${targetNames}。只能从列表中选择一个目标。${extraNote || ""}
-请输出 JSON：{"target":"玩家名"}`;
-  const prompt = buildPlayerPromptMessages(state, actor, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
+只输出JSON，不要输出其它内容。请输出 JSON：{"target":"玩家名"}`;
+  const prompt = buildPlayerPromptMessages(state, actor, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, actor, "json");
+    const content = await callPlayerLLM(state, prompt, config.temperature, actor, "main");
     const json = extractJson(content);
     return json ? resolveTargetByName(json.target, candidates, actor) : null;
   } catch (_) { return null; }
@@ -1341,9 +1331,9 @@ ${aliveDeadSummary}
 
 async function aiChooseTwoTargets(state, actor, candidates, actionLabel) {
   if (!actor || candidates.length < 2) return candidates;
-  const privateInfo = formatPrivateInfoForPrompt(actor, "json", 4);
+  const privateInfo = formatPrivateInfoForPrompt(actor, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, actor);
-  const recentChat = formatChatForPrompt(state, 12, actor, "json");
+  const recentChat = formatChatForPrompt(state, 12, actor, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
   const targetNames = candidates.map(p => playerOptionLabel(p)).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
@@ -1353,10 +1343,10 @@ ${aliveDeadSummary}
 你的私密信息增量：${privateInfo}
 现在是夜晚，你需要执行行动：${actionLabel}。
 可选目标：${targetNames}。只能从列表中选择两名不同目标。
-请输出 JSON：{"target1":"玩家名","target2":"玩家名"}`;
-  const prompt = buildPlayerPromptMessages(state, actor, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
+只输出JSON，不要输出其它内容。请输出 JSON：{"target1":"玩家名","target2":"玩家名"}`;
+  const prompt = buildPlayerPromptMessages(state, actor, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, actor, "json");
+    const content = await callPlayerLLM(state, prompt, config.temperature, actor, "main");
     const json = extractJson(content);
     const t1 = json ? resolveTargetByName(json.target1, candidates, actor) : null;
     const t2 = json ? resolveTargetByName(json.target2, candidates, actor) : null;
@@ -1711,10 +1701,38 @@ function parseSlayerDeclaration(state, text, shooter) {
   return { detected: true, valid: true, target, error: "" };
 }
 
-function resolveSlayerShot(state, shooter, target, isReal) {
+async function storytellerJudgeRecluse(state, target, context) {
+  const balanceSummary = getStorytellerBalanceSummary(state);
+  const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
+  const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
+  const claimsSummary = getClaimsSummary(state, 10);
+  const prompt = [
+    { role: "system", content: [
+      "你是《血染钟楼》的说书人。你需要决定陌客（Recluse）在本次判定中是否被登记为恶魔。",
+      "陌客的能力：你可能会被当作邪恶阵营、爪牙角色或恶魔角色，即使你已死亡。",
+      "目标：公平与体验优先。如果善良方已经明显优势，可以让陌客登记为恶魔（对善良方不利）；如果邪恶方已经劣势，让陌客不登记为恶魔（不额外惩罚善良方）。",
+      "只输出 JSON：{\"registers_as_demon\":true|false,\"reason\":\"一小段话理由\"}"
+    ].join("\n") },
+    { role: "user", content: `当前局势：${balanceSummary}\n存活善良=${aliveGood}, 存活邪恶=${aliveEvil}\n公开身份声明：${claimsSummary}\n判定场景：${context}\n陌客玩家：${target.name}\n请判定陌客是否登记为恶魔。` }
+  ];
+  try {
+    const content = await callPlayerLLM(state, prompt, 0.2, null, "storyteller");
+    const json = extractJson(content);
+    if (json && typeof json.registers_as_demon === "boolean") return json.registers_as_demon;
+  } catch (_) {}
+  return false;
+}
+
+async function resolveSlayerShot(state, shooter, target, isReal) {
   if (!shooter || !target || !shooter.alive) return;
-  const regMap = state.lastInfoRegistrationMap || null;
-  const canKill = Boolean(isReal && registersAsDemon(target, regMap) && !isDroisoned(shooter));
+  let canKill = false;
+  if (isReal && !isDroisoned(shooter)) {
+    if (target.team === "demon") {
+      canKill = true;
+    } else if (target.roleName === "陌客") {
+      canKill = await storytellerJudgeRecluse(state, target, `猎手${shooter.name}对${target.name}开枪，需判定陌客是否登记为恶魔`);
+    }
+  }
   addChat(state, "说书人", `${shooter.name} 表示要开枪，目标是 ${target.name}。`, "storyteller");
   addReplayEvent(state, `猎手射击：${shooter.name} -> ${target.name}`, "day_action");
   if (canKill) {
@@ -1727,7 +1745,7 @@ function resolveSlayerShot(state, shooter, target, isReal) {
   checkWin(state);
 }
 
-function maybeHandleSlayerClaim(state, speaker, text) {
+async function maybeHandleSlayerClaim(state, speaker, text) {
   if (!state.started || state.ended) return;
   if (state.phase !== "day" || state.dayStage !== "discussion") return;
   const shooter = state.players.find(p => p.name === speaker);
@@ -1743,7 +1761,7 @@ function maybeHandleSlayerClaim(state, speaker, text) {
   shooter.slayerClaimed = true;
   const isReal = shooter.roleName === "猎手" && !shooter.slayerUsed;
   if (isReal) shooter.slayerUsed = true;
-  resolveSlayerShot(state, shooter, decl.target, isReal);
+  await resolveSlayerShot(state, shooter, decl.target, isReal);
 }
 
 function getDayRuleNote(state) {
@@ -1754,13 +1772,13 @@ function getDayRuleNote(state) {
 async function aiSpeak(state, player) {
   if (state.ended) return;
   progressLog(state, "detailed", `Discussion | Day ${state.dayCount} | ${player.name} speaking`);
-  const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
+  const privateInfo = formatPrivateInfoForPrompt(player, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";
-  const recentChat = formatChatForPrompt(state, 12, player, "chat");
+  const recentChat = formatChatForPrompt(state, 12, player, "main");
   const dayRuleNote = getDayRuleNote(state);
   const aliveDeadSummary = getAliveDeadSummary(state);
-  const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, player, "chat",
+  const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, player, "main",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 ${aliveDeadSummary}
@@ -1772,16 +1790,17 @@ ${aliveDeadSummary}
 ${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话进行公聊发言。`);
   try {
     let usedPrompt = buildPrompt("");
-    let content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "chat");
+    let content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "main");
     let text = content.trim() || "我没什么想说的。";
     if (isEvilSelfReveal(player, text)) {
       usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。优先伪装为可信的善良角色。");
-      content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "chat");
+      content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "main");
       text = content.trim() || "我没什么想说的。";
     }
     if (isEvilSelfReveal(player, text)) text = "我没什么想说的。";
     player.memory.push(text);
     addChat(state, player.name, text, "player");
+    await maybeHandleSlayerClaim(state, player.name, text);
   } catch (_) {
     addChat(state, "系统", `${player.name} 发言失败。`, "system");
   }
@@ -1792,9 +1811,9 @@ async function maybeAiPrivateChat(state, player) {
   progressLog(state, "detailed", `Private chat check | Day ${state.dayCount} | ${player.name}`);
   const candidates = state.players.filter(p => p.alive && p.id !== player.id);
   if (!candidates.length) return;
-  const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
+  const privateInfo = formatPrivateInfoForPrompt(player, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
-  const recentChat = formatChatForPrompt(state, 8, player, "json");
+  const recentChat = formatChatForPrompt(state, 8, player, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
   const targetNames = candidates.map(p => p.name).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
@@ -1805,10 +1824,10 @@ async function maybeAiPrivateChat(state, player) {
 ${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
-请输出 JSON：{"private":"yes|no","target":"玩家名","message":"一小段话"}`;
-  const prompt = buildPlayerPromptMessages(state, player, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
+只输出JSON，不要输出其它内容。请输出 JSON：{"private":"yes|no","target":"玩家名","message":"一小段话"}`;
+  const prompt = buildPlayerPromptMessages(state, player, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, player, "json");
+    const content = await callPlayerLLM(state, prompt, config.temperature, player, "main");
     const json = extractJson(content);
     if (!json || json.private !== "yes") return;
     const targetName = normalizeTargetName(json.target || "");
@@ -1824,11 +1843,11 @@ ${aliveDeadSummary}
 }
 
 async function aiPrivateReply(state, sender, target, text) {
-  const privateInfo = formatPrivateInfoForPrompt(target, "chat", 4);
+  const privateInfo = formatPrivateInfoForPrompt(target, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, target);
-  const recentChat = formatChatForPrompt(state, 8, target, "chat");
+  const recentChat = formatChatForPrompt(state, 8, target, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
-  const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, target, "chat",
+  const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, target, "main",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
@@ -1838,12 +1857,12 @@ ${aliveDeadSummary}
 ${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`);
   try {
     let usedPrompt = buildPrompt("");
-    let content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "chat");
+    let content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "main");
     let reply = content.trim() || "我没什么想说的。";
     const bothEvil = (target.team === "minion" || target.team === "demon") && (sender.team === "minion" || sender.team === "demon");
     if (!bothEvil && isEvilSelfReveal(target, reply)) {
       usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。");
-      content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "chat");
+      content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "main");
       reply = content.trim() || "我没什么想说的。";
     }
     if (!bothEvil && isEvilSelfReveal(target, reply)) reply = "我没什么想说的。";
@@ -1861,8 +1880,8 @@ async function aiNominate(state, player) {
   const nominableTargets = state.players
     .filter(p => !state.nomineeUsedIds.includes(p.id))
     .map(p => playerOptionLabel(p));
-  const recentChat = formatChatForPrompt(state, 12, player, "json");
-  const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
+  const recentChat = formatChatForPrompt(state, 12, player, "main");
+  const privateInfo = formatPrivateInfoForPrompt(player, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const aliveDeadSummary = getAliveDeadSummary(state);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
@@ -1871,10 +1890,10 @@ ${aliveDeadSummary}
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
 你的私密信息增量：${privateInfo}
-请输出 JSON：{"nominate":"yes|no","target":"玩家名","reason":"一小段话"}。如果不提名，target为空字符串。`;
-  const prompt = buildPlayerPromptMessages(state, player, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
+只输出JSON，不要输出其它内容。请输出 JSON：{"nominate":"yes|no","target":"玩家名","reason":"一小段话"}。如果不提名，target为空字符串。`;
+  const prompt = buildPlayerPromptMessages(state, player, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, player, "json");
+    const content = await callPlayerLLM(state, prompt, config.temperature, player, "main");
     const json = extractJson(content);
     if (json && json.nominate === "yes") {
       const targetName = normalizeTargetName(json.target || "");
@@ -1886,8 +1905,8 @@ ${aliveDeadSummary}
 }
 
 async function aiNominationReason(state, nominator, nominee) {
-  const recentChat = formatChatForPrompt(state, 12, nominator, "chat");
-  const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
+  const recentChat = formatChatForPrompt(state, 12, nominator, "main");
+  const privateInfo = formatPrivateInfoForPrompt(nominator, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominator);
   const aliveDeadSummary = getAliveDeadSummary(state);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
@@ -1896,16 +1915,16 @@ ${aliveDeadSummary}
 你提名了${nominee.name}。
 你的私密信息增量：${privateInfo}
 这是一小段公开发言，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话说明理由。`;
-  const prompt = buildPlayerPromptMessages(state, nominator, "chat", userContent);
+  const prompt = buildPlayerPromptMessages(state, nominator, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, nominator, "chat");
+    const content = await callPlayerLLM(state, prompt, config.temperature, nominator, "main");
     return content.trim() || "我没什么想说的。";
   } catch (_) { return "我没什么想说的。"; }
 }
 
 async function aiNominationDefense(state, nominee) {
-  const recentChat = formatChatForPrompt(state, 12, nominee, "chat");
-  const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
+  const recentChat = formatChatForPrompt(state, 12, nominee, "main");
+  const privateInfo = formatPrivateInfoForPrompt(nominee, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominee);
   const aliveDeadSummary = getAliveDeadSummary(state);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
@@ -1914,17 +1933,17 @@ ${aliveDeadSummary}
 你被提名了。
 你的私密信息增量：${privateInfo}
 这是公开辩解，不要说心理活动或私密信息，不要在括号里写心里话。\n请用一小段话辩解。`;
-  const prompt = buildPlayerPromptMessages(state, nominee, "chat", userContent);
+  const prompt = buildPlayerPromptMessages(state, nominee, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, nominee, "chat");
+    const content = await callPlayerLLM(state, prompt, config.temperature, nominee, "main");
     return content.trim() || "我没什么想说的。";
   } catch (_) { return "我没什么想说的。"; }
 }
 
 async function aiVoteSingle(state, voter, nominee) {
   if (!voter.alive && voter.deadVoteUsed) return { vote: "no", reason: "遗言票已用" };
-  const recentChat = formatChatForPrompt(state, 12, voter, "json");
-  const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
+  const recentChat = formatChatForPrompt(state, 12, voter, "main");
+  const privateInfo = formatPrivateInfoForPrompt(voter, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, voter);
   const aliveDeadSummary = getAliveDeadSummary(state);
   const deadVoteNote = !voter.alive ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。" : "";
@@ -1936,10 +1955,10 @@ ${deadVoteNote}
 你的私密信息增量：${privateInfo}
 你需要对提名${nominee ? nominee.name : "某玩家"}投票。若你已知邪恶队友，请谨慎投他们，除非有明确牺牲/转移视线的理由。
 reason 是公开可说的一小段话，可留空；不要泄露私密信息，不要输出心理活动/内心独白，不要在括号里写心里话。
-请输出 JSON：{"vote":"yes|no","reason":"一小段话或空字符串"}`;
-  const prompt = buildPlayerPromptMessages(state, voter, "json", userContent, { systemPrompt: PLAYER_JSON_SYSTEM_PROMPT });
+只输出JSON，不要输出其它内容。请输出 JSON：{"vote":"yes|no","reason":"一小段话或空字符串"}`;
+  const prompt = buildPlayerPromptMessages(state, voter, "main", userContent);
   try {
-    const content = await callPlayerLLM(state, prompt, config.temperature, voter, "json");
+    const content = await callPlayerLLM(state, prompt, config.temperature, voter, "main");
     const json = extractJson(content);
     if (!json) return { vote: "no", reason: "" };
     return { vote: json.vote === "yes" ? "yes" : "no", reason: json.reason || "" };
@@ -2060,7 +2079,9 @@ async function runNomination(state) {
     state.players.forEach(p => {
       if (!p.alive && p.deadVoteUsed) state.nominationVotes[p.id] = { vote: "no", reason: "遗言票已用" };
     });
-    const voters = state.players.filter(p => !state.nominationVotes[p.id]);
+    const nomineeIdx = state.players.indexOf(nominee);
+    const rotated = Array.from({ length: state.players.length }, (_, i) => state.players[(nomineeIdx + 1 + i) % state.players.length]);
+    const voters = rotated.filter(p => !state.nominationVotes[p.id]);
     for (const voter of voters) {
       progressLog(state, "detailed", `Vote intent | ${voter.name} on ${nominee.name}`);
       const voteResult = await aiVoteSingle(state, voter, nominee);
@@ -2094,40 +2115,107 @@ async function runNomination(state) {
   await finalizeDayExecution(state);
 }
 
-async function compressOneSession(state, player, sessionKey) {
-  const session = getMessageSession(player, sessionKey);
-  if (!session || session.length === 0) return;
+async function compressPlayerSessions(state, player) {
+  const session = getMessageSession(player, "main");
 
   const systemMsgs = [];
   const historyMsgs = [];
-  for (const msg of session) {
-    if (msg.role === "system") systemMsgs.push(msg);
-    else historyMsgs.push(msg);
+  if (session) {
+    for (const msg of session) {
+      if (msg.role === "system") systemMsgs.push(msg);
+      else historyMsgs.push(msg);
+    }
   }
   if (historyMsgs.length === 0) return;
 
   const apparentRole = getApparentRole(player);
   const roleName = apparentRole ? apparentRole.name : "未知";
-  const campLabel = (player.team === "minion" || player.team === "demon") ? "邪恶阵营" : "善良阵营";
+  const isEvil = player.team === "minion" || player.team === "demon";
   const aliveDeadSummary = getAliveDeadSummary(state);
 
   const historyText = historyMsgs.map(m => `[${m.role}] ${m.content}`).join("\n---\n");
-  const summaryPrompt = [
-    { role: "system", content: [
+
+  let summarySystemContent;
+  if (isEvil) {
+    const evilTeammates = state.players
+      .filter(p => p.id !== player.id && (p.team === "minion" || p.team === "demon"))
+      .map(p => `${p.name}（${TEAM_LABEL[p.team] || p.team}）`)
+      .join("、");
+    summarySystemContent = [
       "你是《血染钟楼》的一名玩家，正在进行一场重要的对局。",
-      `你是${player.name}，身份是${roleName}，属于${campLabel}。`,
+      `你是${player.name}，身份是${roleName}，属于邪恶阵营。`,
       `${aliveDeadSummary}`,
-      "现在白天结束了，你需要回顾并总结这一天（包括之前夜晚的信息和白天的讨论、提名、投票）的所有关键信息。",
-      "这份总结将是你后续做出所有决策的唯一依据，因此必须完整、准确、不遗漏任何对推理和判断有价值的信息。",
-      "请重点记录：",
-      "1. 每个玩家声称的身份和提供的信息（谁跳了什么身份，谁提供了什么线索）",
-      "2. 你自己获得的私密信息和技能结果",
-      "3. 投票和处决结果（谁提名了谁，票数如何，谁被处决了）",
-      "4. 死亡信息（夜晚谁死了，白天谁被处决了）",
-      "5. 你的推理和怀疑（谁可能是邪恶的，谁的信息可能矛盾）",
-      "6. 重要的对话和争论要点",
+      `你的邪恶队友：${evilTeammates || "无"}`,
+      "现在白天结束了，你需要写一份总结备忘录。这份总结必须完整、准确、具体。",
+      "这份总结只有你能够看到，不会给别的玩家看。",
+      "要求：",
+      "- 区分【事实】（确实发生的事）和【推测】（你的分析判断）",
+      "- 记录要具体，不要笼统概括",
+      "- 站在邪恶阵营的视角思考——你的目标是保护恶魔存活、误导好人",
+      "可以参考以下结构总结，可以视具体游戏记录而有所调整，也完全可以添加你想记录的别的内容：",
+      "1.【身份声明登记】",
+      "逐一列出每位玩家今天声称的身份、提供的具体信息内容。标注哪些是真的好人，哪些是你的队友在伪装。",
+      "2.【我方伪装状态】",
+      "- 我声称的身份是什么？编造了哪些假信息？",
+      "- 队友声称的身份是什么？",
+      "- 我方的伪装是否前后一致？有没有人质疑或追问？有没有露出破绽？",
+      "- 后续需要补充哪些细节来圆谎？",
+      "3.【死亡与处决记录】",
+      "- 昨晚谁死了？（如果你是恶魔或知道击杀目标）",
+      "- 今天谁被处决了？票型和票数如何？这个结果对我方有利还是不利？",
+      "4.【威胁评估】",
+      "按威胁程度排序，列出对邪恶阵营最危险的存活好人：",
+      "- 谁的能力最强？（例如占卜师、共情者、送葬者等能持续产出信息的角色，以及贞洁者、僧侣等技能强的角色等）",
+      "- 谁的推理最准确、最接近真相？",
+      "- 谁在群众中信任度最高、带节奏能力最强？",
+      "5.【好人当前推理方向】",
+      "- 好人目前怀疑谁是恶魔？怀疑谁是爪牙？",
+      "- 这个方向对我方是否有利？",
+      "- 有没有好人在内斗或互相怀疑？可以利用吗？",
+      "6.【下一步行动计划】",
+      "- 我和队友下一步怎么配合？",
+      "- 该推动处决谁来转移视线或消灭威胁？",
+      "- 如果你是恶魔，请思考今晚恶魔应该杀谁？（优先消灭哪个能力强/推理准/受信任的好人）",
+      "- 发言策略：下一次讨论要怎么带节奏？",
       "只输出总结内容，不要输出其他任何内容。"
-    ].join("\n") },
+    ].join("\n");
+  } else {
+    summarySystemContent = [
+      "你是《血染钟楼》的一名玩家，正在进行一场重要的对局。",
+      `你是${player.name}，身份是${roleName}，属于善良阵营。`,
+      `${aliveDeadSummary}`,
+      "现在白天结束了，你需要写一份总结备忘录。这份总结必须完整、准确、具体。",
+      "这份总结只有你能够看到，不会给别的玩家看。",
+      "要求：",
+      "- 区分【事实】（确实发生的事）和【推测】（你的分析判断），不要把推测当事实记录",
+      "- 记录要具体，不要笼统概括（例如不要写‘有人声称是洗衣妇'，要写'张三声称是洗衣妇，表示看到李四和王五中有一个厨师'）",
+      "可以参考以下结构总结，可以视具体游戏记录而有所调整，也完全可以添加你想记录的别的内容：",
+      "1.【身份声明登记】",
+      "逐一列出每位玩家今天声称的身份、提供的具体信息内容。未发言或未跳身份的也标注‘未表态’。",
+      "2.【我的私密信息汇总】",
+      "你自己获得的所有技能结果和私密信息，按时间顺序整理。",
+      "3.【死亡与处决记录】",
+      "- 昨晚谁死了？（夜杀）",
+      "- 今天谁被处决了？票型和票数如何？谁提名的谁？",
+      "4.【矛盾与疑点分析】",
+      "- 哪些玩家的信息互相矛盾？具体矛盾点是什么？",
+      "- 谁的声明与已知事实不符？",
+      "- 有没有身份被重复声称（撞车）的情况？",
+      "5.【嫌疑评估】",
+      "根据当前所有信息，列出你对每个存活玩家的信任度判断：",
+      "- 哪些玩家大概率可信？为什么？",
+      "- 哪些玩家值得怀疑？为什么？",
+      "- 哪些玩家疑似恶魔或者爪牙？为什么？",
+      "6.【明日行动计划】",
+      "- 明天应该重点追问谁？追问什么？",
+      "- 应该推动提名谁？",
+      "- 自己下一步该怎么发言？（是否亮明身份、是否分享更多信息等）",
+      "只输出总结内容，不要输出其他任何内容。"
+    ].join("\n");
+  }
+
+  const summaryPrompt = [
+    { role: "system", content: summarySystemContent },
     { role: "user", content: `请总结你（${player.name}）截至白天${state.dayCount}结束的游戏记录：\n\n${historyText}` }
   ];
 
@@ -2136,20 +2224,21 @@ async function compressOneSession(state, player, sessionKey) {
     const summaryText = (content || "").trim();
     if (!summaryText) return;
 
-    // Replace session: keep system msgs + add summary
+    const summaryMsg = { role: "system", content: `[白天${state.dayCount}结束时的游戏进程总结]\n${summaryText}` };
+
     session.length = 0;
     session.push(...systemMsgs);
-    session.push({ role: "system", content: `[白天${state.dayCount}结束时的游戏进程总结]\n${summaryText}` });
+    session.push(summaryMsg);
+    markActorPromptCursors(state, player, "main");
 
-    // Clean up summary session to avoid accumulation
+    // Clean up summary session
     if (player.messageSessions && player.messageSessions["summary"]) {
       player.messageSessions["summary"] = [];
     }
 
-    markActorPromptCursors(state, player, sessionKey);
-    progressLog(state, "detailed", `Session compressed | ${player.name} | session=${sessionKey}`);
+    progressLog(state, "detailed", `Session compressed | ${player.name}`);
   } catch (e) {
-    progressLog(state, "detailed", `Session compress failed | ${player.name} | session=${sessionKey} | ${e.message || e}`);
+    progressLog(state, "detailed", `Session compress failed | ${player.name} | ${e.message || e}`);
   }
 }
 
@@ -2157,9 +2246,7 @@ async function compressDaySessions(state) {
   progressLog(state, "balanced", `Day ${state.dayCount} session compression start`);
   for (const player of state.players) {
     if (!player.alive) continue;
-    for (const sessionKey of ["chat", "json"]) {
-      await compressOneSession(state, player, sessionKey);
-    }
+    await compressPlayerSessions(state, player);
   }
   progressLog(state, "balanced", `Day ${state.dayCount} session compression done`);
 }
