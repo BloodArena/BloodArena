@@ -1809,7 +1809,7 @@ ${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都�
 async function maybeAiPrivateChat(state, player) {
   if (!isPrivateChatOpen(state)) return;
   progressLog(state, "detailed", `Private chat check | Day ${state.dayCount} | ${player.name}`);
-  const candidates = state.players.filter(p => p.alive && p.id !== player.id);
+  const candidates = state.players.filter(p => p.id !== player.id);
   if (!candidates.length) return;
   const privateInfo = formatPrivateInfoForPrompt(player, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
@@ -1941,7 +1941,7 @@ ${aliveDeadSummary}
 }
 
 async function aiVoteSingle(state, voter, nominee) {
-  if (!voter.alive && voter.deadVoteUsed) return { vote: "no", reason: "遗言票已用" };
+  if (!voter.alive && voter.deadVoteUsed) return { vote: "no" };
   const recentChat = formatChatForPrompt(state, 12, voter, "main");
   const privateInfo = formatPrivateInfoForPrompt(voter, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, voter);
@@ -1954,24 +1954,14 @@ ${aliveDeadSummary}
 ${deadVoteNote}
 你的私密信息增量：${privateInfo}
 你需要对提名${nominee ? nominee.name : "某玩家"}投票。若你已知邪恶队友，请谨慎投他们，除非有明确牺牲/转移视线的理由。
-reason 是公开可说的一小段话，可留空；不要泄露私密信息，不要输出心理活动/内心独白，不要在括号里写心里话。
-只输出JSON，不要输出其它内容。请输出 JSON：{"vote":"yes|no","reason":"一小段话或空字符串"}`;
+只输出JSON，不要输出其它内容。请输出 JSON：{"vote":"yes|no"}`;
   const prompt = buildPlayerPromptMessages(state, voter, "main", userContent);
   try {
     const content = await callPlayerLLM(state, prompt, config.temperature, voter, "main");
     const json = extractJson(content);
-    if (!json) return { vote: "no", reason: "" };
-    return { vote: json.vote === "yes" ? "yes" : "no", reason: json.reason || "" };
-  } catch (_) { return { vote: "no", reason: "" }; }
-}
-
-function sanitizePublicReason(reason) {
-  if (!reason || typeof reason !== "string") return "";
-  let text = reason.trim();
-  text = text.replace(/（[^）]*）/g, "").replace(/\([^)]*\)/g, "").replace(/【[^】]*】/g, "");
-  const banned = ["内心", "心里", "心理活动", "思考过程", "作为恶魔", "我是恶魔", "我是爪牙", "我是坏人", "我是邪恶"];
-  if (banned.some(key => text.includes(key))) return "";
-  return text.slice(0, 40);
+    if (!json) return { vote: "no" };
+    return { vote: json.vote === "yes" ? "yes" : "no" };
+  } catch (_) { return { vote: "no" }; }
 }
 
 function canButlerVote(state, voter) {
@@ -2077,7 +2067,7 @@ async function runNomination(state) {
     state.nominationPhase = "voting";
     state.nominationVotes = {};
     state.players.forEach(p => {
-      if (!p.alive && p.deadVoteUsed) state.nominationVotes[p.id] = { vote: "no", reason: "遗言票已用" };
+      if (!p.alive && p.deadVoteUsed) state.nominationVotes[p.id] = { vote: "no" };
     });
     const nomineeIdx = state.players.indexOf(nominee);
     const rotated = Array.from({ length: state.players.length }, (_, i) => state.players[(nomineeIdx + 1 + i) % state.players.length]);
@@ -2085,7 +2075,7 @@ async function runNomination(state) {
     for (const voter of voters) {
       progressLog(state, "detailed", `Vote intent | ${voter.name} on ${nominee.name}`);
       const voteResult = await aiVoteSingle(state, voter, nominee);
-      state.nominationVotes[voter.id] = { vote: voteResult.vote, reason: sanitizePublicReason(voteResult.reason) };
+      state.nominationVotes[voter.id] = { vote: voteResult.vote };
       if (!voter.alive && voteResult.vote === "yes") voter.deadVoteUsed = true;
       addChat(state, "系统", `${voter.name} 投票：${voteResult.vote === "yes" ? "赞成" : "反对"}`, "system");
     }
@@ -2303,7 +2293,6 @@ async function runDiscussion(state) {
     progressLog(state, "balanced", `Day ${state.dayCount} discussion round ${round + 1}/${rounds}`);
     for (const player of state.players) {
       if (state.ended) return;
-      if (!player.alive) continue;
       await aiSpeak(state, player);
       // Private chat only on day 1
       if (state.dayCount === 1) {
