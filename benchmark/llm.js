@@ -114,7 +114,6 @@ async function callLLM(messages, model, temperature = null, retries = null) {
     stream: false,
     reasoning: {
       effort: "high",
-      max_tokens: 16384,
     }
   };
 
