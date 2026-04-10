@@ -2123,7 +2123,17 @@ async function compressPlayerSessions(state, player) {
   const isEvil = player.team === "minion" || player.team === "demon";
   const aliveDeadSummary = getAliveDeadSummary(state);
 
-  const historyText = historyMsgs.map(m => `[${m.role}] ${m.content}`).join("\n---\n");
+  let historyText = historyMsgs.map(m => `[${m.role}] ${m.content}`).join("\n---\n");
+
+  // Append unseen public chat and private info that occurred after the player's last LLM call
+  const unseenChat = formatChatForPrompt(state, 0, player, "main");
+  const unseenPrivateInfo = formatPrivateInfoForPrompt(player, "main", 999);
+  if (unseenChat && unseenChat !== "无新增公共发言（你已看过当前全部公开发言）" && unseenChat !== "无") {
+    historyText += `\n---\n[system] 最新公共聊天记录：\n${unseenChat}`;
+  }
+  if (unseenPrivateInfo && unseenPrivateInfo !== "无新增私密信息（沿用会话中已知私密信息）" && unseenPrivateInfo !== "无") {
+    historyText += `\n---\n[system] 最新私密信息：\n${unseenPrivateInfo}`;
+  }
 
   let summarySystemContent;
   if (isEvil) {
