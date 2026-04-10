@@ -242,16 +242,6 @@ function stripHtmlForPrompt(text) {
   return String(text).replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').trim();
 }
 
-function isEvilSelfReveal(player, text) {
-  if (!player || !text) return false;
-  if (player.team !== "minion" && player.team !== "demon") return false;
-  const content = String(text);
-  return EVIL_ROLE_NAMES.some(roleName => {
-    const pattern = new RegExp(`(我是|我就是|我才是|我其实是)\\s*${roleName}`);
-    return pattern.test(content);
-  });
-}
-
 function normalizeTargetName(name) {
   if (!name) return "";
   return String(name).replace(/\(真人\)/g, "").replace(/（已死亡）/g, "").replace(/\s+/g, "").trim();
@@ -1778,7 +1768,7 @@ async function aiSpeak(state, player) {
   const recentChat = formatChatForPrompt(state, 12, player, "main");
   const dayRuleNote = getDayRuleNote(state);
   const aliveDeadSummary = getAliveDeadSummary(state);
-  const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, player, "main",
+  const prompt = buildPlayerPromptMessages(state, player, "main",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的私聊记录：\n${privateChatHistory}\n
 ${aliveDeadSummary}
@@ -1787,17 +1777,10 @@ ${aliveDeadSummary}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
 你的私密信息增量：${privateInfo}
 你自己之前说过：${recentSelf}\n
-${extra ? `额外约束：${extra}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话进行公聊发言。`);
+这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话进行公聊发言。`);
   try {
-    let usedPrompt = buildPrompt("");
-    let content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "main");
-    let text = content.trim() || "我没什么想说的。";
-    if (isEvilSelfReveal(player, text)) {
-      usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。优先伪装为可信的善良角色。");
-      content = await callPlayerLLM(state, usedPrompt, config.temperature, player, "main");
-      text = content.trim() || "我没什么想说的。";
-    }
-    if (isEvilSelfReveal(player, text)) text = "我没什么想说的。";
+    const content = await callPlayerLLM(state, prompt, config.temperature, player, "main");
+    const text = content.trim() || "我没什么想说的。";
     player.memory.push(text);
     addChat(state, player.name, text, "player");
     await maybeHandleSlayerClaim(state, player.name, text);
@@ -1847,25 +1830,17 @@ async function aiPrivateReply(state, sender, target, text) {
   const privateChatHistory = formatPlayerPrivateChats(state, target);
   const recentChat = formatChatForPrompt(state, 8, target, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
-  const buildPrompt = (extra = "") => buildPlayerPromptMessages(state, target, "main",
+  const prompt = buildPlayerPromptMessages(state, target, "main",
     `公开聊天（最近增量）：\n${recentChat}\n
 你的全部私聊记录：\n${privateChatHistory}\n
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
 ${aliveDeadSummary}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
-${extra ? `额外约束：${extra}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`);
+请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`);
   try {
-    let usedPrompt = buildPrompt("");
-    let content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "main");
-    let reply = content.trim() || "我没什么想说的。";
-    const bothEvil = (target.team === "minion" || target.team === "demon") && (sender.team === "minion" || sender.team === "demon");
-    if (!bothEvil && isEvilSelfReveal(target, reply)) {
-      usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。");
-      content = await callPlayerLLM(state, usedPrompt, config.temperature, target, "main");
-      reply = content.trim() || "我没什么想说的。";
-    }
-    if (!bothEvil && isEvilSelfReveal(target, reply)) reply = "我没什么想说的。";
+    const content = await callPlayerLLM(state, prompt, config.temperature, target, "main");
+    const reply = content.trim() || "我没什么想说的。";
     target.memory.push(reply);
     addPrivateChat(state, target.name, sender.name, reply);
     progressLog(state, "detailed", `Private reply | ${target.name} -> ${sender.name}`);
