@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>血染钟楼 — 数据浏览器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e0e12;
+      --surface: #1a1a24;
+      --surface2: #22222e;
+      --border: #2a2a3a;
+      --text: #e0ddd4;
+      --muted: #8a8a9a;
+      --blood: #8b0000;
+      --blood-light: #b22222;
+      --gold: #c9a84c;
+      --green: #28a060;
+      --blue: #3a7bd5;
+      --blue-dim: #2a3a5a;
+      --green-dim: #1a3a2a;
+      --gray-dim: #252530;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: "Noto Sans SC", sans-serif;
+      min-height: 100vh; padding: 24px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+    h1 { font-family: "Cinzel", serif; font-size: 1.8rem; color: var(--blood-light); margin-bottom: 6px; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .selector-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .selector-row label { color: var(--gold); font-weight: 600; white-space: nowrap; }
+    #fileSelect {
+      flex: 1; min-width: 300px; padding: 8px 12px; border-radius: 6px;
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+      font-size: 0.9rem; font-family: inherit;
+    }
+    #fileSelect option { background: var(--surface); color: var(--text); }
+    .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); cursor: pointer; font-size: 0.8rem;
+    }
+    .filter-btn.active { border-color: var(--gold); color: var(--gold); }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card-title { color: var(--gold); font-weight: 600; font-size: 1rem; margin-bottom: 10px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .summary-item { background: var(--surface2); padding: 10px; border-radius: 6px; }
+    .summary-label { color: var(--muted); font-size: 0.75rem; }
+    .summary-value { color: var(--text); font-size: 1.1rem; font-weight: 600; margin-top: 2px; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--surface2); color: var(--gold); font-weight: 600; white-space: nowrap; }
+    tr:hover td { background: rgba(139, 0, 0, 0.08); }
+    .team-good { color: var(--green); }
+    .team-evil { color: var(--blood-light); }
+    .alive-yes { color: var(--green); }
+    .alive-no { color: var(--muted); text-decoration: line-through; }
+
+    /* Chat timeline */
+    .chat-list { max-height: 600px; overflow-y: auto; }
+    .chat-entry { padding: 6px 10px; border-bottom: 1px solid rgba(42,42,58,0.5); font-size: 0.85rem; line-height: 1.5; }
+    .chat-entry:hover { background: rgba(255,255,255,0.02); }
+    .chat-phase { color: var(--muted); font-size: 0.75rem; margin-right: 8px; }
+    .chat-speaker { font-weight: 600; margin-right: 6px; }
+    .chat-speaker.sp-storyteller { color: var(--gold); }
+    .chat-speaker.sp-system { color: var(--muted); }
+    .chat-speaker.sp-player { color: var(--blue); }
+
+    /* JSONL conversation */
+    .msg-bubble { margin-bottom: 12px; padding: 12px 14px; border-radius: 8px; font-size: 0.85rem; line-height: 1.6; position: relative; }
+    .msg-system { background: var(--gray-dim); border-left: 3px solid var(--muted); }
+    .msg-user { background: var(--blue-dim); border-left: 3px solid var(--blue); }
+    .msg-assistant { background: var(--green-dim); border-left: 3px solid var(--green); }
+    .msg-role { font-weight: 700; font-size: 0.8rem; margin-bottom: 4px; text-transform: uppercase; }
+    .msg-system .msg-role { color: var(--muted); }
+    .msg-user .msg-role { color: var(--blue); }
+    .msg-assistant .msg-role { color: var(--green); }
+    .msg-content { white-space: pre-wrap; word-break: break-word; }
+    .msg-content.truncated { max-height: 200px; overflow: hidden; position: relative; }
+    .msg-content.truncated::after {
+      content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+      background: linear-gradient(transparent, var(--green-dim));
+    }
+    .msg-system .msg-content.truncated::after { background: linear-gradient(transparent, var(--gray-dim)); }
+    .msg-user .msg-content.truncated::after { background: linear-gradient(transparent, var(--blue-dim)); }
+    .expand-btn {
+      display: inline-block; margin-top: 6px; color: var(--gold); cursor: pointer;
+      font-size: 0.8rem; border: none; background: none; font-family: inherit;
+    }
+    .expand-btn:hover { text-decoration: underline; }
+    .reasoning-toggle {
+      display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 4px;
+      background: rgba(201,168,76,0.15); color: var(--gold); cursor: pointer;
+      font-size: 0.75rem; border: 1px solid rgba(201,168,76,0.3);
+    }
+    .reasoning-box { margin-top: 8px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; color: var(--muted); max-height: 300px; overflow-y: auto; }
+
+    /* Trajectory log */
+    .traj-entry { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+    .traj-header {
+      padding: 8px 12px; background: var(--surface2); cursor: pointer; display: flex;
+      justify-content: space-between; align-items: center; font-size: 0.85rem;
+    }
+    .traj-header:hover { background: rgba(42,42,58,0.8); }
+    .traj-meta { color: var(--muted); font-size: 0.75rem; }
+    .traj-actor { color: var(--blue); font-weight: 600; }
+    .traj-body { padding: 12px; display: none; border-top: 1px solid var(--border); }
+    .traj-body.open { display: block; }
+    .traj-response { background: rgba(40,160,96,0.1); padding: 10px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--border); }
+    .tab {
+      padding: 8px 18px; cursor: pointer; color: var(--muted); font-size: 0.9rem;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    #content { min-height: 200px; }
+    #loading { text-align: center; padding: 40px; color: var(--muted); display: none; }
+    #placeholder { text-align: center; padding: 60px; color: var(--muted); }
+    footer { text-align: center; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
+    footer a { color: var(--blood-light); text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Blood on the Clocktower</h1>
+    <div class="subtitle">数据浏览器 — 查看游戏结果与玩家轨迹</div>
+  </header>
+
+  <div class="selector-row">
+    <label>选择文件：</label>
+    <select id="fileSelect"><option value="">-- 加载中 --</option></select>
+  </div>
+  <div class="filter-row" id="filterRow"></div>
+
+  <div id="placeholder">请从上方下拉框选择一个文件查看</div>
+  <div id="loading">加载中...</div>
+  <div id="content"></div>
+
+  <footer>
+    <p>使用方法：<code>node benchmark/gen-index.js && python3 -m http.server 8000</code></p>
+    <p style="margin-top:4px"><a href="leaderboard.html">排行榜</a></p>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const sel = $("fileSelect");
+const content = $("content");
+const loading = $("loading");
+const placeholder = $("placeholder");
+const filterRow = $("filterRow");
+
+let allFiles = [];
+let activeFilter = "all";
+
+/* ── Load index ── */
+async function init() {
+  try {
+    const resp = await fetch("results/file_index.json");
+    if (!resp.ok) throw new Error(resp.status);
+    const idx = await resp.json();
+    allFiles = idx.files || [];
+    renderFileList();
+  } catch (e) {
+    sel.innerHTML = '<option value="">无法加载 file_index.json，请先运行 node benchmark/gen-index.js</option>';
+  }
+}
+
+function renderFileList() {
+  const filters = [
+    { key: "all", label: "全部" },
+    { key: "json", label: ".json 游戏结果" },
+    { key: "jsonl", label: ".jsonl 玩家轨迹" },
+  ];
+  filterRow.innerHTML = "";
+  filters.forEach(f => {
+    const btn = document.createElement("button");
+    btn.className = "filter-btn" + (activeFilter === f.key ? " active" : "");
+    btn.textContent = f.label;
+    btn.onclick = () => { activeFilter = f.key; renderFileList(); };
+    filterRow.appendChild(btn);
+  });
+
+  let filtered = allFiles;
+  if (activeFilter === "json") filtered = allFiles.filter(f => f.endsWith(".json"));
+  if (activeFilter === "jsonl") filtered = allFiles.filter(f => f.endsWith(".jsonl"));
+
+  sel.innerHTML = '<option value="">-- 请选择文件 (' + filtered.length + ') --</option>';
+  filtered.forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f; opt.textContent = f;
+    sel.appendChild(opt);
+  });
+}
+
+sel.addEventListener("change", () => {
+  const file = sel.value;
+  if (!file) { content.innerHTML = ""; placeholder.style.display = ""; return; }
+  loadFile(file);
+});
+
+/* ── Load & render file ── */
+async function loadFile(file) {
+  placeholder.style.display = "none";
+  content.innerHTML = "";
+  loading.style.display = "";
+  try {
+    const resp = await fetch("results/" + file.split("/").map(s => encodeURIComponent(s)).join("/"));
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const text = await resp.text();
+    loading.style.display = "none";
+    if (file.endsWith(".jsonl")) {
+      renderJsonl(text, file);
+    } else {
+      renderJson(JSON.parse(text), file);
+    }
+  } catch (e) {
+    loading.style.display = "none";
+    content.innerHTML = '<div class="card"><div class="card-title">加载失败</div><p>' + esc(e.message) + '</p></div>';
+  }
+}
+
+/* ── Render game JSON ── */
+function renderJson(data, file) {
+  let html = "";
+
+  // Summary
+  if (data.gameId) {
+    const winLabel = data.winner === "good" ? '<span class="team-good">善良胜</span>' : data.winner === "evil" ? '<span class="team-evil">邪恶胜</span>' : data.winner || "—";
+    html += '<div class="card"><div class="card-title">游戏摘要</div><div class="summary-grid">'
+      + summaryItem("Game ID", data.gameId)
+      + summaryItem("胜方", winLabel)
+      + summaryItem("胜利条件", data.winCondition || "—")
+      + summaryItem("天数", data.totalDays)
+      + summaryItem("夜数", data.totalNights)
+      + summaryItem("总花费", data.totalCost != null ? "$" + data.totalCost.toFixed(3) : "—")
+      + summaryItem("耗时", data.durationMs ? (data.durationMs / 1000).toFixed(0) + "s" : "—")
+      + summaryItem("时间", data.timestamp ? new Date(data.timestamp).toLocaleString("zh-CN") : "—")
+      + '</div></div>';
+  }
+
+  // Tabs
+  const tabs = [];
+  if (data.players) tabs.push({ id: "players", label: "玩家列表" });
+  if (data.chatLog && data.chatLog.length) tabs.push({ id: "chat", label: "聊天记录 (" + data.chatLog.length + ")" });
+  if (data.replayEvents && data.replayEvents.length) tabs.push({ id: "replay", label: "事件时间线 (" + data.replayEvents.length + ")" });
+  if (data.trajectoryLog && data.trajectoryLog.length) tabs.push({ id: "traj", label: "LLM调用 (" + data.trajectoryLog.length + ")" });
+  if (data.tokenUsage) tabs.push({ id: "tokens", label: "Token用量" });
+
+  if (tabs.length) {
+    html += '<div class="tabs" id="tabBar">' + tabs.map((t, i) =>
+      '<div class="tab' + (i === 0 ? " active" : "") + '" data-tab="' + t.id + '">' + t.label + '</div>'
+    ).join("") + '</div>';
+
+    // Players
+    if (data.players) {
+      html += '<div class="tab-panel' + (tabs[0].id === "players" ? " active" : "") + '" id="panel-players"><div class="card">';
+      html += '<table><thead><tr><th>座位</th><th>模型</th><th>角色</th><th>阵营</th><th>存活</th></tr></thead><tbody>';
+      data.players.forEach(p => {
+        const teamCls = (p.team === "demon" || p.team === "minion") ? "team-evil" : "team-good";
+        const teamLabel = { townsfolk: "镇民", outsider: "外来者", minion: "爪牙", demon: "恶魔" }[p.team] || p.team;
+        const aliveCls = p.alive ? "alive-yes" : "alive-no";
+        html += '<tr><td>' + p.seat + '</td><td>' + esc(p.model) + '</td><td>' + esc(p.role || p.roleName || "—")
+          + '</td><td class="' + teamCls + '">' + teamLabel + '</td><td class="' + aliveCls + '">' + (p.alive ? "存活" : "死亡") + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    // Chat
+    if (data.chatLog && data.chatLog.length) {
+      html += '<div class="tab-panel" id="panel-chat"><div class="card"><div class="chat-list">';
+      data.chatLog.forEach(c => {
+        const spCls = c.type === "storyteller" ? "sp-storyteller" : c.type === "system" ? "sp-system" : "sp-player";
+        html += '<div class="chat-entry"><span class="chat-phase">[' + esc(c.phase || "") + ']</span>'
+          + '<span class="chat-speaker ' + spCls + '">' + esc(c.speaker) + ':</span> '
+          + esc(c.text) + '</div>';
+      });
+      html += '</div></div></div>';
+    }
+
+    // Replay events
+    if (data.replayEvents && data.replayEvents.length) {
+      html += '<div class="tab-panel" id="panel-replay"><div class="card"><table><thead><tr><th>阶段</th><th>类型</th><th>事件</th></tr></thead><tbody>';
+      data.replayEvents.forEach(e => {
+        html += '<tr><td>' + esc(e.phase || "") + '</td><td>' + esc(e.type || "") + '</td><td>' + esc(e.text || "") + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    // Trajectory log
+    if (data.trajectoryLog && data.trajectoryLog.length) {
+      html += '<div class="tab-panel" id="panel-traj"><div class="card">';
+      data.trajectoryLog.forEach((t, i) => {
+        const msgCount = Array.isArray(t.messages) ? t.messages.length : 0;
+        const preview = (t.response || "").replace(/\s+/g, " ").trim().slice(0, 100);
+        html += '<div class="traj-entry"><div class="traj-header" data-idx="' + i + '">'
+          + '<span><span class="traj-actor">' + esc(t.actor || "?") + '</span> '
+          + '<span class="traj-meta">' + esc(t.phase || "") + ' | ' + esc(t.sessionKey || "") + ' | ' + esc(t.model || "") + '</span></span>'
+          + '<span class="traj-meta">' + msgCount + ' msgs ▾</span>'
+          + '</div><div class="traj-body" id="traj-body-' + i + '">';
+        if (Array.isArray(t.messages)) {
+          t.messages.forEach(m => {
+            html += '<div class="msg-bubble msg-' + (m.role || "user") + '"><div class="msg-role">' + esc(m.role || "") + '</div>'
+              + '<div class="msg-content">' + esc(m.content || "") + '</div></div>';
+          });
+        }
+        if (t.response) {
+          html += '<div class="traj-response"><strong>Response:</strong>\n' + esc(t.response) + '</div>';
+        }
+        if (t.reasoning_content) {
+          html += '<div style="margin-top:8px"><span class="reasoning-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">思维链 ▾</span>'
+            + '<div class="reasoning-box" style="display:none">' + esc(t.reasoning_content) + '</div></div>';
+        }
+        html += '</div></div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Token usage
+    if (data.tokenUsage) {
+      html += '<div class="tab-panel" id="panel-tokens"><div class="card">';
+      html += '<table><thead><tr><th>模型</th><th>调用次数</th><th>Prompt Tokens</th><th>Completion Tokens</th><th>总 Tokens</th><th>花费</th></tr></thead><tbody>';
+      Object.entries(data.tokenUsage).forEach(([model, u]) => {
+        html += '<tr><td>' + esc(model) + '</td><td>' + (u.calls || 0) + '</td><td>' + (u.promptTokens || 0).toLocaleString()
+          + '</td><td>' + (u.completionTokens || 0).toLocaleString() + '</td><td>' + (u.totalTokens || 0).toLocaleString()
+          + '</td><td>$' + (u.cost || 0).toFixed(4) + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+  }
+
+  // Fallback: raw JSON for non-game files (e.g. leaderboard)
+  if (!data.gameId && !tabs.length) {
+    html += '<div class="card"><div class="card-title">JSON 内容</div>'
+      + '<pre style="max-height:600px;overflow:auto;font-size:0.8rem;white-space:pre-wrap;word-break:break-word;">'
+      + esc(JSON.stringify(data, null, 2)) + '</pre></div>';
+  }
+
+  content.innerHTML = html;
+  bindTabs();
+  bindTrajToggles();
+}
+
+/* ── Render JSONL ── */
+function renderJsonl(text, file) {
+  const lines = text.split("\n").filter(l => l.trim());
+  let html = '<div class="card"><div class="card-title">' + esc(file) + ' (' + lines.length + ' 条消息)</div></div>';
+
+  lines.forEach((line, i) => {
+    let obj;
+    try { obj = JSON.parse(line); } catch { obj = { role: "unknown", content: line }; }
+    const role = obj.role || "unknown";
+    const cls = role === "system" ? "msg-system" : role === "assistant" ? "msg-assistant" : "msg-user";
+    const contentText = obj.content || "";
+    const long = contentText.length > 800;
+    html += '<div class="msg-bubble ' + cls + '">'
+      + '<div class="msg-role">' + esc(role) + ' <span style="color:var(--muted);font-weight:400;font-size:0.75rem">#' + (i + 1) + '</span></div>'
+      + '<div class="msg-content' + (long ? " truncated" : "") + '" id="msg-' + i + '">' + esc(contentText) + '</div>';
+    if (long) {
+      html += '<button class="expand-btn" data-msg="' + i + '">展开全部</button>';
+    }
+    if (obj.reasoning_content) {
+      html += '<span class="reasoning-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">思维链 ▾</span>'
+        + '<div class="reasoning-box" style="display:none">' + esc(obj.reasoning_content) + '</div>';
+    }
+    html += '</div>';
+  });
+
+  content.innerHTML = html;
+  content.querySelectorAll(".expand-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const msgEl = $("msg-" + btn.dataset.msg);
+      if (msgEl) { msgEl.classList.toggle("truncated"); btn.textContent = msgEl.classList.contains("truncated") ? "展开全部" : "收起"; }
+    });
+  });
+}
+
+/* ── Helpers ── */
+function esc(s) {
+  if (s == null) return "";
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function summaryItem(label, value) {
+  return '<div class="summary-item"><div class="summary-label">' + esc(label) + '</div><div class="summary-value">' + value + '</div></div>';
+}
+
+function bindTabs() {
+  const bar = $("tabBar");
+  if (!bar) return;
+  bar.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      bar.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      const panel = $("panel-" + tab.dataset.tab);
+      if (panel) panel.classList.add("active");
+    });
+  });
+}
+
+function bindTrajToggles() {
+  document.querySelectorAll(".traj-header").forEach(h => {
+    h.addEventListener("click", () => {
+      const body = $("traj-body-" + h.dataset.idx);
+      if (body) body.classList.toggle("open");
+    });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
