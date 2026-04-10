@@ -606,6 +606,8 @@ function formatPrivateInfoForPrompt(actor, sessionKey = "default", limit = 4) {
 
 function formatPlayerPrivateChats(state, actor) {
   if (!actor) return "无";
+  // After Day 1 compression, private chats are captured in summary — skip to save tokens
+  if (state.dayCount > 1 || (state.phase === "night" && state.nightCount > 1)) return "无";
   const all = (state.privateChat || []).filter(item => item.senderId === actor.id || item.targetId === actor.id);
   if (!all.length) return "无";
   return all.map(c => {
@@ -1764,7 +1766,6 @@ async function aiSpeak(state, player) {
   progressLog(state, "detailed", `Discussion | Day ${state.dayCount} | ${player.name} speaking`);
   const privateInfo = formatPrivateInfoForPrompt(player, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
-  const recentSelf = player.memory.slice(-5).join(" / ") || "无";
   const recentChat = formatChatForPrompt(state, 12, player, "main");
   const dayRuleNote = getDayRuleNote(state);
   const aliveDeadSummary = getAliveDeadSummary(state);
@@ -1776,12 +1777,10 @@ ${aliveDeadSummary}
 时间规则：${dayRuleNote || "无"}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
 你的私密信息增量：${privateInfo}
-你自己之前说过：${recentSelf}\n
 这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话进行公聊发言。`);
   try {
     const content = await callPlayerLLM(state, prompt, config.temperature, player, "main");
     const text = content.trim() || "我没什么想说的。";
-    player.memory.push(text);
     addChat(state, player.name, text, "player");
     await maybeHandleSlayerClaim(state, player.name, text);
   } catch (_) {
@@ -1841,7 +1840,6 @@ ${aliveDeadSummary}
   try {
     const content = await callPlayerLLM(state, prompt, config.temperature, target, "main");
     const reply = content.trim() || "我没什么想说的。";
-    target.memory.push(reply);
     addPrivateChat(state, target.name, sender.name, reply);
     progressLog(state, "detailed", `Private reply | ${target.name} -> ${sender.name}`);
   } catch (_) {}
@@ -2084,31 +2082,45 @@ async function compressPlayerSessions(state, player) {
   const session = getMessageSession(player, "main");
 
   const systemMsgs = [];
-  const historyMsgs = [];
   if (session) {
     for (const msg of session) {
       if (msg.role === "system") systemMsgs.push(msg);
-      else historyMsgs.push(msg);
     }
   }
-  if (historyMsgs.length === 0) return;
 
   const apparentRole = getApparentRole(player);
   const roleName = apparentRole ? apparentRole.name : "未知";
   const isEvil = player.team === "minion" || player.team === "demon";
   const aliveDeadSummary = getAliveDeadSummary(state);
 
-  let historyText = historyMsgs.map(m => `[${m.role}] ${m.content}`).join("\n---\n");
+  // Build clean full history from game state instead of session messages
+  const dayLabel = `白天${state.dayCount}`;
+  const prevNightLabel = `夜晚${state.nightCount}`;
 
-  // Append unseen public chat and private info that occurred after the player's last LLM call
-  const unseenChat = formatChatForPrompt(state, 0, player, "main");
-  const unseenPrivateInfo = formatPrivateInfoForPrompt(player, "main", 999);
-  if (unseenChat && unseenChat !== "无新增公共发言（你已看过当前全部公开发言）" && unseenChat !== "无") {
-    historyText += `\n---\n[system] 最新公共聊天记录：\n${unseenChat}`;
-  }
-  if (unseenPrivateInfo && unseenPrivateInfo !== "无新增私密信息（沿用会话中已知私密信息）" && unseenPrivateInfo !== "无") {
-    historyText += `\n---\n[system] 最新私密信息：\n${unseenPrivateInfo}`;
-  }
+  // 1. Public chat for current day (including preceding night announcements)
+  const todayChat = state.chat.filter(entry => entry.phase === dayLabel || entry.phase === prevNightLabel);
+  const chatSection = todayChat.length
+    ? todayChat.map(entry => `[${entry.phase}] ${entry.speaker}: ${stripHtmlForPrompt(entry.text || "")}`).join("\n")
+    : "无";
+
+  // 2. Private info (all)
+  const privateInfoSection = Array.isArray(player.privateInfo) && player.privateInfo.length
+    ? player.privateInfo.join("\n")
+    : "无";
+
+  // 3. Private chats (only relevant on Day 1)
+  const myPrivateChats = (state.privateChat || []).filter(c => c.senderId === player.id || c.targetId === player.id);
+  const privateChatSection = myPrivateChats.length
+    ? myPrivateChats.map(c => {
+        const label = c.senderId === player.id ? ("你 -> " + c.target) : (c.sender + " -> 你");
+        return `[私聊] ${label}: ${c.text}`;
+      }).join("\n")
+    : "无";
+
+  const historyText = `【公共聊天记录】\n${chatSection}\n\n【你的私密信息】\n${privateInfoSection}\n\n【私聊记录】\n${privateChatSection}`;
+
+  // Skip compression if there's nothing meaningful
+  if (todayChat.length === 0 && myPrivateChats.length === 0) return;
 
   let summarySystemContent;
   if (isEvil) {
