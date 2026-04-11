@@ -12,7 +12,7 @@ module.exports = {
   boardFile: "./benchmark/role_boards.json",  // 预设配板文件路径，设为 "" 则用随机配板
   boardGroup: 1,                               // 使用第几组配板（1-5）
   maxDays: 10,
-  discussionRounds: 2,    // 每个白天讨论轮数
+  discussionRounds: 3,    // 每个白天讨论轮数
   maxNominationsPerDay: 3,
 
   // OpenRouter 配置
