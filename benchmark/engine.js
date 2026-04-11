@@ -117,6 +117,17 @@ const USE_PERSISTENT_MESSAGES = true;
 
 const EVIL_ROLE_NAMES = SCRIPT.roles.filter(r => r.team === "minion" || r.team === "demon").map(r => r.name);
 
+const INFO_FORMAT_HINTS = {
+  "厨师信息": "格式为 'N 对相邻邪恶玩家'，N 为 0-5 的整数。例如：'2 对相邻邪恶玩家'。",
+  "洗衣妇信息": "格式为 'A 或 B 是 [镇民角色名]'，A和B必须是在场玩家名，角色必须是剧本中的镇民角色。例如：'张三 或 李四 是 厨师'。",
+  "图书管理员信息": "格式为 'A 或 B 是 [外来者角色名]' 或 '没有外来者在场'。A和B必须是在场玩家名，角色必须是剧本中的外来者角色。",
+  "调查员信息": "格式为 'A 或 B 是 [爪牙角色名]' 或 '没有爪牙在场'。A和B必须是在场玩家名，角色必须是剧本中的爪牙角色。",
+  "共情者信息": "格式为纯数字 '0'、'1' 或 '2'，表示与该玩家相邻的两名存活玩家中邪恶玩家的人数。",
+  "占卜师信息": "格式为 '有恶魔' 或 '没有恶魔'。",
+  "送葬者信息": "格式为一个角色名，必须是剧本中存在的角色。例如：'投毒者'。",
+  "守鸦人信息": "格式为一个角色名，必须是剧本中存在的角色。例如：'小恶魔'。"
+};
+
 const NEWBIE_GUIDE = [
   `你正在游玩《血染钟楼·暗流涌动》，这是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
   `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
@@ -1081,6 +1092,32 @@ function storytellerTruthBias() {
 
 // --- Storyteller helpers ---
 
+function getSeatingSummary(state) {
+  return state.players.map((p, i) =>
+    `座位${i + 1}: ${p.name}（${p.alive ? "存活" : "死亡"}）`
+  ).join(" → ") + " → [回到座位1]";
+}
+
+function getGrimoireSummary(state) {
+  const isEvil = t => t === "minion" || t === "demon";
+  return state.players.map((p, i) => {
+    let s = `座位${i + 1} ${p.name}: 角色=${p.roleName}, 角色类型=${TEAM_LABEL[p.team] || p.team}, 阵营=${isEvil(p.team) ? "邪恶" : "善良"}, ${p.alive ? "存活" : "死亡"}`;
+    if (p.drunk) s += `, 醉酒（自以为是${p.apparentRoleName || "未知"}）`;
+    if (p.poisoned) s += ", 中毒";
+    return s;
+  }).join("\n");
+}
+
+function getDemonSummaries(state) {
+  const demon = state.players.find(p => p.alive && p.team === "demon");
+  if (!demon) return "";
+  const session = (demon.messageSessions && demon.messageSessions["main"]) || [];
+  const summaries = session
+    .filter(msg => msg.role === "system" && typeof msg.content === "string" && msg.content.startsWith("[白天"))
+    .map(msg => msg.content);
+  return summaries.length ? summaries.join("\n\n") : "";
+}
+
 function getStorytellerBalanceSummary(state) {
   const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
@@ -1177,17 +1214,50 @@ async function storytellerChooseRegistrationProfile(state, player) {
   const roleName = player.roleName;
   if (roleName !== "间谍" && roleName !== "陌客") return null;
   const options = roleName === "间谍" ? "normal|good" : "normal|minion|demon";
-  const instruction = [
-    "你是《血染钟楼》的说书人。",
+  const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
+  const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
+  const instructionParts = [
+    "你是《血染钟楼·暗流涌动》的说书人。",
     `你需要决定该玩家在本次夜晚信息判定中的"登记形态"。`,
+    "",
+    "## 策略原则",
+    "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
+    "间谍被登记为善良可以干扰善良阵营的信息判定（如厨师、共情者、调查员等），这通常对邪恶有利。",
+    "陌客被登记为爪牙/恶魔可以误导善良阵营的信息，这通常也对邪恶有利。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
+    getSeatingSummary(state),
+    "",
+    "## 魔典（说书人可见的完整信息）",
+    getGrimoireSummary(state),
+    "",
     "你只能从给定选项里选一个 register_as，不要输出额外文本。",
     "若角色是间谍：normal=按真实邪恶/爪牙登记；good=按善良登记并显示镇民/外来者角色。",
     "若角色是陌客：normal=按真实善良登记；minion=按爪牙登记；demon=按恶魔登记。",
-    "输出严格 JSON：{\"register_as\":\"...\",\"role_name\":\"可选\",\"reason\":\"一小段话\"}"
-  ].join("\n");
+  ];
+  const demonSummaries = getDemonSummaries(state);
+  if (demonSummaries) {
+    instructionParts.push(
+      "",
+      "## 恶魔的每日总结（供你了解邪恶阵营视角）",
+      demonSummaries,
+    );
+  }
+  instructionParts.push(
+    `输出严格 JSON：{"register_as":"...","role_name":"可选，登记为善良/爪牙/恶魔时具体显示的角色名","reason":"一小段话"}`
+  );
+  const instruction = instructionParts.join("\n");
   const prompt = [
     { role: "system", content: instruction },
-    { role: "user", content: `当前局势：${getStorytellerBalanceSummary(state)}\n玩家：${player.name}\n真实角色：${player.roleName}\n真实阵营：${player.team}\n可选登记：${options}\n公开声明（最新）：${getClaimsSummary(state, 8)}` }
+    { role: "user", content: [
+      `当前局势：${getStorytellerBalanceSummary(state)}`,
+      `邪恶是否已优势巨大：${aliveEvil >= aliveGood ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）`,
+      `玩家：${player.name}`,
+      `真实角色：${player.roleName}`,
+      `真实阵营：${TEAM_LABEL[player.team] || player.team}`,
+      `可选登记：${options}`,
+      `公开声明（最新）：${getClaimsSummary(state, 8)}`
+    ].join("\n") }
   ];
   try {
     const content = await callPlayerLLM(state, prompt, 0.2, null, "storyteller");
@@ -1230,48 +1300,159 @@ async function buildInfoRegistrationMap(state) {
 
 // --- Storyteller LLM: info truth/false for droisoned players ---
 
-async function storytellerChooseInfo(state, player, label, trueInfo, fallbackOptions, context) {
-  const safeFallbacks = Array.isArray(fallbackOptions) ? fallbackOptions.filter(Boolean) : [];
-  if (!safeFallbacks.length) return { info: trueInfo, isTrue: true, source: "llm", reason: "无可用假信息" };
+async function storytellerChooseInfo(state, player, label, trueInfo, context) {
   const balanceSummary = getStorytellerBalanceSummary(state);
   const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
-  const evilDisadvantaged = aliveEvil < aliveGood;
-  const minionCount = state.players.filter(p => p.team === "minion").length;
-  const baronSignal = getBaronClaimSignal(state);
+  const evilAdvantage = aliveEvil >= aliveGood;
   const relatedNames = context && Array.isArray(context.relatedNames) ? context.relatedNames : [];
   const claimsSummary = getClaimsSummary(state, 10);
   const relatedClaims = relatedNames.length ? getRelatedClaimsSummary(state, relatedNames) : "无";
   const relatedTruth = relatedNames.length ? getRelatedPlayerTruthSummary(state, relatedNames) : "无";
-  const instruction = [
-    "你是《血染钟楼》的说书人。你需要决定在玩家醉酒/中毒时，给出真实信息还是错误信息。",
-    "目标：公平与体验优先，适度平衡局势。若邪恶方劣势，优先给假信息帮助邪恶；若善良方劣势，可优先给真信息。",
-    "硬约束：你必须从候选中选择要展示的内容（真实信息或某一条假信息），不得自造候选外文本。",
+  const formatHint = INFO_FORMAT_HINTS[label] || "请按该信息类型的常规格式输出。";
+  const playerNames = state.players.map(p => p.name);
+  const demonSummaries = getDemonSummaries(state);
+
+  const instructionParts = [
+    "你是《血染钟楼·暗流涌动》的说书人。该玩家当前醉酒或中毒，你需要决定给他什么信息（真实信息或你编造的假信息）。",
+    "",
+    "## 策略原则",
+    "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
+    "帮助邪恶阵营不等同于一定要给假信息。你需要自己判断什么样的信息（无论真假）更能帮助邪恶阵营。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
+    getSeatingSummary(state),
+    "",
+    "## 魔典（说书人可见的完整信息）",
+    getGrimoireSummary(state),
+    "",
+    "## 完整角色能力表",
+    FULL_ROLE_RULES,
+    "",
+    "## 信息格式要求",
+    formatHint,
+    "如果你决定给假信息，你编造的假信息必须严格遵守上述格式要求，且与真实信息不同。",
+  ];
+
+  if (demonSummaries) {
+    instructionParts.push(
+      "",
+      "## 恶魔的每日总结（供你了解邪恶阵营视角）",
+      demonSummaries,
+    );
+  }
+
+  instructionParts.push(
+    "",
     "只输出 JSON，不要包含任何额外文本或标记。",
-    "输出严格 JSON：{\"show\":\"...\",\"isTrue\":true|false,\"reason\":\"一小段话理由\"}"
-  ].join("\n");
+    `输出严格 JSON：{"show":"你要给的信息","isTrue":true或false,"reason":"一小段话理由"}`
+  );
+
+  const instruction = instructionParts.join("\n");
+
   const prompt = [
     { role: "system", content: instruction },
-    { role: "user", content: `当前局势：${balanceSummary}\n邪恶是否劣势：${evilDisadvantaged ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）\n场上真实爪牙数量：${minionCount}\n男爵在场公聊舆论：${baronSignal.level}（起跳男爵人数=${baronSignal.count}）\n玩家：${player.name}（${player.team}）\n信息类型：${label}\n真实信息：${trueInfo}\n可用假信息：${safeFallbacks.join(" | ")}\n公开身份声明（最新）：${claimsSummary}\n本信息相关玩家声明：${relatedClaims}\n本信息相关玩家真相（说书人可见）：${relatedTruth}` }
+    { role: "user", content: [
+      `当前局势：${balanceSummary}`,
+      `邪恶是否已优势巨大：${evilAdvantage ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）`,
+      `玩家：${player.name}（真实阵营=${TEAM_LABEL[player.team] || player.team}，真实角色=${player.roleName}）`,
+      `信息类型：${label}`,
+      `真实信息：${trueInfo}`,
+      `场上玩家名单：${playerNames.join("、")}`,
+      `公开身份声明（最新）：${claimsSummary}`,
+      `本信息相关玩家声明：${relatedClaims}`,
+      `本信息相关玩家真相（说书人可见）：${relatedTruth}`
+    ].join("\n") }
   ];
+
   try {
     const content = await callPlayerLLM(state, prompt, 0.2, null, "storyteller");
     const json = extractJson(content);
-    if (json && json.show) {
+    if (json && typeof json.show === "string") {
       const show = String(json.show).trim();
+      if (!show) return null;
+      // Accepting true info
+      if (json.isTrue === true && show === trueInfo) {
+        return { info: trueInfo, isTrue: true, source: "llm", reason: json.reason || "" };
+      }
+      // Accepting false info — loose validation
+      if (json.isTrue === false && show !== trueInfo) {
+        // For info types with player names, check at least one valid player name
+        const needsPlayerName = ["洗衣妇信息", "图书管理员信息", "调查员信息"].includes(label);
+        if (needsPlayerName) {
+          const hasValidName = playerNames.some(n => show.includes(n));
+          if (!hasValidName) return null;
+        }
+        return { info: show, isTrue: false, source: "llm", reason: json.reason || "" };
+      }
+      // LLM said isTrue but show differs, or isTrue=false but show equals trueInfo — treat as true
       if (show === trueInfo) return { info: trueInfo, isTrue: true, source: "llm", reason: json.reason || "" };
-      if (safeFallbacks.includes(show)) return { info: show, isTrue: false, source: "llm", reason: json.reason || "" };
     }
   } catch (_) {}
   return null;
 }
 
-async function resolveInfoResult(state, player, label, trueInfo, fallbackOptions, context) {
+function generateRandomFalseInfo(state, label, trueInfo) {
+  const players = state.players;
+  const roleNames = SCRIPT.roles.map(r => r.name);
+  switch (label) {
+    case "厨师信息": {
+      const options = ["0 对相邻邪恶玩家", "1 对相邻邪恶玩家", "2 对相邻邪恶玩家"].filter(o => o !== trueInfo);
+      return options[Math.floor(Math.random() * options.length)] || trueInfo;
+    }
+    case "共情者信息": {
+      const options = ["0", "1", "2"].filter(o => o !== trueInfo);
+      return options[Math.floor(Math.random() * options.length)] || trueInfo;
+    }
+    case "占卜师信息": {
+      return trueInfo === "有恶魔" ? "没有恶魔" : "有恶魔";
+    }
+    case "洗衣妇信息": {
+      const townsfolkRoles = SCRIPT.roles.filter(r => r.team === "townsfolk");
+      const townsfolkInPlay = players.filter(p => p.team === "townsfolk");
+      const fakeRole = townsfolkRoles.find(r => !townsfolkInPlay.some(p => p.roleId === r.id));
+      const fakePlayers = shuffle(players.slice()).slice(0, 2);
+      if (fakeRole && fakePlayers.length >= 2) {
+        return `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole.name}`;
+      }
+      return trueInfo;
+    }
+    case "图书管理员信息": {
+      const outsiderRoles = SCRIPT.roles.filter(r => r.team === "outsider");
+      if (!outsiderRoles.length) return trueInfo;
+      const fakeRole = outsiderRoles[Math.floor(Math.random() * outsiderRoles.length)];
+      const fakePlayers = shuffle(players.slice()).slice(0, 2);
+      if (fakePlayers.length >= 2) {
+        return `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole.name}`;
+      }
+      return trueInfo;
+    }
+    case "调查员信息": {
+      const minionRoles = SCRIPT.roles.filter(r => r.team === "minion");
+      if (!minionRoles.length) return trueInfo;
+      const fakeRole = minionRoles[Math.floor(Math.random() * minionRoles.length)];
+      const fakePlayers = shuffle(players.slice()).slice(0, 2);
+      if (fakePlayers.length >= 2) {
+        return `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole.name}`;
+      }
+      return trueInfo;
+    }
+    case "送葬者信息":
+    case "守鸦人信息": {
+      const others = roleNames.filter(n => n !== trueInfo);
+      return others[Math.floor(Math.random() * others.length)] || trueInfo;
+    }
+    default:
+      return trueInfo;
+  }
+}
+
+async function resolveInfoResult(state, player, label, trueInfo, context) {
   if (!isDroisoned(player)) {
     return { info: trueInfo, isTrue: true, droisoned: false, source: "none", reason: "" };
   }
   // Try storyteller LLM first
-  const decision = await storytellerChooseInfo(state, player, label, trueInfo, fallbackOptions, context);
+  const decision = await storytellerChooseInfo(state, player, label, trueInfo, context);
   if (decision) {
     return { info: decision.info, isTrue: decision.isTrue, droisoned: true, source: decision.source || "llm", reason: decision.reason || "" };
   }
@@ -1280,10 +1461,8 @@ async function resolveInfoResult(state, player, label, trueInfo, fallbackOptions
   if (tellTruth) {
     return { info: trueInfo, isTrue: true, droisoned: true, source: "heuristic", reason: "概率判定给真信息" };
   }
-  const safeFallbacks = Array.isArray(fallbackOptions) ? fallbackOptions.filter(Boolean) : [];
-  let info = trueInfo;
-  if (safeFallbacks.length) info = safeFallbacks[Math.floor(Math.random() * safeFallbacks.length)];
-  return { info, isTrue: info === trueInfo, droisoned: true, source: "heuristic", reason: "概率判定给假信息" };
+  const falseInfo = generateRandomFalseInfo(state, label, trueInfo);
+  return { info: falseInfo, isTrue: falseInfo === trueInfo, droisoned: true, source: "heuristic", reason: "概率判定给假信息" };
 }
 
 function recordInfoAudit(state, player, label, trueInfo, shownInfo, isTrue, droisoned, source = "", reason = "") {
@@ -1456,7 +1635,7 @@ async function resolveNight(state) {
       if (registersAsEvil(state.players[i], infoMap) && registersAsEvil(state.players[next], infoMap)) pairs++;
     }
     const truth = `${pairs} 对相邻邪恶玩家`;
-    const result = await resolveInfoResult(state, chef, "厨师信息", truth, ["0 对相邻邪恶玩家", "1 对相邻邪恶玩家", "2 对相邻邪恶玩家"]);
+    const result = await resolveInfoResult(state, chef, "厨师信息", truth);
     setPrivateInfo(state, chef, `厨师信息：${result.info}`);
     recordInfoAudit(state, chef, "厨师信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
@@ -1468,52 +1647,28 @@ async function resolveNight(state) {
     const pair = makeRolePair(state, chosen, washerwoman.id);
     const truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosen.roleName}` : `${chosen.name} 是 ${chosen.roleName}`;
     const relatedNames = pair.map(p => p.name);
-    const fakeRole = SCRIPT.roles.find(r => r.team === "townsfolk" && !townsfolkInPlay.some(p => p.roleId === r.id));
-    const fakePlayers = shuffle(state.players.filter(p => p.id !== washerwoman.id)).slice(0, 2);
-    const fake = fakeRole && fakePlayers.length >= 2 ? `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole.name}` : truth;
-    const result = await resolveInfoResult(state, washerwoman, "洗衣妇信息", truth, [fake], { relatedNames });
+    const result = await resolveInfoResult(state, washerwoman, "洗衣妇信息", truth, { relatedNames });
     setPrivateInfo(state, washerwoman, `洗衣妇信息：${result.info}`);
     recordInfoAudit(state, washerwoman, "洗衣妇信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   if (librarian && state.nightCount === 1) {
     const outsidersInPlay = state.players.filter(p => p.team === "outsider");
-    const outsiderRoles = SCRIPT.roles.filter(r => r.team === "outsider");
     let truth = "没有外来者在场";
-    let chosenOutsider = null;
     let relatedNames = [];
     if (outsidersInPlay.length) {
-      chosenOutsider = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
+      const chosenOutsider = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
       const pair = makeRolePair(state, chosenOutsider, librarian.id);
       truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosenOutsider.roleName}` : `${chosenOutsider.name} 是 ${chosenOutsider.roleName}`;
       relatedNames = pair.map(p => p.name);
     }
-    let fake = "";
-    if (outsiderRoles.length) {
-      let fakeRolePool = outsiderRoles;
-      if (chosenOutsider && outsiderRoles.length > 1) {
-        fakeRolePool = outsiderRoles.filter(r => r.name !== chosenOutsider.roleName);
-      }
-      const fakeRole = fakeRolePool[Math.floor(Math.random() * fakeRolePool.length)];
-      const baseCandidates = state.players.filter(p => p.id !== librarian.id);
-      let fakeCandidates = baseCandidates.filter(p => p.roleId !== fakeRole.id);
-      if (fakeCandidates.length < 2) {
-        fakeCandidates = baseCandidates;
-      }
-      const fakePair = shuffle(fakeCandidates).slice(0, 2);
-      if (fakePair.length === 2) {
-        fake = `${fakePair[0].name} 或 ${fakePair[1].name} 是 ${fakeRole.name}`;
-      }
-    }
-    const fallbacks = fake ? [fake] : [];
-    const result = await resolveInfoResult(state, librarian, "图书管理员信息", truth, fallbacks, { relatedNames });
+    const result = await resolveInfoResult(state, librarian, "图书管理员信息", truth, { relatedNames });
     setPrivateInfo(state, librarian, `图书管理员信息：${result.info}`);
     recordInfoAudit(state, librarian, "图书管理员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   if (investigator && state.nightCount === 1) {
     const minionsInPlay = state.players.filter(p => registersAsMinion(p, infoMap));
-    const minionRoles = SCRIPT.roles.filter(r => r.team === "minion").map(r => r.name);
     let truth = "没有爪牙在场";
     let relatedNames = [];
     if (minionsInPlay.length) {
@@ -1523,25 +1678,7 @@ async function resolveNight(state) {
       truth = `${pair[0].name} 或 ${pair[1].name} 是 ${roleName}`;
       relatedNames = pair.map(p => p.name);
     }
-    let fake = "没有爪牙在场";
-    if (minionsInPlay.length) {
-      const fakeRolePool = minionRoles.filter(name => name !== truth.split(" 是 ").pop());
-      const fakeRole = fakeRolePool.length
-        ? fakeRolePool[Math.floor(Math.random() * fakeRolePool.length)]
-        : (minionRoles[0] || "爪牙");
-      const fakePlayers = shuffle(state.players.filter(p => p.id !== investigator.id)).slice(0, 2);
-      if (fakePlayers.length === 2) {
-        fake = `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${fakeRole}`;
-      } else {
-        fake = truth;
-      }
-    } else if (minionRoles.length) {
-      const fakePlayers = shuffle(state.players.filter(p => p.id !== investigator.id)).slice(0, 2);
-      if (fakePlayers.length === 2) {
-        fake = `${fakePlayers[0].name} 或 ${fakePlayers[1].name} 是 ${minionRoles[0]}`;
-      }
-    }
-    const result = await resolveInfoResult(state, investigator, "调查员信息", truth, [fake], { relatedNames });
+    const result = await resolveInfoResult(state, investigator, "调查员信息", truth, { relatedNames });
     setPrivateInfo(state, investigator, `调查员信息：${result.info}`);
     recordInfoAudit(state, investigator, "调查员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
@@ -1600,7 +1737,6 @@ async function resolveNight(state) {
         ravenkeeper,
         "守鸦人信息",
         registeredRole,
-        SCRIPT.roles.map(r => r.name),
         { relatedNames: [target.name] }
       );
       setPrivateInfo(state, ravenkeeper, `守鸦人信息：${target.name} 是 ${result.info}`);
@@ -1613,7 +1749,7 @@ async function resolveNight(state) {
     const neighbors = getAliveNeighbors(state, state.players.indexOf(empath));
     const evilCount = neighbors.filter(p => registersAsEvil(p, infoMap)).length;
     const truth = `${evilCount}`;
-    const result = await resolveInfoResult(state, empath, "共情者信息", truth, ["0", "1", "2"]);
+    const result = await resolveInfoResult(state, empath, "共情者信息", truth);
     setPrivateInfo(state, empath, `共情者信息：相邻邪恶人数 ${result.info}`);
     recordInfoAudit(state, empath, "共情者信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
@@ -1630,7 +1766,6 @@ async function resolveNight(state) {
       fortuneTeller,
       "占卜师信息",
       truth,
-      [demonHit ? "没有恶魔" : "有恶魔"],
       { relatedNames: targets.map(t => t.name) }
     );
     setPrivateInfo(state, fortuneTeller, `占卜师信息：${targets.map(t => t.name).join(" 与 ")} -> ${result.info}`);
@@ -1660,7 +1795,6 @@ async function resolveNight(state) {
         undertaker,
         "送葬者信息",
         registeredRole,
-        SCRIPT.roles.map(r => r.name),
         { relatedNames: [executed.name] }
       );
       setPrivateInfo(state, undertaker, `送葬者信息：${executed.name} 是 ${result.info}`);
@@ -1723,20 +1857,50 @@ function parseSlayerDeclaration(state, text, shooter) {
   return { detected: true, valid: true, target, error: "" };
 }
 
-async function storytellerJudgeRecluse(state, target, context) {
-  const balanceSummary = getStorytellerBalanceSummary(state);
+async function storytellerJudgeRecluseSlayer(state, shooter, target) {
   const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
-  const claimsSummary = getClaimsSummary(state, 10);
-  const prompt = [
-    { role: "system", content: [
-      "你是《血染钟楼》的说书人。你需要决定陌客（Recluse）在本次判定中是否被登记为恶魔。",
-      "陌客的能力：你可能会被当作邪恶阵营、爪牙角色或恶魔角色，即使你已死亡。",
-      "目标：公平与体验优先。如果善良方已经明显优势，可以让陌客登记为恶魔（对善良方不利）；如果邪恶方已经劣势，让陌客不登记为恶魔（不额外惩罚善良方）。",
-      "只输出 JSON：{\"registers_as_demon\":true|false,\"reason\":\"一小段话理由\"}"
-    ].join("\n") },
-    { role: "user", content: `当前局势：${balanceSummary}\n存活善良=${aliveGood}, 存活邪恶=${aliveEvil}\n公开身份声明：${claimsSummary}\n判定场景：${context}\n陌客玩家：${target.name}\n请判定陌客是否登记为恶魔。` }
+  const demonSummaries = getDemonSummaries(state);
+
+  const instructionParts = [
+    "你是《血染钟楼·暗流涌动》的说书人。猎手正在对陌客开枪，你需要决定陌客是否被登记为恶魔（若登记为恶魔则陌客死亡）。",
+    "",
+    "## 策略原则",
+    "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
+    "陌客被登记为恶魔意味着猎手的子弹被浪费在一个善良玩家身上，这对邪恶阵营有利。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
+    getSeatingSummary(state),
+    "",
+    "## 魔典（说书人可见的完整信息）",
+    getGrimoireSummary(state),
   ];
+
+  if (demonSummaries) {
+    instructionParts.push(
+      "",
+      "## 恶魔的每日总结（供你了解邪恶阵营视角）",
+      demonSummaries,
+    );
+  }
+
+  instructionParts.push(
+    "",
+    `只输出 JSON：{"registers_as_demon":true或false,"reason":"一小段话理由"}`
+  );
+
+  const prompt = [
+    { role: "system", content: instructionParts.join("\n") },
+    { role: "user", content: [
+      `当前局势：${getStorytellerBalanceSummary(state)}`,
+      `邪恶是否已优势巨大：${aliveEvil >= aliveGood ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）`,
+      `猎手：${shooter.name}`,
+      `目标陌客：${target.name}`,
+      `公开身份声明：${getClaimsSummary(state, 10)}`,
+      `请判定：陌客是否被登记为恶魔？`
+    ].join("\n") }
+  ];
+
   try {
     const content = await callPlayerLLM(state, prompt, 0.2, null, "storyteller");
     const json = extractJson(content);
@@ -1752,7 +1916,7 @@ async function resolveSlayerShot(state, shooter, target, isReal) {
     if (target.team === "demon") {
       canKill = true;
     } else if (target.roleName === "陌客") {
-      canKill = await storytellerJudgeRecluse(state, target, `猎手${shooter.name}对${target.name}开枪，需判定陌客是否登记为恶魔`);
+      canKill = await storytellerJudgeRecluseSlayer(state, shooter, target);
     }
   }
   addChat(state, "说书人", `${shooter.name} 表示要开枪，目标是 ${target.name}。`, "storyteller");
