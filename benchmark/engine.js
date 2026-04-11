@@ -1123,9 +1123,7 @@ function getStorytellerBalanceSummary(state) {
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
   const deadGood = state.players.filter(p => !p.alive && p.team !== "minion" && p.team !== "demon").length;
   const deadEvil = state.players.filter(p => !p.alive && (p.team === "minion" || p.team === "demon")).length;
-  const advantage = aliveEvil - aliveGood;
-  const advantageText = advantage > 1 ? "邪恶明显优势" : advantage === 1 ? "邪恶小优势" : advantage === 0 ? "均势" : advantage === -1 ? "善良小优势" : "善良明显优势";
-  return `存活善良 ${aliveGood} / 存活邪恶 ${aliveEvil}（${advantageText}）；死亡善良 ${deadGood} / 死亡邪恶 ${deadEvil}`;
+  return `存活善良 ${aliveGood} / 存活邪恶 ${aliveEvil}；死亡善良 ${deadGood} / 死亡邪恶 ${deadEvil}`;
 }
 
 function getClaimsSummary(state, limit = 8) {
