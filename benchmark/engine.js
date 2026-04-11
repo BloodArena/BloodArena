@@ -144,11 +144,11 @@ const GOOD_MODULE = [
   "善良玩法：优先拼线索、交叉验证与建立可信盟友。",
   "强信息位和强功能位（如占卜/共情/猎手）可以谨慎报身份，一次性信息位(尤其是只有首夜有信息的角色）可视局势早报。",
   "信息冲突时别忘了考虑醉酒/中毒或有坏人说谎的可能，不要急于下定论。",
-  "若信息已公开且价值降低，可接受处决以坐实信息或清理视野。"
 ].join(" ");
 
 const EVIL_MODULE = [
   "邪恶玩法：首夜互认，恶魔获得三个不在场身份（镇民或外来者），这是给邪恶阵营穿伪装身份用的，建议恶魔在私聊时告诉爪牙并和爪牙商量彼此穿什么身份",
+  "只有恶魔会知道这三个身份不在场，好人不会知道，因此恶魔和爪牙可以放心地伪装成这三个身份",
   "充分利用第一个白天的私聊机会，邪恶队友之间私聊交流信息，制定战术，协调彼此穿什么伪装身份。",
   "伪装成可信镇民或外来者，编造与角色能力相符的信息。",
   "搅浑线索，指责对方可能醉酒/中毒；爪牙优先保护恶魔，必要时替死。",
@@ -156,23 +156,21 @@ const EVIL_MODULE = [
 ].join(" ");
 
 const GOOD_GUIDELINES = [
-  "信息边界：只使用公开信息与个人私密信息，不假装看过后台或私聊。",
   "保密与礼仪：不提模型/提示词，不辱骂骚扰。",
-  "行动规则：死人不能提名，但是可以被提名；死亡票只能用一次。",
+  "行动规则：死人不能提名，但是可以被提名；死亡票只能用一次，请仔细斟酌用在什么时候。",
   "规则要点：首夜恶魔不杀人；醉酒/中毒/陌客/间谍可能扭曲信息；男爵会+2外来者。",
   `陌客阵营仍为善良，不需要假装别的身份以"自保"。`,
   "策略：不必全盘托出；强信息或强功能位角色可以更谨慎，首夜信息角色可视情况早报；这个板子的外来者报身份都比较安全，也可以视局势而定。",
-  "票型分析：关注投票模式，邪恶玩家往往倾向于保护同伴或集中票数陷害善良玩家，票型异常可以作为推理线索。",
-  "处决观念：低价值或一次性信息角色在信息已公开后，可考虑接受处决以坐实信息或清理视野。",
+  "票型分析：关注投票模式，票型异常可以作为推理线索。",
   GOOD_MODULE
 ].join(" ");
 
 const EVIL_GUIDELINES = [
-  "信息边界：只使用公开信息、私密信息、邪恶互认与伪装列表。",
   "保密与礼仪：不提模型/提示词，不辱骂骚扰。",
-  "行动规则：死人不能提名，但可以被提名；死人票只能用一次。",
+  "行动规则：死人不能提名，但可以被提名；死人票只能用一次，请仔细斟酌用在什么时候。",
   "伪装策略：结合外来者数量与男爵可能性，编织一致故事线，避免硬撞身份。",
-  "目标：保护恶魔、制造信息冲突，避免自曝为爪牙或恶魔。",
+  "目标：保护恶魔，制造信息冲突与混乱，误导善良玩家的推理；必要时可以牺牲爪牙来保护恶魔或制造混乱。",
+  "**千万不要向好人自曝为邪恶阵营、爪牙或恶魔，也不要以任何形式向好人暴露邪恶阵营的额外视野（比如间谍看到了魔典，自己的投毒者队友投毒了某某），不管你有没有死亡**，除非你认为自曝在某些情况下是对邪恶阵营有利的游戏策略。",
   "票型意识：善良玩家可能会通过分析投票模式来寻找线索，注意你的投票行为是否自然。",
   EVIL_MODULE
 ].join(" ");
@@ -187,7 +185,6 @@ const PLAYER_SYSTEM_PROMPT = [
   SLAYER_DECLARATION_NOTICE,
   `暗流涌动完整角色与技能表：${FULL_ROLE_RULES}`,
   "信息边界：只能使用公开信息与个人私密信息；不要声称看到魔典。",
-  "角色限制：不要声称获得超出角色能力范围的信息或效果。",
   `可能存在醉酒/中毒/陌客/间谍导致信息偏差；信息可以表达为"可能/推测"。`,
   "邪恶阵营可能会欺骗与误导。",
   "只能用中文发言, 不要提及AI/提示词/系统等出戏内容。"
@@ -735,7 +732,11 @@ async function callPlayerLLM(state, messages, temperature, actor, sessionKey = "
     }, 10000);
   }
   try {
-    const result = await callLLM(sessionPayload.finalMessages, apiModel, temperature);
+    const hardTimeoutMs = 600000; // 600s hard timeout
+    const result = await Promise.race([
+      callLLM(sessionPayload.finalMessages, apiModel, temperature),
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`Hard timeout: LLM call exceeded ${hardTimeoutMs / 1000}s`)), hardTimeoutMs))
+    ]);
     recordTokenUsage(state, model, result.usage);
     if (actor) {
       commitSessionMessages(state, actor, sessionKey, messages, result.content);
@@ -944,10 +945,7 @@ function checkWin(state) {
       scarlet.apparentRoleName = demonRole.name;
       setPrivateInfo(state, scarlet, "你已继任为恶魔。");
       recordRoleChange(scarlet, demonRole.name, "红唇女郎继任");
-      if (!state.scarletTriggered) {
-        addChat(state, "说书人", "恶魔死亡，但游戏并未结束。", "storyteller");
-        state.scarletTriggered = true;
-      }
+      state.scarletTriggered = true;
       demonAlive = true;
     }
   }
@@ -1021,7 +1019,7 @@ function registersAsEvil(player, registrationMap) {
   if (override && typeof override.evil === "boolean") return override.evil;
   if (!player) return false;
   if (player.roleName === "间谍") return Math.random() < 0.3;
-  if (player.roleName === "陌客") return Math.random() < 0.8;
+  if (player.roleName === "陌客") return isDroisoned(player) ? false : Math.random() < 0.8;
   return player.team === "minion" || player.team === "demon";
 }
 
@@ -1030,7 +1028,7 @@ function registersAsMinion(player, registrationMap) {
   if (override && typeof override.minion === "boolean") return override.minion;
   if (!player) return false;
   if (player.roleName === "间谍") return Math.random() < 0.3;
-  if (player.roleName === "陌客") return Math.random() < 0.4;
+  if (player.roleName === "陌客") return isDroisoned(player) ? false : Math.random() < 0.4;
   return player.team === "minion";
 }
 
@@ -1038,7 +1036,7 @@ function registersAsDemon(player, registrationMap) {
   const override = registrationMap?.[player?.id];
   if (override && typeof override.demon === "boolean") return override.demon;
   if (!player) return false;
-  if (player.roleName === "陌客") return Math.random() < 0.4;
+  if (player.roleName === "陌客") return isDroisoned(player) ? false : Math.random() < 0.4;
   return player.team === "demon";
 }
 
@@ -1058,7 +1056,7 @@ function registerRoleForInfo(player, registrationMap) {
   const minionNames = SCRIPT.roles.filter(r => r.team === "minion").map(r => r.name);
   const demonNames = SCRIPT.roles.filter(r => r.team === "demon").map(r => r.name);
   const goodNames = SCRIPT.roles.filter(r => r.team === "townsfolk" || r.team === "outsider").map(r => r.name);
-  if (player.roleName === "陌客" && Math.random() > 0.5) {
+  if (player.roleName === "陌客" && !isDroisoned(player) && Math.random() > 0.5) {
     const pool = [...minionNames, ...demonNames];
     return pool[Math.floor(Math.random() * pool.length)] || player.roleName;
   }
@@ -1197,6 +1195,7 @@ function fallbackRegistrationProfile(player) {
     return { evil: true, minion: true, demon: false, roleName: player.roleName, source: "fallback", reason: "fallback:spy_normal" };
   }
   if (player.roleName === "陌客") {
+    if (isDroisoned(player)) return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "fallback", reason: "fallback:hermit_poisoned" };
     const roll = Math.random();
     if (roll < 0.2) return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "fallback", reason: "fallback:hermit_normal" };
     if (roll < 0.6) return { evil: true, minion: true, demon: false, roleName: getRoleNameFromTeamsByHint(["minion"]), source: "fallback", reason: "fallback:hermit_minion" };
@@ -1211,6 +1210,7 @@ async function storytellerChooseRegistrationProfile(state, player) {
   if (!player) return null;
   const roleName = player.roleName;
   if (roleName !== "间谍" && roleName !== "陌客") return null;
+  if (roleName === "陌客" && isDroisoned(player)) return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "rule", reason: "hermit_poisoned" };
   const options = roleName === "间谍" ? "normal|good" : "normal|minion|demon";
   const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
@@ -1453,6 +1453,145 @@ function generateRandomFalseInfo(state, label, trueInfo) {
   }
 }
 
+async function storytellerChooseTrueInfoPair(state, infoPlayer, label, infoMap) {
+  const allPlayers = state.players;
+  const excludeId = infoPlayer.id;
+  const demonSummaries = getDemonSummaries(state);
+
+  // Build candidate descriptions based on info type
+  let candidateDesc = [];
+  let pairPool = allPlayers.filter(p => p.id !== excludeId);
+  let noTargetResult = null;
+
+  if (label === "洗衣妇信息") {
+    // Actual townsfolk (excluding self)
+    for (const p of allPlayers) {
+      if (p.id === excludeId) continue;
+      if (p.team === "townsfolk") candidateDesc.push(`${p.name}（真实角色：${p.roleName}，镇民）`);
+    }
+    // Spy can register as any townsfolk
+    const spy = allPlayers.find(p => p.roleName === "间谍" && p.id !== excludeId && !isDroisoned(p));
+    if (spy) {
+      const townsfolkRoleNames = SCRIPT.roles.filter(r => r.team === "townsfolk").map(r => r.name).join("、");
+      candidateDesc.push(`${spy.name}（真实角色：间谍，可以登记为任意镇民角色：${townsfolkRoleNames}）`);
+    }
+  } else if (label === "图书管理员信息") {
+    for (const p of allPlayers) {
+      if (p.id === excludeId) continue;
+      if (p.team === "outsider") candidateDesc.push(`${p.name}（真实角色：${p.roleName}，外来者）`);
+    }
+    const spy = allPlayers.find(p => p.roleName === "间谍" && p.id !== excludeId && !isDroisoned(p));
+    if (spy) {
+      const outsiderRoleNames = SCRIPT.roles.filter(r => r.team === "outsider").map(r => r.name).join("、");
+      candidateDesc.push(`${spy.name}（真实角色：间谍，可以登记为任意外来者角色：${outsiderRoleNames}）`);
+    }
+    noTargetResult = "没有外来者在场";
+  } else if (label === "调查员信息") {
+    for (const p of allPlayers) {
+      if (p.id === excludeId) continue;
+      if (p.team === "minion") candidateDesc.push(`${p.name}（真实角色：${p.roleName}，爪牙）`);
+    }
+    const recluse = allPlayers.find(p => p.roleName === "陌客" && p.id !== excludeId && !isDroisoned(p));
+    if (recluse) {
+      const minionRoleNames = SCRIPT.roles.filter(r => r.team === "minion").map(r => r.name).join("、");
+      candidateDesc.push(`${recluse.name}（真实角色：陌客，可以登记为任意爪牙角色：${minionRoleNames}）`);
+    }
+    noTargetResult = "没有爪牙在场";
+  }
+
+  // If no candidates at all and a "none" result is valid, return it directly
+  if (!candidateDesc.length && noTargetResult) return { info: noTargetResult, isTrue: true, source: "rule", reason: "无合法目标" };
+  if (!candidateDesc.length) return null;
+
+  const pairNames = pairPool.map(p => p.name).join("、");
+  const formatHint = INFO_FORMAT_HINTS[label] || "";
+
+  const instructionParts = [
+    "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
+    `该玩家（${infoPlayer.name}）没有醉酒或中毒，你必须给出真实信息。`,
+    `但你可以策略性地选择展示哪个目标和配对哪个玩家，以及间谍/陌客是否使用其登记能力。`,
+    "",
+    "## 策略原则",
+    "你给出的信息必须是真实的，但你可以选择对邪恶阵营最有利的真实信息组合。",
+    "例如：选择展示间谍（登记为镇民）来混淆善良阵营；选择让陌客登记为爪牙来误导调查员；选择配对一个容易被怀疑的善良玩家来加深善良阵营的内斗。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
+    getSeatingSummary(state),
+    "",
+    "## 魔典（说书人可见的完整信息）",
+    getGrimoireSummary(state),
+    "",
+    "## 完整角色能力表",
+    FULL_ROLE_RULES,
+    "",
+    "## 信息格式要求",
+    formatHint,
+  ];
+
+  if (demonSummaries) {
+    instructionParts.push(
+      "",
+      "## 恶魔的每日总结（供你了解邪恶阵营视角）",
+      demonSummaries,
+    );
+  }
+
+  instructionParts.push(
+    "",
+    "只输出 JSON，不要包含任何额外文本或标记。",
+    `输出严格 JSON：{"target":"目标玩家名","role":"展示的角色名","pair":"配对玩家名","reason":"一小段话理由"}`
+  );
+
+  const prompt = [
+    { role: "system", content: instructionParts.join("\n") },
+    { role: "user", content: [
+      `当前局势：${getStorytellerBalanceSummary(state)}`,
+      `信息接收者：${infoPlayer.name}（真实角色=${infoPlayer.roleName}）`,
+      `信息类型：${label}`,
+      `可选目标（你必须从中选一个）：\n${candidateDesc.join("\n")}`,
+      `可选配对玩家（与目标配对展示）：${pairNames}`,
+      `公开身份声明（最新）：${getClaimsSummary(state, 10)}`,
+      `请选择目标、展示角色名、配对玩家。`
+    ].join("\n") }
+  ];
+
+  try {
+    const content = await callPlayerLLM(state, prompt, 0.2, null, "storyteller");
+    const json = extractJson(content);
+    if (!json || !json.target || !json.role || !json.pair) return null;
+
+    const targetName = normalizeTargetName(json.target);
+    const pairName = normalizeTargetName(json.pair);
+    const roleName = String(json.role).trim();
+    const target = allPlayers.find(p => p.name === targetName && p.id !== excludeId);
+    const pair = allPlayers.find(p => p.name === pairName && p.id !== excludeId && p.id !== (target && target.id));
+    if (!target || !pair || !roleName) return null;
+
+    // Validate: the info must be true
+    let valid = false;
+    if (label === "洗衣妇信息") {
+      // target must be actual townsfolk with matching role, or spy registering as this townsfolk role
+      if (target.team === "townsfolk" && target.roleName === roleName) valid = true;
+      if (target.roleName === "间谍" && !isDroisoned(target) && SCRIPT.roles.some(r => r.team === "townsfolk" && r.name === roleName)) valid = true;
+    } else if (label === "图书管理员信息") {
+      if (target.team === "outsider" && target.roleName === roleName) valid = true;
+      if (target.roleName === "间谍" && !isDroisoned(target) && SCRIPT.roles.some(r => r.team === "outsider" && r.name === roleName)) valid = true;
+    } else if (label === "调查员信息") {
+      if (target.team === "minion" && target.roleName === roleName) valid = true;
+      if (target.roleName === "陌客" && !isDroisoned(target) && SCRIPT.roles.some(r => r.team === "minion" && r.name === roleName)) valid = true;
+    }
+    if (!valid) return null;
+
+    const pairs = shuffle([target, pair]);
+    const info = `${pairs[0].name} 或 ${pairs[1].name} 是 ${roleName}`;
+    return { info, isTrue: true, source: "llm", reason: json.reason || "", target, pair };
+  } catch (_) {}
+  return null;
+}
+
 async function resolveInfoResult(state, player, label, trueInfo, context) {
   if (!isDroisoned(player)) {
     return { info: trueInfo, isTrue: true, droisoned: false, source: "none", reason: "" };
@@ -1647,46 +1786,101 @@ async function resolveNight(state) {
   }
 
   if (washerwoman && state.nightCount === 1) {
-    const townsfolkInPlay = state.players.filter(p => p.team === "townsfolk");
-    const candidates = townsfolkInPlay.filter(p => p.id !== washerwoman.id);
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)] || townsfolkInPlay[0];
-    const pair = makeRolePair(state, chosen, washerwoman.id);
-    const truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosen.roleName}` : `${chosen.name} 是 ${chosen.roleName}`;
-    const relatedNames = pair.map(p => p.name);
-    const result = await resolveInfoResult(state, washerwoman, "洗衣妇信息", truth, { relatedNames });
-    setPrivateInfo(state, washerwoman, `洗衣妇信息：${result.info}`);
-    recordInfoAudit(state, washerwoman, "洗衣妇信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
+    if (!isDroisoned(washerwoman)) {
+      const llmResult = await storytellerChooseTrueInfoPair(state, washerwoman, "洗衣妇信息", infoMap);
+      if (llmResult) {
+        setPrivateInfo(state, washerwoman, `洗衣妇信息：${llmResult.info}`);
+        recordInfoAudit(state, washerwoman, "洗衣妇信息", llmResult.info, llmResult.info, true, false, llmResult.source, llmResult.reason);
+      } else {
+        // Fallback: random true info
+        const townsfolkInPlay = state.players.filter(p => p.team === "townsfolk");
+        const candidates = townsfolkInPlay.filter(p => p.id !== washerwoman.id);
+        const chosen = candidates[Math.floor(Math.random() * candidates.length)] || townsfolkInPlay[0];
+        const pair = makeRolePair(state, chosen, washerwoman.id);
+        const truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosen.roleName}` : `${chosen.name} 是 ${chosen.roleName}`;
+        setPrivateInfo(state, washerwoman, `洗衣妇信息：${truth}`);
+        recordInfoAudit(state, washerwoman, "洗衣妇信息", truth, truth, true, false, "fallback", "LLM失败，随机真实信息");
+      }
+    } else {
+      // Droisoned: use existing flow (LLM may give false info)
+      const townsfolkInPlay = state.players.filter(p => p.team === "townsfolk");
+      const candidates = townsfolkInPlay.filter(p => p.id !== washerwoman.id);
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)] || townsfolkInPlay[0];
+      const pair = makeRolePair(state, chosen, washerwoman.id);
+      const truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosen.roleName}` : `${chosen.name} 是 ${chosen.roleName}`;
+      const relatedNames = pair.map(p => p.name);
+      const result = await resolveInfoResult(state, washerwoman, "洗衣妇信息", truth, { relatedNames });
+      setPrivateInfo(state, washerwoman, `洗衣妇信息：${result.info}`);
+      recordInfoAudit(state, washerwoman, "洗衣妇信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
+    }
   }
 
   if (librarian && state.nightCount === 1) {
-    const outsidersInPlay = state.players.filter(p => p.team === "outsider");
-    let truth = "没有外来者在场";
-    let relatedNames = [];
-    if (outsidersInPlay.length) {
-      const chosenOutsider = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
-      const pair = makeRolePair(state, chosenOutsider, librarian.id);
-      truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosenOutsider.roleName}` : `${chosenOutsider.name} 是 ${chosenOutsider.roleName}`;
-      relatedNames = pair.map(p => p.name);
+    if (!isDroisoned(librarian)) {
+      const llmResult = await storytellerChooseTrueInfoPair(state, librarian, "图书管理员信息", infoMap);
+      if (llmResult) {
+        setPrivateInfo(state, librarian, `图书管理员信息：${llmResult.info}`);
+        recordInfoAudit(state, librarian, "图书管理员信息", llmResult.info, llmResult.info, true, false, llmResult.source, llmResult.reason);
+      } else {
+        const outsidersInPlay = state.players.filter(p => p.team === "outsider");
+        let truth = "没有外来者在场";
+        if (outsidersInPlay.length) {
+          const chosenOutsider = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
+          const pair = makeRolePair(state, chosenOutsider, librarian.id);
+          truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosenOutsider.roleName}` : `${chosenOutsider.name} 是 ${chosenOutsider.roleName}`;
+        }
+        setPrivateInfo(state, librarian, `图书管理员信息：${truth}`);
+        recordInfoAudit(state, librarian, "图书管理员信息", truth, truth, true, false, "fallback", "LLM失败，随机真实信息");
+      }
+    } else {
+      const outsidersInPlay = state.players.filter(p => p.team === "outsider");
+      let truth = "没有外来者在场";
+      let relatedNames = [];
+      if (outsidersInPlay.length) {
+        const chosenOutsider = outsidersInPlay[Math.floor(Math.random() * outsidersInPlay.length)];
+        const pair = makeRolePair(state, chosenOutsider, librarian.id);
+        truth = pair.length === 2 ? `${pair[0].name} 或 ${pair[1].name} 是 ${chosenOutsider.roleName}` : `${chosenOutsider.name} 是 ${chosenOutsider.roleName}`;
+        relatedNames = pair.map(p => p.name);
+      }
+      const result = await resolveInfoResult(state, librarian, "图书管理员信息", truth, { relatedNames });
+      setPrivateInfo(state, librarian, `图书管理员信息：${result.info}`);
+      recordInfoAudit(state, librarian, "图书管理员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
     }
-    const result = await resolveInfoResult(state, librarian, "图书管理员信息", truth, { relatedNames });
-    setPrivateInfo(state, librarian, `图书管理员信息：${result.info}`);
-    recordInfoAudit(state, librarian, "图书管理员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   if (investigator && state.nightCount === 1) {
-    const minionsInPlay = state.players.filter(p => registersAsMinion(p, infoMap));
-    let truth = "没有爪牙在场";
-    let relatedNames = [];
-    if (minionsInPlay.length) {
-      const chosen = minionsInPlay[Math.floor(Math.random() * minionsInPlay.length)];
-      const pair = makeRolePair(state, chosen, investigator.id);
-      const roleName = getMinionRoleNameForInfo(chosen, infoMap);
-      truth = `${pair[0].name} 或 ${pair[1].name} 是 ${roleName}`;
-      relatedNames = pair.map(p => p.name);
+    if (!isDroisoned(investigator)) {
+      const llmResult = await storytellerChooseTrueInfoPair(state, investigator, "调查员信息", infoMap);
+      if (llmResult) {
+        setPrivateInfo(state, investigator, `调查员信息：${llmResult.info}`);
+        recordInfoAudit(state, investigator, "调查员信息", llmResult.info, llmResult.info, true, false, llmResult.source, llmResult.reason);
+      } else {
+        const minionsInPlay = state.players.filter(p => registersAsMinion(p, infoMap));
+        let truth = "没有爪牙在场";
+        if (minionsInPlay.length) {
+          const chosen = minionsInPlay[Math.floor(Math.random() * minionsInPlay.length)];
+          const pair = makeRolePair(state, chosen, investigator.id);
+          const roleName = getMinionRoleNameForInfo(chosen, infoMap);
+          truth = `${pair[0].name} 或 ${pair[1].name} 是 ${roleName}`;
+        }
+        setPrivateInfo(state, investigator, `调查员信息：${truth}`);
+        recordInfoAudit(state, investigator, "调查员信息", truth, truth, true, false, "fallback", "LLM失败，随机真实信息");
+      }
+    } else {
+      const minionsInPlay = state.players.filter(p => registersAsMinion(p, infoMap));
+      let truth = "没有爪牙在场";
+      let relatedNames = [];
+      if (minionsInPlay.length) {
+        const chosen = minionsInPlay[Math.floor(Math.random() * minionsInPlay.length)];
+        const pair = makeRolePair(state, chosen, investigator.id);
+        const roleName = getMinionRoleNameForInfo(chosen, infoMap);
+        truth = `${pair[0].name} 或 ${pair[1].name} 是 ${roleName}`;
+        relatedNames = pair.map(p => p.name);
+      }
+      const result = await resolveInfoResult(state, investigator, "调查员信息", truth, { relatedNames });
+      setPrivateInfo(state, investigator, `调查员信息：${result.info}`);
+      recordInfoAudit(state, investigator, "调查员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
     }
-    const result = await resolveInfoResult(state, investigator, "调查员信息", truth, { relatedNames });
-    setPrivateInfo(state, investigator, `调查员信息：${result.info}`);
-    recordInfoAudit(state, investigator, "调查员信息", truth, result.info, result.isTrue, result.droisoned, result.source, result.reason);
   }
 
   // 5. Death resolution
@@ -1694,11 +1888,11 @@ async function resolveNight(state) {
   if (state.nightCount > 1 && demonTarget && demonTarget.alive) {
     const targetRole = getRoleById(demonTarget.roleId);
     // Mayor redirect
-    if (targetRole && targetRole.name === "镇长" && !isDroisoned(demonTarget) && Math.random() > 0.5) {
-      const alts = state.players.filter(p => p.alive && p.id !== demonTarget.id && p.team !== "minion" && p.team !== "demon");
-      if (alts.length) {
-        addReplayEvent(state, `镇长替死触发，目标从 ${demonTarget.name} 转移`, "night_action");
-        demonTarget = alts[Math.floor(Math.random() * alts.length)];
+    if (targetRole && targetRole.name === "镇长" && !isDroisoned(demonTarget)) {
+      const redirectTarget = await storytellerChooseMayorRedirect(state, demonTarget);
+      if (redirectTarget) {
+        addReplayEvent(state, `镇长替死触发，目标从 ${demonTarget.name} 转移到 ${redirectTarget.name}`, "night_action");
+        demonTarget = redirectTarget;
       }
     }
     // Demon self-kill → succession
@@ -1921,6 +2115,75 @@ async function storytellerJudgeRecluseSlayer(state, shooter, target) {
   return false;
 }
 
+async function storytellerChooseMayorRedirect(state, mayor) {
+  const alts = state.players.filter(p => p.alive && p.id !== mayor.id && p.team !== "minion" && p.team !== "demon");
+  if (!alts.length) return null;
+
+  const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
+  const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
+  const demonSummaries = getDemonSummaries(state);
+  const targetNames = alts.map(p => p.name).join("、");
+
+  const instructionParts = [
+    "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
+    "恶魔今晚刀了镇长，镇长的能力是：如果你在夜晚死亡，可能另一名玩家替你死亡。你需要决定是否触发替死，以及由谁替死。",
+    "",
+    "## 策略原则",
+    "镇长替死能力应优先帮助邪恶阵营。比如可以让一个对邪恶阵营威胁大的善良玩家替死。",
+    "你也可以选择不触发替死，让镇长直接死亡——如果镇长死亡对邪恶更有利的话。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
+    getSeatingSummary(state),
+    "",
+    "## 魔典（说书人可见的完整信息）",
+    getGrimoireSummary(state),
+    "",
+    "## 完整角色能力表",
+    FULL_ROLE_RULES,
+  ];
+
+  if (demonSummaries) {
+    instructionParts.push(
+      "",
+      "## 恶魔的每日总结（供你了解邪恶阵营视角）",
+      demonSummaries,
+    );
+  }
+
+  instructionParts.push(
+    "",
+    `只输出 JSON：{"redirect":true或false,"target":"替死的玩家名","reason":"一小段话理由"}`
+  );
+
+  const prompt = [
+    { role: "system", content: instructionParts.join("\n") },
+    { role: "user", content: [
+      `当前局势：${getStorytellerBalanceSummary(state)}`,
+      `镇长：${mayor.name}`,
+      `可选替死玩家（存活善良）：${targetNames}`,
+      `公开身份声明：${getClaimsSummary(state, 10)}`,
+      `请判定：是否触发镇长替死？如果触发，由谁替死？`
+    ].join("\n") }
+  ];
+
+  try {
+    const content = await callPlayerLLM(state, prompt, 0.2, null, "storyteller");
+    const json = extractJson(content);
+    if (json && json.redirect === true && json.target) {
+      const targetName = normalizeTargetName(json.target);
+      const target = alts.find(p => p.name === targetName);
+      if (target) return target;
+    }
+    if (json && json.redirect === false) return null;
+  } catch (_) {}
+  // fallback: 50% redirect to random alt
+  if (Math.random() < 0.5 && alts.length) return alts[Math.floor(Math.random() * alts.length)];
+  return null;
+}
+
 async function resolveSlayerShot(state, shooter, target, isReal) {
   if (!shooter || !target || !shooter.alive) return;
   let canKill = false;
@@ -1945,7 +2208,8 @@ async function resolveSlayerShot(state, shooter, target, isReal) {
 
 async function maybeHandleSlayerClaim(state, speaker, text) {
   if (!state.started || state.ended) return;
-  if (state.phase !== "day" || state.dayStage !== "discussion") return;
+  if (state.phase !== "day") return;
+  if (state.dayStage !== "discussion" && state.dayStage !== "nomination") return;
   const shooter = state.players.find(p => p.name === speaker);
   if (!shooter || !shooter.alive) return;
   const decl = parseSlayerDeclaration(state, text, shooter);
@@ -2219,7 +2483,7 @@ async function runNomination(state) {
       state.lastExecutedId = nominator.id;
       addChat(state, "说书人", `${nominator.name} 提名 ${nominee.name}，触发贞洁者。${nominator.name} 被处决。`, "storyteller");
       addReplayEvent(state, `贞洁者触发：${nominator.name} 被处决`, "day_action");
-      if (nominator.roleName === "圣徒") {
+      if (nominator.roleName === "圣徒" && !isDroisoned(nominator)) {
         state.ended = true; state.winner = "evil"; state.winCondition = "saint_executed";
       }
       checkWin(state);
@@ -2238,9 +2502,11 @@ async function runNomination(state) {
     state.nominationPhase = "reason";
     const reason = nom.reason?.trim() || await aiNominationReason(state, nominator, nominee);
     addChat(state, nominator.name, reason, "player");
+    await maybeHandleSlayerClaim(state, nominator.name, reason);
     state.nominationPhase = "defense";
     const defense = await aiNominationDefense(state, nominee);
     addChat(state, nominee.name, defense, "player");
+    await maybeHandleSlayerClaim(state, nominee.name, defense);
 
     // Voting
     state.nominationPhase = "voting";
@@ -2462,7 +2728,7 @@ async function finalizeDayExecution(state) {
       addChat(state, "说书人", `${nominee.name} 被处决。`, "storyteller");
       addReplayEvent(state, `处决：${nominee.name}`, "day_action");
       progressLog(state, "concise", `Day ${state.dayCount} execution | ${nominee.name}`);
-      if (nominee.roleName === "圣徒") {
+      if (nominee.roleName === "圣徒" && !isDroisoned(nominee)) {
         state.ended = true; state.winner = "evil"; state.winCondition = "saint_executed";
       }
     }
