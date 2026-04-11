@@ -49,6 +49,7 @@ const MODEL_PRICING = {
   "glm-4-plus":           [0.50, 2.00],
   "kimi-k2.5":            [0.42, 2.20],
   "kimi-k2":              [0.50, 2.00],
+  "seed-2.0-lite":        [0.25, 2.00],
 };
 
 function lookupPricing(modelName) {
