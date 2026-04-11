@@ -75,30 +75,15 @@ function estimateCost(model, promptTokens, completionTokens) {
  * @param {number} retries - Max retries
  * @returns {{ content: string, reasoning: string, usage: { promptTokens: number, completionTokens: number, totalTokens: number, cost: number } }}
  */
-function isMimoModel(model) {
-  const name = model.replace(/^[^/]+\//, "");
-  return name === "mimo-v2-pro" || name === "mimo-v2-omni";
-}
-
 async function callLLM(messages, model, temperature = null, retries = null) {
   const temp = temperature ?? config.temperature;
   const maxRetries = retries ?? config.maxRetries;
 
-  // Route mimo models to MiMo direct API, others to OpenRouter
-  let apiKey, baseUrl, apiModel, extraHeaders;
-  if (isMimoModel(model)) {
-    apiKey = config.mimoApiKey;
-    baseUrl = config.mimoBaseUrl;
-    apiModel = model.replace(/^[^/]+\//, ""); // "xiaomi/mimo-v2-pro" → "mimo-v2-pro"
-    extraHeaders = {};
-    if (!apiKey) throw new Error("MIMO_API_KEY not set");
-  } else {
-    apiKey = config.openrouterApiKey;
-    baseUrl = config.openrouterBaseUrl;
-    apiModel = model;
-    extraHeaders = { "HTTP-Referer": "https://github.com/The-Bloody" };
-    if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
-  }
+  const apiKey = config.openrouterApiKey;
+  const baseUrl = config.openrouterBaseUrl;
+  const apiModel = model;
+  const extraHeaders = { "HTTP-Referer": "https://github.com/The-Bloody" };
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not set");
 
   const url = `${baseUrl}/chat/completions`;
   const headers = {
@@ -164,12 +149,15 @@ async function callLLM(messages, model, temperature = null, retries = null) {
       const completionTokens = rawUsage.completion_tokens || 0;
       const totalTokens = rawUsage.total_tokens || (promptTokens + completionTokens);
 
-      // OpenRouter may return total_cost directly; fallback to local pricing
+      // Cost priority: API usage.cost > data.total_cost > local estimate
       let cost = 0;
-      if (typeof data.total_cost === "number") {
+      let costSource = "local_estimate";
+      if (typeof rawUsage.cost === "number") {
+        cost = rawUsage.cost;
+        costSource = "api";
+      } else if (typeof data.total_cost === "number") {
         cost = data.total_cost;
-      } else if (typeof rawUsage.total_cost === "number") {
-        cost = rawUsage.total_cost;
+        costSource = "api";
       } else {
         cost = estimateCost(model, promptTokens, completionTokens);
       }
@@ -177,7 +165,7 @@ async function callLLM(messages, model, temperature = null, retries = null) {
       return {
         content,
         reasoning,
-        usage: { promptTokens, completionTokens, totalTokens, cost }
+        usage: { promptTokens, completionTokens, totalTokens, cost, costSource, rawUsage }
       };
 
     } catch (error) {

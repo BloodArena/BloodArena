@@ -626,11 +626,32 @@ function isPrivateChatOpen(state) {
 
 // --- Token tracking ---
 
+/**
+ * Recursively accumulate numeric fields from src into dst.
+ * For numbers: dst[key] += src[key]. For nested objects: recurse.
+ */
+function accumulateRawUsage(dst, src) {
+  if (!src || typeof src !== "object") return;
+  for (const key of Object.keys(src)) {
+    const val = src[key];
+    if (typeof val === "number") {
+      dst[key] = (dst[key] || 0) + val;
+    } else if (val && typeof val === "object" && !Array.isArray(val)) {
+      if (!dst[key] || typeof dst[key] !== "object") dst[key] = {};
+      accumulateRawUsage(dst[key], val);
+    }
+  }
+}
+
 function recordTokenUsage(state, model, usage) {
   if (!usage) return;
   const key = model || "unknown";
   if (!state.tokenUsage[key]) {
-    state.tokenUsage[key] = { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0, cost: 0 };
+    state.tokenUsage[key] = {
+      promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0, cost: 0,
+      costSource: {},
+      rawUsage: {}
+    };
   }
   const u = state.tokenUsage[key];
   u.promptTokens += usage.promptTokens || 0;
@@ -638,6 +659,15 @@ function recordTokenUsage(state, model, usage) {
   u.totalTokens += usage.totalTokens || 0;
   u.calls += 1;
   u.cost += usage.cost || 0;
+
+  // Track cost source counts
+  const src = usage.costSource || "unknown";
+  u.costSource[src] = (u.costSource[src] || 0) + 1;
+
+  // Accumulate raw API usage fields
+  if (usage.rawUsage) {
+    accumulateRawUsage(u.rawUsage, usage.rawUsage);
+  }
 }
 
 function recordTrajectoryEntry(state, actor, sessionKey, model, messages, responseText, reasoningText = "") {
@@ -2357,6 +2387,23 @@ async function runOneGame(gameConfig) {
     "concise",
     `Game end | winner=${state.winner} condition=${state.winCondition} days=${state.dayCount} cost=$${Object.values(state.tokenUsage).reduce((sum, u) => sum + (u.cost || 0), 0).toFixed(3)} duration=${Math.round(durationMs / 1000)}s`
   );
+
+  // Print per-model usage summary
+  const usageEntries = Object.entries(state.tokenUsage);
+  if (usageEntries.length > 0) {
+    progressLog(state, "concise", `Token usage summary:`);
+    for (const [modelId, u] of usageEntries) {
+      const srcParts = Object.entries(u.costSource || {}).map(([k, v]) => `${k}:${v}`).join(" ");
+      progressLog(
+        state,
+        "concise",
+        `  ${modelId}: calls=${u.calls} prompt=${u.promptTokens} completion=${u.completionTokens} total=${u.totalTokens} cost=$${(u.cost || 0).toFixed(4)} [${srcParts}]`
+      );
+      if (u.rawUsage && Object.keys(u.rawUsage).length > 0) {
+        progressLog(state, "concise", `    rawUsage: ${JSON.stringify(u.rawUsage)}`);
+      }
+    }
+  }
 
   // Build result
   return {

@@ -19,24 +19,20 @@ module.exports = {
   openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
   openrouterBaseUrl: "https://openrouter.ai/api/v1",
 
-  // MiMo 直连配置（mimo-v2-pro / mimo-v2-omni 走此通道）
-  mimoApiKey: process.env.MIMO_API_KEY,
-  mimoBaseUrl: "https://api.xiaomimimo.com/v1",
-
   // LLM 参数
   temperature: 0.6,
   timeoutMs: 120000,
   maxRetries: 3,
 
   // 说书人模型（用于夜晚信息判定和叙述生成）
-  storytellerModel: "xiaomi/mimo-v2-pro",
+  storytellerModel: "google/gemini-3.1-pro-preview",
 
   // 参与评测的 12 个模型
   models: [
     { id: "openai/gpt-5.4", label: "GPT-5.4" },
     { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
     { id: "anthropic/claude-sonnet-4.6", label: "Claude Sonnet 4.6" },
-    { id: "mimo-v2-pro", label: "MiMo V2 Pro" },
+    { id: "xiaomi/mimo-v2-pro", label: "MiMo V2 Pro" },
     { id: "minimax/minimax-m2.7", label: "MiniMax M2.7" },
     { id: "x-ai/grok-4.20-beta", label: "Grok 4.20 Beta" },
     { id: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2" },
