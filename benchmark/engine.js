@@ -1231,6 +1231,9 @@ async function storytellerChooseRegistrationProfile(state, player) {
     "## 魔典（说书人可见的完整信息）",
     getGrimoireSummary(state),
     "",
+    "## 完整角色能力表",
+    FULL_ROLE_RULES,
+    "",
     "你只能从给定选项里选一个 register_as，不要输出额外文本。",
     "若角色是间谍：normal=按真实邪恶/爪牙登记；good=按善良登记并显示镇民/外来者角色。",
     "若角色是陌客：normal=按真实善良登记；minion=按爪牙登记；demon=按恶魔登记。",
@@ -1874,6 +1877,9 @@ async function storytellerJudgeRecluseSlayer(state, shooter, target) {
     "",
     "## 魔典（说书人可见的完整信息）",
     getGrimoireSummary(state),
+    "",
+    "## 完整角色能力表",
+    FULL_ROLE_RULES,
   ];
 
   if (demonSummaries) {
