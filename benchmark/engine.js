@@ -1218,6 +1218,9 @@ async function storytellerChooseRegistrationProfile(state, player) {
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;
   const instructionParts = [
     "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
     `你需要决定该玩家在本次夜晚信息判定中的"登记形态"。`,
     "",
     "## 策略原则",
@@ -1254,7 +1257,6 @@ async function storytellerChooseRegistrationProfile(state, player) {
     { role: "system", content: instruction },
     { role: "user", content: [
       `当前局势：${getStorytellerBalanceSummary(state)}`,
-      `邪恶是否已优势巨大：${aliveEvil >= aliveGood ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）`,
       `玩家：${player.name}`,
       `真实角色：${player.roleName}`,
       `真实阵营：${TEAM_LABEL[player.team] || player.team}`,
@@ -1317,7 +1319,11 @@ async function storytellerChooseInfo(state, player, label, trueInfo, context) {
   const demonSummaries = getDemonSummaries(state);
 
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。该玩家当前醉酒或中毒，你需要决定给他什么信息（真实信息或你编造的假信息）。",
+    "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
+    "该玩家当前醉酒或中毒，你需要决定给他什么信息（真实信息或你编造的假信息）。",
     "",
     "## 策略原则",
     "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
@@ -1357,7 +1363,6 @@ async function storytellerChooseInfo(state, player, label, trueInfo, context) {
     { role: "system", content: instruction },
     { role: "user", content: [
       `当前局势：${balanceSummary}`,
-      `邪恶是否已优势巨大：${evilAdvantage ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）`,
       `玩家：${player.name}（真实阵营=${TEAM_LABEL[player.team] || player.team}，真实角色=${player.roleName}）`,
       `信息类型：${label}`,
       `真实信息：${trueInfo}`,
@@ -1866,7 +1871,11 @@ async function storytellerJudgeRecluseSlayer(state, shooter, target) {
   const demonSummaries = getDemonSummaries(state);
 
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。猎手正在对陌客开枪，你需要决定陌客是否被登记为恶魔（若登记为恶魔则陌客死亡）。",
+    "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
+    "猎手正在对陌客开枪，你需要决定陌客是否被登记为恶魔（若登记为恶魔则陌客死亡）。",
     "",
     "## 策略原则",
     "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
@@ -1899,7 +1908,6 @@ async function storytellerJudgeRecluseSlayer(state, shooter, target) {
     { role: "system", content: instructionParts.join("\n") },
     { role: "user", content: [
       `当前局势：${getStorytellerBalanceSummary(state)}`,
-      `邪恶是否已优势巨大：${aliveEvil >= aliveGood ? "是" : "否"}（存活善良=${aliveGood}, 存活邪恶=${aliveEvil}）`,
       `猎手：${shooter.name}`,
       `目标陌客：${target.name}`,
       `公开身份声明：${getClaimsSummary(state, 10)}`,
