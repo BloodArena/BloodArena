@@ -28,7 +28,7 @@ const SCRIPT = {
     {"id":"1_11","name":"士兵","team":"townsfolk","ability":"恶魔的负面能力对你无效。"},
     {"id":"1_10","name":"镇长","team":"townsfolk","ability":"如果只有三名玩家存活且白天没有人被处决，你的阵营获胜（镇长日）。如果你在夜晚即将死亡，可能会有一名其他玩家代替你死亡。"},
     {"id":"1_9","name":"管家","team":"outsider","ability":"每个夜晚，你要选择除你以外的一名玩家(主人)：明天白天，只有他投票时你才能投票。"},
-    {"id":"1_8","name":"酒鬼","team":"outsider","ability":"你不知道你是酒鬼。你以为你是一个镇民角色，但其实你不是。"},
+    {"id":"1_8","name":"酒鬼","team":"outsider","ability":"你不知道你是酒鬼。你以为你是一个镇民角色，但其实你不是。酒鬼实际上没有任何能力。说书人会装作酒鬼玩家是他以为的那种镇民。如果那个镇民会在夜晚醒来，酒鬼同样会被唤醒并如同那个镇民的方式进行行动。如果那个镇民能够获取信息，说书人照样会给他信息，但是信息可能错误。"},
     {"id":"1_7","name":"陌客","team":"outsider","ability":"你可能会被当作邪恶阵营、爪牙角色或恶魔角色，即使你已死亡。"},
     {"id":"1_6","name":"圣徒","team":"outsider","ability":"如果你死于处决，你的阵营落败。"},
     {"id":"1_5","name":"投毒者","team":"minion","ability":"每个夜晚，你要选择一名玩家：他在当晚和明天白天中毒。"},
@@ -147,29 +147,26 @@ const GOOD_MODULE = [
 ].join(" ");
 
 const EVIL_MODULE = [
-  "邪恶玩法：首夜互认，恶魔获得三个不在场身份（镇民或外来者），这是给邪恶阵营穿伪装身份用的，建议恶魔在私聊时告诉爪牙并和爪牙商量彼此穿什么身份",
+  "邪恶玩法：首夜互认（知道队友是谁但不知道爪牙具体是什么角色），恶魔获得三个不在场身份（镇民或外来者），这是给邪恶阵营穿伪装身份用的，建议恶魔在私聊时告诉爪牙并和爪牙商量彼此穿什么身份",
   "只有恶魔会知道这三个身份不在场，好人不会知道，因此恶魔和爪牙可以放心地伪装成这三个身份",
-  "充分利用第一个白天的私聊机会，邪恶队友之间私聊交流信息，制定战术，协调彼此穿什么伪装身份。",
+  "在第一个白天的公聊和私聊开始前，邪恶阵营所有成员会先进行一次密聊（仅邪恶成员可见），请充分利用这次密聊机会交流信息、制定战术、协调彼此穿什么伪装身份。",
   "伪装成可信镇民或外来者，编造与角色能力相符的信息。",
-  "搅浑线索，指责对方可能醉酒/中毒；爪牙优先保护恶魔，必要时替死。",
-  "小恶魔可自杀传位，制造混乱与信息断层。"
+  "小恶魔在晚上可自杀传位，尤其是在被大家怀疑并上焦点位时可以这么做，制造混乱与信息断层。"
 ].join(" ");
 
 const GOOD_GUIDELINES = [
   "保密与礼仪：不提模型/提示词，不辱骂骚扰。",
   "行动规则：死人不能提名，但是可以被提名；死亡票只能用一次，请仔细斟酌用在什么时候。",
   "规则要点：首夜恶魔不杀人；醉酒/中毒/陌客/间谍可能扭曲信息；男爵会+2外来者。",
-  `陌客阵营仍为善良，不需要假装别的身份以"自保"。`,
   "策略：不必全盘托出；强信息或强功能位角色可以更谨慎，首夜信息角色可视情况早报；这个板子的外来者报身份都比较安全，也可以视局势而定。",
-  "票型分析：关注投票模式，票型异常可以作为推理线索。",
   GOOD_MODULE
 ].join(" ");
 
 const EVIL_GUIDELINES = [
   "保密与礼仪：不提模型/提示词，不辱骂骚扰。",
   "行动规则：死人不能提名，但可以被提名；死人票只能用一次，请仔细斟酌用在什么时候。",
-  "伪装策略：结合外来者数量与男爵可能性，编织一致故事线，避免硬撞身份。",
-  "目标：保护恶魔，制造信息冲突与混乱，误导善良玩家的推理；必要时可以牺牲爪牙来保护恶魔或制造混乱。",
+  "邪恶阵营需共同编织一套不互斥的虚假身份网，以完美融入好人阵营的报信息环节，避免硬撞身份。",
+  "目标：保护恶魔，制造信息冲突与混乱，误导善良玩家的推理；爪牙优先保护恶魔，必要时可以牺牲爪牙来保护恶魔或制造混乱。",
   "**千万不要向好人自曝为邪恶阵营、爪牙或恶魔，也不要以任何形式向好人暴露邪恶阵营的额外视野（比如间谍看到了魔典，自己的投毒者队友投毒了某某），不管你有没有死亡**，除非你认为自曝在某些情况下是对邪恶阵营有利的游戏策略。",
   "票型意识：善良玩家可能会通过分析投票模式来寻找线索，注意你的投票行为是否自然。",
   EVIL_MODULE
@@ -300,7 +297,7 @@ function createGameState() {
     humanNominationDone: false,
     firstNightRecognitionDone: false,
     redHerringId: "",
-    chatSeq: 0, chat: [], privateChat: [],
+    chatSeq: 0, chat: [], privateChat: [], evilChat: [],
     log: [], publicLog: [], replayEvents: [],
     infoAudit: [], lastInfoRegistrationMap: {},
     claims: {}, claimHistory: [],
@@ -382,6 +379,16 @@ function addPrivateChat(state, sender, target, text) {
     sender, target,
     senderId: senderPlayer ? senderPlayer.id : "",
     targetId: targetPlayer ? targetPlayer.id : "",
+    text
+  });
+}
+
+function addEvilChat(state, sender, text) {
+  const senderPlayer = state.players.find(p => p.name === sender);
+  state.evilChat.push({
+    time: new Date().toISOString(), phase: getPhaseLabel(state),
+    sender,
+    senderId: senderPlayer ? senderPlayer.id : "",
     text
   });
 }
@@ -622,6 +629,14 @@ function formatPlayerPrivateChats(state, actor) {
     const label = c.senderId === actor.id ? ("你 -> " + c.target) : (c.sender + " -> 你");
     return "[私聊] " + label + ": " + c.text;
   }).join("\n");
+}
+
+function formatEvilChatForPrompt(state, actor) {
+  if (!actor) return "";
+  if (actor.team !== "minion" && actor.team !== "demon") return "";
+  const all = state.evilChat || [];
+  if (!all.length) return "";
+  return all.map(c => `[邪恶密聊] ${c.sender}: ${c.text}`).join("\n");
 }
 
 function isPrivateChatOpen(state) {
@@ -1764,7 +1779,7 @@ async function resolveNight(state) {
       const candidates = state.players.slice();
       const minions = state.players.filter(p => p.alive && p.team === "minion");
       const extraNote = minions.length
-        ? "你可以选择自己以自杀传位，但一般谨慎使用。"
+        ? "你可以选择自己以自杀传位，但一般谨慎使用; 如果你已经被大家怀疑，上了焦点位面临被处决的风险，可以考虑自杀传位。"
         : "请不要选择自己自杀（场上无存活爪牙会导致直接失败）。";
       demonTarget = await aiChooseSingleTarget(state, demon, candidates, "选择一名玩家死亡（恶魔击杀）", extraNote)
         || chooseRandomTarget(state, demon, true, true);
@@ -2239,9 +2254,10 @@ async function aiSpeak(state, player) {
   const recentChat = formatChatForPrompt(state, 12, player, "main");
   const dayRuleNote = getDayRuleNote(state);
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, player);
   const prompt = buildPlayerPromptMessages(state, player, "main",
     `公开聊天（最近增量）：\n${recentChat}\n
-你的私聊记录：\n${privateChatHistory}\n
+你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
@@ -2267,9 +2283,10 @@ async function maybeAiPrivateChat(state, player) {
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const recentChat = formatChatForPrompt(state, 8, player, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, player);
   const targetNames = candidates.map(p => p.name).join("、");
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-你的私聊记录：\n${privateChatHistory}\n
+你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 现在是白天1，你可以选择是否发起一次私聊（仅在白天1可私聊）。
 可私聊目标：${targetNames}。
 如果你是邪恶阵营，可以考虑通过私聊与邪恶同伴交换身份或协调计划。
@@ -2299,14 +2316,15 @@ async function aiPrivateReply(state, sender, target, text) {
   const privateChatHistory = formatPlayerPrivateChats(state, target);
   const recentChat = formatChatForPrompt(state, 8, target, "main");
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, target);
   const prompt = buildPlayerPromptMessages(state, target, "main",
     `公开聊天（最近增量）：\n${recentChat}\n
-你的全部私聊记录：\n${privateChatHistory}\n
+你的全部私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 这是私聊，只有你和对方能看到。${sender.name}对你说：${text}
 ${aliveDeadSummary}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
-请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`);
+请用一小段话私聊回应${sender.name}（注意：这不是公开发言，只有对方能看到）。`);
   try {
     const content = await callPlayerLLM(state, prompt, config.temperature, target, "main");
     const reply = content.trim() || "我没什么想说的。";
@@ -2327,8 +2345,9 @@ async function aiNominate(state, player) {
   const privateInfo = formatPrivateInfoForPrompt(player, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, player);
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, player);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-你的私聊记录：\n${privateChatHistory}\n
+你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
@@ -2352,8 +2371,9 @@ async function aiNominationReason(state, nominator, nominee) {
   const privateInfo = formatPrivateInfoForPrompt(nominator, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominator);
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, nominator);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-你的私聊记录：\n${privateChatHistory}\n
+你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你提名了${nominee.name}。
 你的私密信息增量：${privateInfo}
@@ -2370,8 +2390,9 @@ async function aiNominationDefense(state, nominee) {
   const privateInfo = formatPrivateInfoForPrompt(nominee, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, nominee);
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, nominee);
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-你的私聊记录：\n${privateChatHistory}\n
+你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你被提名了。
 你的私密信息增量：${privateInfo}
@@ -2389,9 +2410,10 @@ async function aiVoteSingle(state, voter, nominee) {
   const privateInfo = formatPrivateInfoForPrompt(voter, "main", 4);
   const privateChatHistory = formatPlayerPrivateChats(state, voter);
   const aliveDeadSummary = getAliveDeadSummary(state);
+  const evilChatHistory = formatEvilChatForPrompt(state, voter);
   const deadVoteNote = !voter.alive ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。" : "";
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-你的私聊记录：\n${privateChatHistory}\n
+你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}
@@ -2754,10 +2776,64 @@ async function finalizeDayExecution(state) {
  *  SECTION 8: MAIN GAME LOOP
  * ═══════════════════════════════════════════════════════════ */
 
+async function runEvilInternalChat(state) {
+  const evilPlayers = state.players.filter(
+    p => p.alive && (p.team === "minion" || p.team === "demon")
+  );
+  if (evilPlayers.length < 2) return;
+
+  state.evilChat = [];
+  const msgCount = {};
+  evilPlayers.forEach(p => { msgCount[p.id] = 0; });
+  const maxPerPlayer = 3;
+  const maxRounds = 3;
+
+  progressLog(state, "concise", `Evil internal chat start | ${evilPlayers.length} players`);
+
+  for (let round = 0; round < maxRounds; round++) {
+    let anyoneSpoke = false;
+    for (const player of evilPlayers) {
+      if (state.ended) return;
+      if (msgCount[player.id] >= maxPerPlayer) continue;
+
+      const evilHistory = formatEvilChatForPrompt(state, player);
+      const privateInfo = formatPrivateInfoForPrompt(player, "evil", 4);
+      const evilNames = evilPlayers.map(p => `${p.name}(${p.roleName})`).join("、");
+
+      const prompt = buildPlayerPromptMessages(state, player, "evil",
+        `现在是白天1开始前的邪恶阵营密聊环节。只有邪恶阵营成员能看到这些消息。
+邪恶阵营成员：${evilNames}
+你的私密信息：${privateInfo}
+${evilHistory ? `当前密聊记录：\n${evilHistory}` : "（尚无发言）"}
+你还剩 ${maxPerPlayer - msgCount[player.id]} 次发言机会。
+请用一小段话与邪恶同伴交流策略（如：讨论谁来假扮什么身份、如何分散善良阵营注意力、协调发言口径等）。`);
+
+      try {
+        const content = await callPlayerLLM(state, prompt, config.temperature, player, "evil");
+        const text = (content || "").trim();
+        if (text) {
+          addEvilChat(state, player.name, text);
+          msgCount[player.id]++;
+          anyoneSpoke = true;
+          progressLog(state, "detailed", `Evil chat | ${player.name} (${round + 1}/${maxRounds})`);
+        }
+      } catch (_) {}
+    }
+    if (!anyoneSpoke) break;
+  }
+
+  progressLog(state, "concise", `Evil internal chat end | ${(state.evilChat || []).length} messages`);
+}
+
 async function runDiscussion(state) {
   state.dayStage = "discussion";
   addChat(state, "说书人", "白天讨论开始。", "storyteller");
   addLogEntry(state, "进入讨论阶段", "phase");
+  // Day 1: evil team internal chat before public discussion
+  if (state.dayCount === 1) {
+    await runEvilInternalChat(state);
+    if (state.ended) return;
+  }
   const rounds = config.discussionRounds || 3;
   progressLog(state, "concise", `Day ${state.dayCount} discussion start | rounds=${rounds}`);
   for (let round = 0; round < rounds; round++) {
@@ -2877,6 +2953,7 @@ async function runOneGame(gameConfig) {
     durationMs,
     chatLog: state.chat,
     privateChat: state.privateChat,
+    evilChat: state.evilChat,
     replayEvents: state.replayEvents,
     trajectoryLog: state.trajectoryLog
   };
