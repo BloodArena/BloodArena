@@ -21,9 +21,10 @@ import {
   formatChatForPrompt,
   formatPrivateInfoForPrompt,
   buildPlayerPromptMessages,
-  getAliveDeadSummary
+  getAliveDeadSummary,
+  compressDaySessions
 } from './prompts.js';
-import { formatPlayerPrivateChats } from './chat.js';
+import { formatPlayerPrivateChats, formatEvilChatForPrompt } from './chat.js';
 import {
   renderAll,
   renderStatus,
@@ -303,9 +304,10 @@ export async function aiNominate(player) {
   const recentChat = formatChatForPrompt(12, player, "json");
   const privateInfo = formatPrivateInfoForPrompt(player, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
+  const evilChatHistory = formatEvilChatForPrompt(player);
   const aliveDeadSummary = getAliveDeadSummary();
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-        你的私聊记录：\n${privateChatHistory}\n
+        你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 当前提名阶段：你可以选择是否提名一名玩家（包括已死亡的玩家）。可提名玩家：${nominableTargets.join("、")}。
 每人仅一次提名机会，每人最多被提名一次。
@@ -363,6 +365,8 @@ export async function startNominationResolution(nominatorId, nomineeId, reasonTe
     if (nominator.roleName === "圣徒") {
       addChat("系统", "圣徒被处决，邪恶阵营获胜。", "system");
       state.ended = true;
+      state.winner = "evil";
+      state.winCondition = "saint_executed";
     }
     state.nominationInProgress = false;
     renderAll();
@@ -428,9 +432,10 @@ export async function aiNominationReason(nominator, nominee) {
   const recentChat = formatChatForPrompt(12, nominator, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominator, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(nominator);
+  const evilChatHistory = formatEvilChatForPrompt(nominator);
   const aliveDeadSummary = getAliveDeadSummary();
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-        你的私聊记录：\n${privateChatHistory}\n
+        你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你提名了${nominee.name}。
 你的私密信息增量：${privateInfo}
@@ -448,9 +453,10 @@ export async function aiNominationDefense(nominee) {
   const recentChat = formatChatForPrompt(12, nominee, "chat");
   const privateInfo = formatPrivateInfoForPrompt(nominee, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(nominee);
+  const evilChatHistory = formatEvilChatForPrompt(nominee);
   const aliveDeadSummary = getAliveDeadSummary();
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-        你的私聊记录：\n${privateChatHistory}\n
+        你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你被提名了。
 你的私密信息增量：${privateInfo}
@@ -560,7 +566,7 @@ export function maybeFinalizeVotes() {
   resolveNominationVotes();
 }
 
-export function finalizeDayExecution() {
+export async function finalizeDayExecution() {
   if (!state || !state.started) return;
   const aliveCount = state.players.filter((p) => p.alive).length;
   const executionThreshold = Math.ceil(aliveCount / 2);
@@ -586,6 +592,8 @@ export function finalizeDayExecution() {
       if (nominee.roleName === "圣徒") {
         addChat("系统", "圣徒被处决，邪恶阵营获胜。", "system");
         state.ended = true;
+        state.winner = "evil";
+        state.winCondition = "saint_executed";
       }
     }
   } else {
@@ -606,9 +614,12 @@ export function finalizeDayExecution() {
   if (mayorAlive && alive.length === 3 && !state.lastExecutedId) {
     addChat("系统", "镇长触发胜利条件，善良阵营获胜。", "system");
     state.ended = true;
+    state.winner = "good";
+    state.winCondition = "mayor_win";
     renderAll();
     return;
   }
+  await compressDaySessions();
   switchPhase();
 }
 
@@ -645,6 +656,7 @@ export async function aiVoteSingle(voter) {
   const recentChat = formatChatForPrompt(12, voter, "json");
   const privateInfo = formatPrivateInfoForPrompt(voter, "json", 4);
   const privateChatHistory = formatPlayerPrivateChats(voter);
+  const evilChatHistory = formatEvilChatForPrompt(voter);
   if (!voter.alive && voter.deadVoteUsed) {
     return { vote: "no", reason: "遗言票已用" };
   }
@@ -653,7 +665,7 @@ export async function aiVoteSingle(voter) {
     ? "你已死亡，但仍有一次遗言票：只有投赞成才会生效，投反对不消耗。"
     : "";
   const userContent = `公开聊天（最近增量）：\n${recentChat}\n
-        你的私聊记录：\n${privateChatHistory}\n
+        你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你的当前状态：${voter.alive ? "存活" : "死亡"}。
 ${deadVoteNote}

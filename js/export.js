@@ -73,6 +73,7 @@ export function exportJson() {
     claims: state.claims || {},
     claimHistory: state.claimHistory || [],
     privateChat: state.privateChat || [],
+    evilChat: state.evilChat || [],
     replayEvents: state.replayEvents || [],
     infoAudit: state.infoAudit || [],
     trajectoryCount: Array.isArray(state.trajectoryLog) ? state.trajectoryLog.length : 0,
@@ -172,6 +173,7 @@ export async function generateStorySummary(options = {}) {
     redHerring: state.players.find((p) => p.id === state.redHerringId)?.name || "",
     publicLog: state.publicLog || [],
     privateChat: state.privateChat || [],
+    evilChat: state.evilChat || [],
     replayEvents: state.replayEvents || [],
     chat: state.chat || [],
     meta: {

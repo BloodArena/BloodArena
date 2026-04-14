@@ -124,6 +124,9 @@ export function setupPlayers() {
     recordTrajectories: false,
     trajectoryLog: [],
     privateChat: [],
+    evilChat: [],
+    winner: null,
+    winCondition: null,
     replayEvents: [],
     infoAudit: [],
     lastInfoRegistrationMap: {},
@@ -485,9 +488,13 @@ export function checkWin() {
   if (!demonAlive) {
     addChat("系统", "善良阵营获胜（恶魔死亡）。", "system");
     state.ended = true;
+    state.winner = "good";
+    state.winCondition = "demon_killed";
   } else if (alive.length <= 2) {
     addChat("系统", "邪恶阵营获胜（存活仅剩两人）。", "system");
     state.ended = true;
+    state.winner = "evil";
+    state.winCondition = "two_alive";
   }
   if (state.ended) {
     enablePostGameChat();

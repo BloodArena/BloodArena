@@ -186,6 +186,9 @@ export function normalizeState() {
   if (typeof state.recordTrajectories !== "boolean") state.recordTrajectories = false;
   if (!Array.isArray(state.trajectoryLog)) state.trajectoryLog = [];
   if (!Array.isArray(state.privateChat)) state.privateChat = [];
+  if (!Array.isArray(state.evilChat)) state.evilChat = [];
+  if (state.winner === undefined) state.winner = null;
+  if (state.winCondition === undefined) state.winCondition = null;
   if (!Array.isArray(state.replayEvents)) state.replayEvents = [];
   if (!Array.isArray(state.infoAudit)) state.infoAudit = [];
   if (!state.lastInfoRegistrationMap || typeof state.lastInfoRegistrationMap !== "object") {

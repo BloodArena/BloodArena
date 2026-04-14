@@ -14,7 +14,7 @@ import {
   getAliveDeadSummary
 } from './prompts.js';
 import { callDeepSeek, commitSessionMessages } from './api.js';
-import { addChat, addLogEntry, formatPlayerPrivateChats } from './chat.js';
+import { addChat, addLogEntry, addEvilChat, formatPlayerPrivateChats, formatEvilChatForPrompt } from './chat.js';
 import { renderAll, renderStatus, buildSlayerDeclarationTemplate } from './ui-helpers.js';
 import { getDayRuleNote } from './night-actions.js';
 import { scheduleNominationTimeout, enterNomination } from './nomination.js';
@@ -135,6 +135,7 @@ export async function aiSpeak(player) {
   const token = state.discussionToken || 0;
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
+  const evilChatHistory = formatEvilChatForPrompt(player);
   const recentSelf = player.memory.slice(-5).join(" / ") || "无";
   const recentChat = formatChatForPrompt(12, player, "chat");
   const dayRuleNote = getDayRuleNote();
@@ -143,7 +144,7 @@ export async function aiSpeak(player) {
     player,
     "chat",
     `公开聊天（最近增量）：\n${recentChat}\n
-          你的私聊记录：\n${privateChatHistory}\n
+          你的私聊记录：\n${privateChatHistory}\n${evilChatHistory ? `\n你的邪恶阵营密聊记录：\n${evilChatHistory}\n` : ""}
 ${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
@@ -225,6 +226,64 @@ export async function advanceDiscussion() {
   }
 }
 
+export async function runEvilInternalChat() {
+  const evilPlayers = state.players.filter(
+    (p) => p.alive && (p.team === "minion" || p.team === "demon")
+  );
+  if (evilPlayers.length < 2) return;
+
+  state.evilChat = [];
+  const msgCount = {};
+  evilPlayers.forEach((p) => { msgCount[p.id] = 0; });
+  const maxPerPlayer = 3;
+  const maxRounds = 3;
+
+  for (let round = 0; round < maxRounds; round++) {
+    let anyoneSpoke = false;
+    for (const player of evilPlayers) {
+      if (state.ended || state.paused) return;
+      if (msgCount[player.id] >= maxPerPlayer) continue;
+
+      if (player.isHuman) {
+        // 真人邪恶玩家：请求输入密聊消息
+        const text = await requestHumanStatement(
+          `邪恶密聊（第${round + 1}轮，剩余${maxPerPlayer - msgCount[player.id]}次）`,
+          ""
+        );
+        if (text) {
+          addEvilChat(player.name, text);
+          msgCount[player.id]++;
+          anyoneSpoke = true;
+        }
+        continue;
+      }
+
+      const evilHistory = formatEvilChatForPrompt(player);
+      const privateInfo = formatPrivateInfoForPrompt(player, "evil", 4);
+      const evilNames = evilPlayers.map((p) => `${p.name}(${p.roleName})`).join("、");
+
+      const prompt = buildPlayerPromptMessages(player, "evil",
+        `现在是白天1开始前的邪恶阵营密聊环节。只有邪恶阵营成员能看到这些消息。
+邪恶阵营成员：${evilNames}
+你的私密信息：${privateInfo}
+${evilHistory ? `当前密聊记录：\n${evilHistory}` : "（尚无发言）"}
+你还剩 ${maxPerPlayer - msgCount[player.id]} 次发言机会。
+请用一小段话与邪恶同伴交流策略（如：讨论谁来假扮什么身份、如何分散善良阵营注意力、协调发言口径等）。`);
+
+      try {
+        const content = await callDeepSeek(prompt, getTempValue(), player, "evil", false);
+        const text = (content || "").trim();
+        if (text) {
+          addEvilChat(player.name, text);
+          msgCount[player.id]++;
+          anyoneSpoke = true;
+        }
+      } catch (_) {}
+    }
+    if (!anyoneSpoke) break;
+  }
+}
+
 export async function startDiscussion(auto = true) {
   if (state && state.paused) return;
   resetDiscussion();
@@ -235,6 +294,11 @@ export async function startDiscussion(auto = true) {
   startDayDiscussionTimer(true);
   addChat("说书人", "白天讨论开始。", "storyteller");
   addLogEntry("进入讨论阶段", "phase");
+  // Day 1: evil team internal chat before public discussion
+  if (state.dayCount === 1) {
+    await runEvilInternalChat();
+    if (state.ended || state.paused) return;
+  }
   renderAll();
   if (auto) {
     await advanceDiscussion();

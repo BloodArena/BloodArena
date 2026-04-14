@@ -443,6 +443,27 @@ export function addPrivateChat(sender, target, text) {
   saveState();
 }
 
+export function addEvilChat(sender, text) {
+  if (!state) return;
+  const senderPlayer = state.players.find((p) => p.name === sender);
+  state.evilChat.push({
+    time: new Date().toISOString(),
+    phase: _getPhaseLabel(),
+    sender,
+    senderId: senderPlayer ? senderPlayer.id : "",
+    text
+  });
+  saveState();
+}
+
+export function formatEvilChatForPrompt(actor) {
+  if (!actor) return "";
+  if (actor.team !== "minion" && actor.team !== "demon") return "";
+  const all = state.evilChat || [];
+  if (!all.length) return "";
+  return all.map((c) => `[邪恶密聊] ${c.sender}: ${c.text}`).join("\n");
+}
+
 /* ─── role claim extraction ──────────────────────────────── */
 
 export function extractRoleClaim(text) {
@@ -611,6 +632,8 @@ export function formatPrivateChatBetween(idA, idB, limit = 6) {
 
 export function formatPlayerPrivateChats(actor) {
   if (!state || !actor) return "无";
+  // After Day 1 compression, private chats are captured in summary — skip to save tokens
+  if (state.dayCount > 1 || (state.phase === "night" && state.nightCount > 1)) return "无";
   var all = (state.privateChat || []).filter(
     function(item) { return item.senderId === actor.id || item.targetId === actor.id; }
   );
