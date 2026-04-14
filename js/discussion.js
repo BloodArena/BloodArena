@@ -5,7 +5,6 @@
 
 import { state } from './state.js';
 import { SLAYER_DECLARATION_TEMPLATE } from './constants.js';
-import { isEvilSelfReveal } from './utils.js';
 import {
   formatPrivateInfoForPrompt,
   formatChatForPrompt,
@@ -115,12 +114,6 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊
     let usedPrompt = buildPrompt("");
     let content = await callDeepSeek(usedPrompt, Number(document.getElementById("tempInput")?.value) || 1.0, player, "chat", false);
     let text = content.trim() || "我没什么想说的。";
-    if (isEvilSelfReveal(player, text)) {
-      usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。");
-      content = await callDeepSeek(usedPrompt, Number(document.getElementById("tempInput")?.value) || 1.0, player, "chat", false);
-      text = content.trim() || "我没什么想说的。";
-    }
-    if (isEvilSelfReveal(player, text)) text = "我没什么想说的。";
     commitSessionMessages(player, "chat", usedPrompt, text);
     player.memory.push(text);
     addChat(player.name, text, "player");
@@ -167,14 +160,6 @@ ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊
       return;
     }
     let text = content.trim();
-    if (isEvilSelfReveal(player, text)) {
-      usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。优先伪装为可信的善良角色。");
-      content = await callDeepSeek(usedPrompt, getTempValue(), player, "chat", false);
-      text = content.trim();
-    }
-    if (isEvilSelfReveal(player, text)) {
-      text = "我没什么想说的。";
-    }
     if (
       !state ||
       !state.started ||

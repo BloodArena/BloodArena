@@ -269,79 +269,79 @@ export async function storytellerChooseInfo(player, label, trueInfo, fallbackOpt
   const balanceSummary = getStorytellerBalanceSummary();
   const relatedNames = context && Array.isArray(context.relatedNames) ? context.relatedNames : [];
   const claimsSummary = getClaimsSummary(10);
-  const relatedClaims = relatedNames.length ? getRelatedClaimsSummary(relatedNames) : “无”;
-  const relatedTruth = relatedNames.length ? getRelatedPlayerTruthSummary(relatedNames) : “无”;
-  const formatHint = INFO_FORMAT_HINTS[label] || “请按该信息类型的常规格式输出。”;
+  const relatedClaims = relatedNames.length ? getRelatedClaimsSummary(relatedNames) : "无";
+  const relatedTruth = relatedNames.length ? getRelatedPlayerTruthSummary(relatedNames) : "无";
+  const formatHint = INFO_FORMAT_HINTS[label] || "请按该信息类型的常规格式输出。";
   const playerNames = state.players.map((p) => p.name);
   const demonSummaries = getDemonSummaries();
 
   const instructionParts = [
-    “你是《血染钟楼·暗流涌动》的说书人。”,
-    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为”每个人都有独特超能力的狼人杀”。`,
-    `核心机制是”死而不僵”和”信息迷雾”：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
-    “游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。”,
-    “该玩家当前醉酒或中毒，你需要决定给他什么信息（真实信息或你编造的假信息）。”,
-    “”,
-    “## 策略原则”,
-    “除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。”,
-    “帮助邪恶阵营不等同于一定要给假信息。你需要自己判断什么样的信息（无论真假）更能帮助邪恶阵营。”,
-    “”,
-    “## 座位与玩家（玩家坐成一圈）”,
+    "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
+    "该玩家当前醉酒或中毒，你需要决定给他什么信息（真实信息或你编造的假信息）。",
+    "",
+    "## 策略原则",
+    "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
+    "帮助邪恶阵营不等同于一定要给假信息。你需要自己判断什么样的信息（无论真假）更能帮助邪恶阵营。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
     getSeatingSummary(),
-    “”,
-    “## 魔典（说书人可见的完整信息）”,
+    "",
+    "## 魔典（说书人可见的完整信息）",
     getGrimoireSummary(),
-    “”,
-    “## 完整角色能力表”,
+    "",
+    "## 完整角色能力表",
     FULL_ROLE_RULES,
-    “”,
-    “## 信息格式要求”,
+    "",
+    "## 信息格式要求",
     formatHint,
-    “如果你决定给假信息，你编造的假信息必须严格遵守上述格式要求，且与真实信息不同。”,
+    "如果你决定给假信息，你编造的假信息必须严格遵守上述格式要求，且与真实信息不同。",
   ];
 
   if (demonSummaries) {
-    instructionParts.push(“”, “## 恶魔的每日总结（供你了解邪恶阵营视角）”, demonSummaries);
+    instructionParts.push("", "## 恶魔的每日总结（供你了解邪恶阵营视角）", demonSummaries);
   }
 
   instructionParts.push(
-    “”,
-    “只输出 JSON，不要包含任何额外文本或标记。”,
-    `输出严格 JSON：{“show”:”你要给的信息”,”isTrue”:true或false,”reason”:”一小段话理由”}`
+    "",
+    "只输出 JSON，不要包含任何额外文本或标记。",
+    `输出严格 JSON：{"show":"你要给的信息","isTrue":true或false,"reason":"一小段话理由"}`
   );
 
   const prompt = [
-    { role: “system”, content: instructionParts.join(“\n”) },
-    { role: “user”, content: [
+    { role: "system", content: instructionParts.join("\n") },
+    { role: "user", content: [
       `当前局势：${balanceSummary}`,
       `玩家：${player.name}（真实阵营=${TEAM_LABEL[player.team] || player.team}，真实角色=${player.roleName}）`,
       `信息类型：${label}`,
       `真实信息：${trueInfo}`,
-      `场上玩家名单：${playerNames.join(“、”)}`,
+      `场上玩家名单：${playerNames.join("、")}`,
       `公开身份声明（最新）：${claimsSummary}`,
       `本信息相关玩家声明：${relatedClaims}`,
       `本信息相关玩家真相（说书人可见）：${relatedTruth}`
-    ].join(“\n”) }
+    ].join("\n") }
   ];
 
   try {
-    const content = await callDeepSeek(prompt, 0.2, null, “storyteller”, false);
+    const content = await callDeepSeek(prompt, 0.2, null, "storyteller", false);
     const json = extractJson(content);
-    if (json && typeof json.show === “string”) {
+    if (json && typeof json.show === "string") {
       const show = String(json.show).trim();
       if (!show) return null;
       if (json.isTrue === true && show === trueInfo) {
-        return { info: trueInfo, isTrue: true, source: “llm”, reason: json.reason || “” };
+        return { info: trueInfo, isTrue: true, source: "llm", reason: json.reason || "" };
       }
       if (json.isTrue === false && show !== trueInfo) {
-        const needsPlayerName = [“洗衣妇信息”, “图书管理员信息”, “调查员信息”].includes(label);
+        const needsPlayerName = ["洗衣妇信息", "图书管理员信息", "调查员信息"].includes(label);
         if (needsPlayerName) {
           const hasValidName = playerNames.some((n) => show.includes(n));
           if (!hasValidName) return null;
         }
-        return { info: show, isTrue: false, source: “llm”, reason: json.reason || “” };
+        return { info: show, isTrue: false, source: "llm", reason: json.reason || "" };
       }
-      if (show === trueInfo) return { info: trueInfo, isTrue: true, source: “llm”, reason: json.reason || “” };
+      if (show === trueInfo) return { info: trueInfo, isTrue: true, source: "llm", reason: json.reason || "" };
     }
   } catch (_) {}
   return null;
@@ -448,92 +448,74 @@ export async function storytellerChooseRegistrationProfile(player) {
   if (!player) return null;
   const roleName = player.roleName;
   if (roleName !== "间谍" && roleName !== "陌客") return null;
+  if (isDroisoned(player)) {
+    if (roleName === "陌客") return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "rule", reason: "hermit_poisoned" };
+    if (roleName === "间谍") return { evil: true, minion: true, demon: false, roleName: player.roleName, source: "rule", reason: "spy_poisoned" };
+  }
   const options = roleName === "间谍" ? "normal|good" : "normal|minion|demon";
-  const instruction = [
-    "你是《血染钟楼》的说书人。",
-    `你需要决定该玩家在本次夜晚信息判定中的“登记形态”。`,
+  const instructionParts = [
+    "你是《血染钟楼·暗流涌动》的说书人。",
+    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
+    "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
+    `你需要决定该玩家在本次夜晚信息判定中的"登记形态"。`,
+    "",
+    "## 策略原则",
+    "除非邪恶阵营已经优势巨大（例如存活邪恶人数 >= 存活善良人数，且恶魔没有被怀疑），否则你应该优先帮助邪恶阵营。",
+    "间谍被登记为善良可以干扰善良阵营的信息判定（如厨师、共情者、调查员等），这通常对邪恶有利。",
+    "陌客被登记为爪牙/恶魔可以误导善良阵营的信息，这通常也对邪恶有利。",
+    "",
+    "## 座位与玩家（玩家坐成一圈）",
+    getSeatingSummary(),
+    "",
+    "## 魔典（说书人可见的完整信息）",
+    getGrimoireSummary(),
+    "",
+    "## 完整角色能力表",
+    FULL_ROLE_RULES,
+    "",
     "你只能从给定选项里选一个 register_as，不要输出额外文本。",
     "若角色是间谍：normal=按真实邪恶/爪牙登记；good=按善良登记并显示镇民/外来者角色。",
     "若角色是陌客：normal=按真实善良登记；minion=按爪牙登记；demon=按恶魔登记。",
-    "输出严格 JSON：{\"register_as\":\"...\",\"role_name\":\"可选\",\"reason\":\"一小段话\"}"
-  ].join("\n");
+  ];
+  const demonSummaries = getDemonSummaries();
+  if (demonSummaries) {
+    instructionParts.push(
+      "",
+      "## 恶魔的每日总结（供你了解邪恶阵营视角）",
+      demonSummaries,
+    );
+  }
+  instructionParts.push(
+    `输出严格 JSON：{"register_as":"...","role_name":"可选，登记为善良/爪牙/恶魔时具体显示的角色名","reason":"一小段话"}`
+  );
+  const instruction = instructionParts.join("\n");
   const prompt = [
     { role: "system", content: instruction },
-    {
-      role: "user",
-      content: `当前局势：${getStorytellerBalanceSummary()}\n玩家：${player.name}\n真实角色：${player.roleName}\n真实阵营：${player.team}\n可选登记：${options}\n公开声明（最新）：${getClaimsSummary(8)}`
-    }
+    { role: "user", content: [
+      `当前局势：${getStorytellerBalanceSummary()}`,
+      `玩家：${player.name}`,
+      `真实角色：${player.roleName}`,
+      `真实阵营：${TEAM_LABEL[player.team] || player.team}`,
+      `可选登记：${options}`,
+      `公开声明（最新）：${getClaimsSummary(8)}`
+    ].join("\n") }
   ];
-  const attempts = [
-    { responseFormat: { type: "json_object" }, extraSystem: "" },
-    { responseFormat: null, extraSystem: "再次强调：只能输出 JSON 对象。" }
-  ];
-  for (const attempt of attempts) {
-    const messages = attempt.extraSystem
-      ? [{ role: "system", content: attempt.extraSystem }, ...prompt]
-      : prompt;
-    try {
-      const content = await callDeepSeek(messages, 0.2, null, "storyteller", false, {
-        responseFormat: attempt.responseFormat
-      });
-      const json = extractJson(content);
-      if (!json) continue;
-      const mode = normalizeRegistrationMode(roleName, json.register_as || json.mode);
-      const hintedRole = String(json.role_name || "").trim();
-      const reason = String(json.reason || "").trim();
-      if (roleName === "间谍") {
-        if (mode === "normal") {
-          return {
-            evil: true,
-            minion: true,
-            demon: false,
-            roleName: player.roleName,
-            source: "llm",
-            reason
-          };
-        }
-        return {
-          evil: false,
-          minion: false,
-          demon: false,
-          roleName: getRoleNameFromTeamsByHint(["townsfolk", "outsider"], hintedRole),
-          source: "llm",
-          reason
-        };
-      }
-      if (mode === "normal") {
-        return {
-          evil: false,
-          minion: false,
-          demon: false,
-          roleName: player.roleName,
-          source: "llm",
-          reason
-        };
-      }
-      if (mode === "minion") {
-        return {
-          evil: true,
-          minion: true,
-          demon: false,
-          roleName: getRoleNameFromTeamsByHint(["minion"], hintedRole),
-          source: "llm",
-          reason
-        };
-      }
-      return {
-        evil: true,
-        minion: false,
-        demon: true,
-        roleName: getRoleNameFromTeamsByHint(["demon"], hintedRole),
-        source: "llm",
-        reason
-      };
-    } catch (error) {
-      continue;
+  try {
+    const content = await callDeepSeek(prompt, 0.2, null, "storyteller", false);
+    const json = extractJson(content);
+    if (!json) return null;
+    const mode = normalizeRegistrationMode(roleName, json.register_as || json.mode);
+    const hintedRole = String(json.role_name || "").trim();
+    const reason = String(json.reason || "").trim();
+    if (roleName === "间谍") {
+      if (mode === "normal") return { evil: true, minion: true, demon: false, roleName: player.roleName, source: "llm", reason };
+      return { evil: false, minion: false, demon: false, roleName: getRoleNameFromTeamsByHint(["townsfolk", "outsider"], hintedRole), source: "llm", reason };
     }
-  }
-  return null;
+    if (mode === "normal") return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "llm", reason };
+    if (mode === "minion") return { evil: true, minion: true, demon: false, roleName: getRoleNameFromTeamsByHint(["minion"], hintedRole), source: "llm", reason };
+    return { evil: true, minion: false, demon: true, roleName: getRoleNameFromTeamsByHint(["demon"], hintedRole), source: "llm", reason };
+  } catch (_) { return null; }
 }
 
 export async function storytellerChooseTrueInfoPair(infoPlayer, label, infoMap) {
@@ -591,7 +573,7 @@ export async function storytellerChooseTrueInfoPair(infoPlayer, label, infoMap) 
     `但你可以策略性地选择展示哪个目标和配对哪个玩家，以及间谍/陌客是否使用其登记能力。`,
     "",
     "## 策略原则",
-    "你给出的信息必须是真实的，但你可以选择对邪恶阵营最有利的真实信息组合。",
+    "你给出的信息必须是真实的，且你给的信息必须考虑到局势的均衡，既不偏袒善良阵营也不偏袒邪恶阵营。",
     "",
     "## 座位与玩家（玩家坐成一圈）",
     getSeatingSummary(),
@@ -607,7 +589,7 @@ export async function storytellerChooseTrueInfoPair(infoPlayer, label, infoMap) 
   ];
 
   if (demonSummaries) {
-    instructionParts.push("", "## 恶魔的每日总结（供你了解邪恶阵营视角）", demonSummaries);
+    instructionParts.push("", "## 恶魔的每日总结（供你了解场上局势）", demonSummaries);
   }
 
   instructionParts.push(

@@ -1225,7 +1225,10 @@ async function storytellerChooseRegistrationProfile(state, player) {
   if (!player) return null;
   const roleName = player.roleName;
   if (roleName !== "间谍" && roleName !== "陌客") return null;
-  if (roleName === "陌客" && isDroisoned(player)) return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "rule", reason: "hermit_poisoned" };
+  if (isDroisoned(player)) {
+    if (roleName === "陌客") return { evil: false, minion: false, demon: false, roleName: player.roleName, source: "rule", reason: "hermit_poisoned" };
+    if (roleName === "间谍") return { evil: true, minion: true, demon: false, roleName: player.roleName, source: "rule", reason: "spy_poisoned" };
+  }
   const options = roleName === "间谍" ? "normal|good" : "normal|minion|demon";
   const aliveGood = state.players.filter(p => p.alive && p.team !== "minion" && p.team !== "demon").length;
   const aliveEvil = state.players.filter(p => p.alive && (p.team === "minion" || p.team === "demon")).length;

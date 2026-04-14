@@ -5,7 +5,7 @@
 
 import { state } from './state.js';
 import { PLAYER_JSON_SYSTEM_PROMPT } from './constants.js';
-import { extractJson, normalizeTargetName, isEvilSelfReveal } from './utils.js';
+import { extractJson, normalizeTargetName } from './utils.js';
 import { callDeepSeek, commitSessionMessages } from './api.js';
 import { addPrivateChat, formatPlayerPrivateChats, formatEvilChatForPrompt, isPrivateChatOpen } from './chat.js';
 import {
@@ -40,18 +40,12 @@ export async function respondToPrivate(player, mentionText) {
 ${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
-${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`
+${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应${human ? human.name : "对方"}（注意：这不是公开发言，只有对方能看到）。`
   );
   try {
     let usedPrompt = buildPrompt("");
     let content = await callDeepSeek(usedPrompt, getTempValue(), player, "chat", false);
     let text = content.trim() || "我没什么想说的。";
-    if (isEvilSelfReveal(player, text)) {
-      usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。");
-      content = await callDeepSeek(usedPrompt, getTempValue(), player, "chat", false);
-      text = content.trim() || "我没什么想说的。";
-    }
-    if (isEvilSelfReveal(player, text)) text = "我没什么想说的。";
     commitSessionMessages(player, "chat", usedPrompt, text);
     player.memory.push(text);
     addPrivateChat(player.name, human ? human.name : "你", text);
@@ -76,18 +70,12 @@ export async function aiPrivateReply(sender, target, text) {
 ${aliveDeadSummary}
 你的当前状态：${target.alive ? "存活" : "死亡"}。
 你的私密信息增量：${privateInfo}
-${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应（注意：这不是公开发言，只有对方能看到）。`
+${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}请用一小段话私聊回应${sender.name}（注意：这不是公开发言，只有对方能看到）。`
   );
   try {
     let usedPrompt = buildPrompt("");
     let content = await callDeepSeek(usedPrompt, getTempValue(), target, "chat", false);
     let reply = content.trim() || "我没什么想说的。";
-    if (isEvilSelfReveal(target, reply)) {
-      usedPrompt = buildPrompt("不要自曝为爪牙或恶魔，也不要承认自己是坏人。");
-      content = await callDeepSeek(usedPrompt, getTempValue(), target, "chat", false);
-      reply = content.trim() || "我没什么想说的。";
-    }
-    if (isEvilSelfReveal(target, reply)) reply = "我没什么想说的。";
     commitSessionMessages(target, "chat", usedPrompt, reply);
     target.memory.push(reply);
     addPrivateChat(target.name, sender.name, reply);

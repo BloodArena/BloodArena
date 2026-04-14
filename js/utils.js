@@ -2,7 +2,7 @@
  * utils.js — Utility functions extracted from singleplayer_demo.html
  */
 
-import { SCRIPT, EVIL_ROLE_NAMES } from './constants.js';
+import { SCRIPT } from './constants.js';
 import { state } from './state.js';
 
 export function shuffle(list) {
@@ -76,14 +76,6 @@ export function formatPromptChatLine(entry) {
   return `${speaker}: ${content}`;
 }
 
-export function isEvilSelfReveal(player, text) {
-  if (!player || (player.team !== "minion" && player.team !== "demon")) return false;
-  if (!text) return false;
-  return EVIL_ROLE_NAMES.some((name) => {
-    const pattern = new RegExp(`(我是|我就是|我才是|我其实是)\\s*${name}`);
-    return pattern.test(text);
-  });
-}
 
 export function normalizeTargetName(name) {
   if (!name) return "";
