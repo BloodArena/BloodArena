@@ -212,28 +212,51 @@ export const CHAT_NEAR_BOTTOM_THRESHOLD = 96;
 /* ===== TOKEN USAGE & COST TRACKER ===== */
 /* Pricing: USD per 1M tokens — [input, output].
    Add / update entries as needed. Key = model name (or prefix). */
+/* ─── Local pricing fallback (USD per 1M tokens: [input, output]) ─── */
 export const MODEL_PRICING = {
-  /* DeepSeek */
-  "deepseek-chat":        [0.27, 1.10],
+  "deepseek-chat-v3-0324":[0.20, 0.77],
+  "deepseek-chat":        [0.20, 0.77],
   "deepseek-reasoner":    [0.55, 2.19],
-  /* Gemini */
-  "gemini-3-pro":         [1.25, 10.00],
+  "deepseek-v3.2":        [0.26, 0.38],
+  "deepseek-v3":          [0.26, 0.38],
+  "gemini-3-pro":         [2.00, 12.00],
+  "gemini-3.1-pro":       [2.00, 12.00],
+  "gemini-3.1-flash-lite":[0.10, 0.40],
   "gemini-3-flash":       [0.10, 0.40],
-  /* Claude */
   "claude-3-haiku":       [0.25, 1.25],
   "claude-3-5-haiku":     [0.80, 4.00],
+  "claude-haiku-4.5":     [0.80, 4.00],
   "claude-haiku-4-5":     [0.80, 4.00],
   "claude-3-7-sonnet":    [3.00, 15.00],
+  "claude-sonnet-4.5":    [3.00, 15.00],
   "claude-sonnet-4":      [3.00, 15.00],
   "claude-sonnet-4-5":    [3.00, 15.00],
   "claude-opus-4":        [15.00, 75.00],
   "claude-opus-4-1":      [15.00, 75.00],
   "claude-opus-4-5":      [15.00, 75.00],
-  /* GPT */
-  "gpt-5.1":             [2.00, 8.00],
-  "gpt-5":               [2.00, 8.00],
-  /* OpenRouter — strip provider prefix before lookup */
-  "mimo-v2-pro":         [1.00, 3.00],
-  "minimax-m2.7":        [0.50, 2.00],
+  "claude-opus-4-6":      [5.00, 25.00],
+  "gpt-5.1":              [2.00, 8.00],
+  "gpt-5":                [2.50, 15.00],
+  "gpt-5.4":              [2.50, 15.00],
+  "gpt-4.1":              [2.00, 8.00],
+  "mimo-v2-pro":          [1.00, 3.00],
+  "minimax-m2.7":         [0.30, 1.20],
+  "minimax-m1":           [0.50, 2.00],
+  "grok-4.20-beta":       [2.00, 6.00],
+  "grok-4.1-fast":        [0.20, 0.50],
+  "grok-4.1":             [3.00, 15.00],
+  "grok-3-mini":          [0.30, 0.50],
+  "qwen3.5-397b":         [0.39, 2.34],
+  "qwen3-235b":           [0.70, 0.70],
+  "step-3.5-flash":       [0.10, 0.30],
+  "step-3.5":             [0.10, 0.30],
+  "step-2":               [0.50, 2.00],
+  "nemotron-3-super":     [0.10, 0.50],
+  "nemotron-ultra":       [0.50, 2.00],
+  "glm-5":                [0.72, 2.30],
+  "glm-4-plus":           [0.50, 2.00],
+  "kimi-k2.5":            [0.42, 2.20],
+  "kimi-k2":              [0.50, 2.00],
+  "seed-2.0-lite":        [0.25, 2.00],
 };
 

@@ -32,18 +32,49 @@ export function ensureTokenUsage() {
   if (!state.tokenUsage) state.tokenUsage = {};
 }
 
+export function estimateCost(model, promptTokens, completionTokens) {
+  const pricing = lookupPricing(model);
+  if (!pricing) return 0;
+  return (promptTokens / 1e6) * pricing[0] + (completionTokens / 1e6) * pricing[1];
+}
+
+function accumulateRawUsage(dst, src) {
+  if (!src || typeof src !== "object") return;
+  for (const key of Object.keys(src)) {
+    const val = src[key];
+    if (typeof val === "number") {
+      dst[key] = (dst[key] || 0) + val;
+    } else if (val && typeof val === "object" && !Array.isArray(val)) {
+      if (!dst[key] || typeof dst[key] !== "object") dst[key] = {};
+      accumulateRawUsage(dst[key], val);
+    }
+  }
+}
+
 export function recordTokenUsage(model, usage) {
   if (!state || !usage) return;
   ensureTokenUsage();
   const key = model || "unknown";
   if (!state.tokenUsage[key]) {
-    state.tokenUsage[key] = { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0 };
+    state.tokenUsage[key] = {
+      promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0, cost: 0,
+      costSource: {},
+      rawUsage: {}
+    };
   }
   const u = state.tokenUsage[key];
-  u.promptTokens += usage.prompt_tokens || usage.input_tokens || 0;
-  u.completionTokens += usage.completion_tokens || usage.output_tokens || 0;
-  u.totalTokens += usage.total_tokens || ((usage.prompt_tokens || usage.input_tokens || 0) + (usage.completion_tokens || usage.output_tokens || 0));
+  u.promptTokens += usage.promptTokens || 0;
+  u.completionTokens += usage.completionTokens || 0;
+  u.totalTokens += usage.totalTokens || 0;
   u.calls += 1;
+  u.cost += usage.cost || 0;
+
+  const src = usage.costSource || "unknown";
+  u.costSource[src] = (u.costSource[src] || 0) + 1;
+
+  if (usage.rawUsage) {
+    accumulateRawUsage(u.rawUsage, usage.rawUsage);
+  }
 }
 
 export function getTokenUsageSummary() {
@@ -52,13 +83,9 @@ export function getTokenUsageSummary() {
   let totalTokens = 0;
   const models = {};
   for (const [model, u] of Object.entries(state.tokenUsage)) {
-    const pricing = lookupPricing(model);
-    let cost = 0;
-    if (pricing) {
-      cost = (u.promptTokens / 1e6) * pricing[0] + (u.completionTokens / 1e6) * pricing[1];
-    }
-    models[model] = { ...u, cost, hasPricing: Boolean(pricing) };
-    totalCost += cost;
+    const hasPricing = u.cost > 0 || Boolean(lookupPricing(model));
+    models[model] = { ...u, hasPricing };
+    totalCost += u.cost || 0;
     totalTokens += u.totalTokens;
   }
   return { models, totalCost, totalTokens };
@@ -383,7 +410,22 @@ export async function callDeepSeek(messages, temperature, actor = null, sessionK
     const data = await response.json();
     const content = extractClaudeText(data);
     const reasoning = extractClaudeReasoning(data);
-    if (data.usage) recordTokenUsage(config.model, data.usage);
+    if (data.usage) {
+      const rawUsage = data.usage;
+      const promptTokens = rawUsage.input_tokens || 0;
+      const completionTokens = rawUsage.output_tokens || 0;
+      const totalTokens = promptTokens + completionTokens;
+      let cost = 0;
+      let costSource = "local_estimate";
+      if (typeof rawUsage.cost === "number") {
+        cost = rawUsage.cost; costSource = "api";
+      } else if (typeof data.total_cost === "number") {
+        cost = data.total_cost; costSource = "api";
+      } else {
+        cost = estimateCost(config.model, promptTokens, completionTokens);
+      }
+      recordTokenUsage(config.model, { promptTokens, completionTokens, totalTokens, cost, costSource, rawUsage });
+    }
     if (persist && actor) {
       commitSessionMessages(actor, sessionKey, messages, content);
     }
@@ -416,7 +458,22 @@ export async function callDeepSeek(messages, temperature, actor = null, sessionK
   const message = data.choices?.[0]?.message || {};
   const content = message.content || "";
   const reasoning = message.reasoning_content || message.reasoning || "";
-  if (data.usage) recordTokenUsage(config.model, data.usage);
+  if (data.usage) {
+    const rawUsage = data.usage;
+    const promptTokens = rawUsage.prompt_tokens || 0;
+    const completionTokens = rawUsage.completion_tokens || 0;
+    const totalTokens = rawUsage.total_tokens || (promptTokens + completionTokens);
+    let cost = 0;
+    let costSource = "local_estimate";
+    if (typeof rawUsage.cost === "number") {
+      cost = rawUsage.cost; costSource = "api";
+    } else if (typeof data.total_cost === "number") {
+      cost = data.total_cost; costSource = "api";
+    } else {
+      cost = estimateCost(config.model, promptTokens, completionTokens);
+    }
+    recordTokenUsage(config.model, { promptTokens, completionTokens, totalTokens, cost, costSource, rawUsage });
+  }
   if (persist && actor) {
     commitSessionMessages(actor, sessionKey, messages, content);
   }
@@ -443,7 +500,9 @@ export function renderTokenUsageDisplay() {
   let rows = modelKeys.map((m) => {
     const u = summary.models[m];
     const costStr = u.hasPricing ? fmtCost(u.cost) : "—";
-    return `<tr><td title="${m}">${m.length > 28 ? m.slice(0, 26) + "…" : m}</td><td>${u.calls}</td><td>${fmtNum(u.promptTokens)}</td><td>${fmtNum(u.completionTokens)}</td><td>${fmtNum(u.totalTokens)}</td><td>${costStr}</td></tr>`;
+    const srcCounts = u.costSource || {};
+    const srcHint = Object.entries(srcCounts).map(([k, v]) => `${k}:${v}`).join(" ");
+    return `<tr><td title="${m}">${m.length > 28 ? m.slice(0, 26) + "…" : m}</td><td>${u.calls}</td><td>${fmtNum(u.promptTokens)}</td><td>${fmtNum(u.completionTokens)}</td><td>${fmtNum(u.totalTokens)}</td><td title="${srcHint}">${costStr}</td></tr>`;
   }).join("");
   const hasAnyPricing = modelKeys.some((m) => summary.models[m].hasPricing);
   container.innerHTML =
