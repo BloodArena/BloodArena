@@ -647,6 +647,23 @@ export function renderTaskCardStatus() {
     return;
   }
 
+  if (state.evilChatPhase) {
+    const isHumanEvil = human && (human.team === "minion" || human.team === "demon");
+    if (isHumanEvil) {
+      title = "邪恶阵营密聊中";
+      desc = "你正在与邪恶同伴密聊，协商策略。";
+      hint = "密聊结束后将进入公开讨论。";
+    } else {
+      title = "邪恶阵营密聊中";
+      desc = "邪恶阵营正在密聊中，请耐心等待。";
+      hint = "此阶段你无法发言，密聊结束后将进入公开讨论。";
+    }
+    taskTitle.textContent = title;
+    taskDesc.textContent = desc;
+    taskHint.textContent = hint;
+    return;
+  }
+
   if (state.dayStage === "discussion") {
     const speaker = state.players.find((p) => p.id === state.currentSpeakerId);
     if (speaker && human && speaker.id === human.id) {
@@ -719,7 +736,7 @@ export function renderStatus() {
   if (state.started && state.ended && state.postGameChat) {
     extra = "赛后聊天";
   } else if (state.started && state.phase === "day") {
-    extra = state.dayStage === "discussion" ? "讨论中" : "提名阶段";
+    extra = state.evilChatPhase ? "邪恶阵营密聊中" : (state.dayStage === "discussion" ? "讨论中" : "提名阶段");
     if (state.dayStage === "discussion" && state.discussionMaxRemaining > 0) {
       const mins = Math.floor(state.discussionMaxRemaining / 60);
       const secs = state.discussionMaxRemaining % 60;
@@ -866,7 +883,7 @@ export function renderStatus() {
     state.dayStage !== "nomination" ||
     !state.currentNomineeId ||
     state.nominationPhase !== "voting";
-  forceNominationBtn.disabled = !state.started || state.ended || state.phase !== "day" || state.dayStage !== "discussion";
+  forceNominationBtn.disabled = !state.started || state.ended || state.phase !== "day" || state.dayStage !== "discussion" || state.evilChatPhase;
   const human = state.players.find((p) => p.isHuman);
   const humanEligibleToNominate =
     human &&
@@ -891,14 +908,21 @@ export function renderStatus() {
     !state.started || state.ended || !humanTurnToVote || state.humanVoted || !humanEligibleToVoteYes;
   voteNoBtn.disabled = !state.started || state.ended || !humanTurnToVote || state.humanVoted;
   endBtn.disabled = !state.started || state.ended;
-  passBtn.disabled = !state.started || state.ended || state.phase !== "day" || state.dayStage !== "discussion";
+  passBtn.disabled = !state.started || state.ended || state.phase !== "day" || state.dayStage !== "discussion" || state.evilChatPhase;
   const allowPostGameChat = state.started && state.ended && state.postGameChat;
   const nominationBlocksChat = state.dayStage === "nomination" && !allowPostGameChat;
+  const humanIsGood = human && human.team !== "minion" && human.team !== "demon";
+  const evilChatBlocksChat = state.evilChatPhase && humanIsGood;
+  const chatBlocked = nominationBlocksChat || evilChatBlocksChat;
   if (chatLockHint) {
-    chatLockHint.style.display = nominationBlocksChat ? "" : "none";
-    chatLockHint.textContent = nominationBlocksChat
-      ? "提名/投票阶段已锁定聊天输入，请先完成流程。"
-      : "";
+    chatLockHint.style.display = chatBlocked ? "" : "none";
+    if (evilChatBlocksChat) {
+      chatLockHint.textContent = "邪恶阵营密聊中，善良玩家无法发言，请等待密聊结束。";
+    } else if (nominationBlocksChat) {
+      chatLockHint.textContent = "提名/投票阶段已锁定聊天输入，请先完成流程。";
+    } else {
+      chatLockHint.textContent = "";
+    }
   }
   if (slayerFormatHint) {
     const showSlayerHint = isDiscussion && !state.paused;
@@ -911,8 +935,8 @@ export function renderStatus() {
     slayerTemplateBtn.style.display = isDiscussion ? "" : "none";
     slayerTemplateBtn.disabled = !isDiscussion || state.paused;
   }
-  sendBtn.disabled = !state.started || (!allowPostGameChat && state.ended) || nominationBlocksChat;
-  humanInput.disabled = !state.started || (!allowPostGameChat && state.ended) || nominationBlocksChat;
+  sendBtn.disabled = !state.started || (!allowPostGameChat && state.ended) || chatBlocked;
+  humanInput.disabled = !state.started || (!allowPostGameChat && state.ended) || chatBlocked;
   if (humanInput) {
     humanInput.placeholder = isDiscussion
       ? `你可以在这里发言...（猎手格式：${SLAYER_DECLARATION_TEMPLATE}）`
@@ -949,6 +973,9 @@ export function renderStatus() {
     chips.push(`存活 ${aliveCount}/${state.players.length}`);
     if (state.phase === "day") {
       chips.push(`提名 ${state.dayNominationCount || 0}`);
+    }
+    if (state.evilChatPhase) {
+      chips.push("邪恶阵营密聊中");
     }
     if (state.phase === "day" && state.dayStage === "discussion" && state.currentSpeakerId) {
       const speaker = state.players.find((p) => p.id === state.currentSpeakerId);

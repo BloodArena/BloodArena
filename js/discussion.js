@@ -214,6 +214,8 @@ export async function runEvilInternalChat() {
   );
   if (evilPlayers.length < 2) return;
 
+  state.evilChatPhase = true;
+  renderAll();
   state.evilChat = [];
   const msgCount = {};
   evilPlayers.forEach((p) => { msgCount[p.id] = 0; });
@@ -223,7 +225,7 @@ export async function runEvilInternalChat() {
   for (let round = 0; round < maxRounds; round++) {
     let anyoneSpoke = false;
     for (const player of evilPlayers) {
-      if (state.ended || state.paused) return;
+      if (state.ended || state.paused) { state.evilChatPhase = false; return; }
       if (msgCount[player.id] >= maxPerPlayer) continue;
 
       if (player.isHuman) {
@@ -264,6 +266,8 @@ ${evilHistory ? `当前密聊记录：\n${evilHistory}` : "（尚无发言）"}
     }
     if (!anyoneSpoke) break;
   }
+  state.evilChatPhase = false;
+  renderAll();
 }
 
 export async function startDiscussion(auto = true) {

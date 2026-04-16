@@ -586,6 +586,10 @@ export function isPrivateChatOpen() {
   if (state.phase !== "day") return false;
   if (state.dayCount !== 1) return false;
   if (state.dayStage === "nomination") return false;
+  if (state.evilChatPhase) {
+    const human = state.players.find((p) => p.isHuman);
+    if (!human || (human.team !== "minion" && human.team !== "demon")) return false;
+  }
   return true;
 }
 
@@ -595,6 +599,10 @@ export function canUseVoiceInput() {
     return Boolean(state.postGameChat);
   }
   if (state.phase !== "day") return false;
+  if (state.evilChatPhase) {
+    const human = state.players.find((p) => p.isHuman);
+    if (!human || (human.team !== "minion" && human.team !== "demon")) return false;
+  }
   return state.dayStage === "discussion";
 }
 
@@ -604,7 +612,15 @@ export function updatePrivateChatControls() {
   privateTargetSelect.disabled = !open;
   privateInput.disabled = !open;
   privateSendBtn.disabled = !open;
-  privateChatHint.textContent = open ? "仅白天1可使用私聊。" : "私聊仅在白天1开放。";
+  if (state && state.evilChatPhase) {
+    const human = state.players.find((p) => p.isHuman);
+    const humanIsGood = human && human.team !== "minion" && human.team !== "demon";
+    privateChatHint.textContent = humanIsGood
+      ? "邪恶阵营密聊中，善良玩家无法使用私聊。"
+      : "仅白天1可使用私聊。";
+  } else {
+    privateChatHint.textContent = open ? "仅白天1可使用私聊。" : "私聊仅在白天1开放。";
+  }
 }
 
 /* ─── prompt formatting helpers ──────────────────────────── */
