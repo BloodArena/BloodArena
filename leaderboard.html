@@ -10,14 +10,18 @@
   <style>
     :root {
       --bg: #0e0e12;
-      --surface: #1a1a24;
+      --surface: #16161e;
+      --surface2: #1e1e2a;
       --border: #2a2a3a;
+      --border-light: #3a3a4a;
       --text: #e0ddd4;
       --muted: #8a8a9a;
       --blood: #8b0000;
       --blood-light: #b22222;
       --gold: #c9a84c;
       --green: #28a060;
+      --blue: #4a90d9;
+      --purple: #9b59b6;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -25,168 +29,492 @@
       color: var(--text);
       font-family: "Noto Sans SC", sans-serif;
       min-height: 100vh;
-      padding: 24px;
+      padding: 24px 16px;
     }
-    .container { max-width: 1100px; margin: 0 auto; }
-    header {
-      text-align: center;
-      margin-bottom: 32px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 24px;
-    }
-    h1 {
-      font-family: "Cinzel", serif;
-      font-size: 2rem;
-      color: var(--blood-light);
-      margin-bottom: 8px;
-    }
+    .container { max-width: 1500px; margin: 0 auto; }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    h1 { font-family: "Cinzel", serif; font-size: 2.2rem; color: var(--blood-light); margin-bottom: 6px; letter-spacing: 2px; }
     .subtitle { color: var(--muted); font-size: 0.95rem; }
-    .meta-row {
-      display: flex;
-      justify-content: center;
-      gap: 24px;
-      margin-top: 12px;
-      font-size: 0.9rem;
-      color: var(--muted);
+
+    /* Summary cards */
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 24px;
     }
-    .meta-row span { background: var(--surface); padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border); }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-      font-size: 0.9rem;
-    }
-    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
-    th {
+    .card {
       background: var(--surface);
-      color: var(--gold);
-      font-weight: 600;
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+    .card .card-value { font-size: 1.5rem; font-weight: 700; margin-bottom: 2px; }
+    .card .card-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .card.gold .card-value { color: var(--gold); }
+    .card.blood .card-value { color: var(--blood-light); }
+    .card.green .card-value { color: var(--green); }
+    .card.blue .card-value { color: var(--blue); }
+
+    /* Tab nav */
+    .tab-nav {
+      display: flex; gap: 2px; margin-bottom: 16px;
+      border-bottom: 2px solid var(--border); overflow-x: auto;
+    }
+    .tab-btn {
+      background: none; border: none; color: var(--muted);
+      font-family: inherit; font-size: 0.85rem;
+      padding: 10px 16px; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { padding: 9px 12px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th {
+      background: var(--surface); color: var(--gold); font-weight: 600;
+      cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 2;
     }
     th:hover { color: var(--text); }
-    th .arrow { font-size: 0.7em; margin-left: 4px; }
-    tr:hover td { background: rgba(139, 0, 0, 0.08); }
-    .rank { font-weight: 700; color: var(--gold); width: 40px; text-align: center; }
-    .rank-1 { color: #ffd700; }
+    th .arrow { font-size: 0.65em; margin-left: 3px; }
+    td:first-child, th:first-child { text-align: center; }
+    td:nth-child(2), th:nth-child(2) { text-align: left; }
+    tr:hover td { background: rgba(139, 0, 0, 0.06); }
+    .rank { font-weight: 700; color: var(--gold); }
+    .rank-1 { color: #ffd700; font-size: 1.05em; }
     .rank-2 { color: #c0c0c0; }
     .rank-3 { color: #cd7f32; }
-    .model-name { font-weight: 500; }
+    .model-name { font-weight: 500; text-align: left !important; }
     .rate { font-variant-numeric: tabular-nums; }
-    .rate-good { color: var(--green); }
-    .rate-evil { color: var(--blood-light); }
     .cost { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .good-col { color: var(--green); }
+    .evil-col { color: var(--blood-light); }
+
+    /* Rate bar */
+    .rate-cell { position: relative; }
+    .rate-bar {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      border-radius: 2px; opacity: 0.12; z-index: 0;
+    }
+    .rate-cell .rate-val { position: relative; z-index: 1; }
+
+    /* ── H2H Matrix ── */
+    .h2h-table { border-collapse: collapse; font-size: 0.78rem; margin: 0 auto; }
+    .h2h-table th, .h2h-table td {
+      padding: 5px 4px; text-align: center;
+      border: 1px solid var(--border); min-width: 64px;
+    }
+    .h2h-table .h2h-corner { background: var(--surface); }
+    .h2h-table .h2h-row-label {
+      text-align: right; font-weight: 500; padding-right: 10px;
+      position: sticky; left: 0; background: var(--bg); z-index: 3; min-width: 130px;
+    }
+    .h2h-table .h2h-col-label {
+      writing-mode: vertical-rl; text-orientation: mixed;
+      font-weight: 500; height: 120px; vertical-align: bottom;
+      background: var(--bg);
+    }
+    .h2h-table .h2h-self { background: var(--surface2); color: var(--muted); }
+    .h2h-cell { font-variant-numeric: tabular-nums; cursor: default; position: relative; }
+    .h2h-cell .h2h-sub { display: block; font-size: 0.65rem; color: var(--muted); margin-top: 1px; }
+    .h2h-legend {
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      margin: 12px 0 8px; font-size: 0.8rem; color: var(--muted);
+    }
+    .h2h-legend-bar {
+      display: inline-block; width: 120px; height: 14px; border-radius: 3px;
+      background: linear-gradient(to right, #5a2020, #3a3020, #205a30);
+    }
+
+    /* ── Role Stats ── */
+    .role-section { margin-bottom: 28px; }
+    .role-cat-header {
+      font-size: 1.05rem; font-weight: 600; margin-bottom: 12px;
+      padding: 8px 14px; border-radius: 6px;
+    }
+    .role-cat-header.demon { background: rgba(178,34,34,0.12); color: var(--blood-light); border-left: 3px solid var(--blood-light); }
+    .role-cat-header.minion { background: rgba(155,89,182,0.12); color: var(--purple); border-left: 3px solid var(--purple); }
+    .role-cat-header.townsfolk { background: rgba(40,160,96,0.10); color: var(--green); border-left: 3px solid var(--green); }
+    .role-cat-header.outsider { background: rgba(74,144,217,0.10); color: var(--blue); border-left: 3px solid var(--blue); }
+    .role-block { margin-bottom: 18px; margin-left: 12px; }
+    .role-block-title {
+      font-size: 0.92rem; font-weight: 500; margin-bottom: 6px;
+      color: var(--text); display: flex; align-items: center; gap: 10px;
+    }
+    .role-block-title .role-meta { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+    .role-table { width: auto; min-width: 500px; }
+    .role-table th { font-size: 0.78rem; padding: 6px 10px; }
+    .role-table td { font-size: 0.82rem; padding: 6px 10px; }
+
+    /* Footer */
     footer {
-      text-align: center;
-      margin-top: 32px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.85rem;
+      text-align: center; margin-top: 28px; padding-top: 16px;
+      border-top: 1px solid var(--border); color: var(--muted);
+      font-size: 0.82rem; line-height: 1.8;
     }
     footer a { color: var(--blood-light); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
     #loading { text-align: center; padding: 40px; color: var(--muted); }
     #error { text-align: center; padding: 40px; color: var(--blood-light); display: none; }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 1.5rem; }
+      .summary-cards { grid-template-columns: repeat(2, 1fr); }
+      th, td { padding: 7px 6px; font-size: 0.78rem; }
+      .tab-btn { padding: 8px 10px; font-size: 0.8rem; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>Blood on the Clocktower</h1>
-      <div class="subtitle">AI 对战评测排行榜 — 暗流涌动 (Trouble Brewing)</div>
-      <div class="meta-row" id="metaRow"></div>
+      <div class="subtitle">AI 对战评测排行榜 — 暗流涌动 (Trouble Brewing) | 12 模型 &times; 60 局</div>
     </header>
-    <div id="loading">加载排行榜数据中...</div>
-    <div id="error">无法加载排行榜数据。请确认 results/leaderboard.json 存在。</div>
-    <table id="leaderboard" style="display:none">
-      <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
-    </table>
+
+    <div class="summary-cards" id="summaryCards"></div>
+
+    <div id="loading" style="display:none"></div>
+    <div id="error" style="display:none"></div>
+
+    <div id="mainContent" style="display:none">
+      <div class="tab-nav" id="tabNav">
+        <button class="tab-btn active" data-tab="overall">综合排名</button>
+        <button class="tab-btn" data-tab="good">善良阵营</button>
+        <button class="tab-btn" data-tab="evil">邪恶阵营</button>
+        <button class="tab-btn" data-tab="detail">详细数据</button>
+        <button class="tab-btn" data-tab="cost">花费分析</button>
+        <button class="tab-btn" data-tab="h2h">H2H 对阵</button>
+        <button class="tab-btn" data-tab="roles">角色统计</button>
+      </div>
+
+      <div class="tab-content active" id="tab-overall"><div class="table-wrap"><table><thead id="thead-overall"></thead><tbody id="tbody-overall"></tbody></table></div></div>
+      <div class="tab-content" id="tab-good"><div class="table-wrap"><table><thead id="thead-good"></thead><tbody id="tbody-good"></tbody></table></div></div>
+      <div class="tab-content" id="tab-evil"><div class="table-wrap"><table><thead id="thead-evil"></thead><tbody id="tbody-evil"></tbody></table></div></div>
+      <div class="tab-content" id="tab-detail"><div class="table-wrap"><table><thead id="thead-detail"></thead><tbody id="tbody-detail"></tbody></table></div></div>
+      <div class="tab-content" id="tab-cost"><div class="table-wrap"><table><thead id="thead-cost"></thead><tbody id="tbody-cost"></tbody></table></div></div>
+      <div class="tab-content" id="tab-h2h"><div class="table-wrap" id="h2h-wrap"></div></div>
+      <div class="tab-content" id="tab-roles"><div id="roles-wrap"></div></div>
+    </div>
+
     <footer>
-      <p>评测方法：12 个模型 &times; 12 人局，每模型 1 次恶魔 / 2 次爪牙 / 9 次好人</p>
-      <p style="margin-top:8px"><a href="index.html">想自己试试？点击进入单人对战模式</a></p>
+      <p>评测设置：5 组 &times; 12 局 = 60 局 | 12 人局 (暗流涌动) | 每模型每组 1 恶魔 / 2 爪牙 / 7 镇民 / 2 外来者</p>
+      <p>角色计数基于初始分配角色 | 每局花费基于 game_003–game_012 计算（排除前 2 局计费异常数据）</p>
+      <p>H2H 统计：仅在两个模型处于对立阵营（善良 vs 邪恶）时计数</p>
+      <p style="margin-top:6px"><a href="index.html">想自己试试？点击进入单人对战模式</a></p>
     </footer>
   </div>
+
   <script>
-    const columns = [
-      { key: "rank", label: "#", fmt: v => v },
-      { key: "label", label: "模型", fmt: v => v },
-      { key: "overallWinRate", label: "综合胜率", fmt: pct, cls: "rate" },
-      { key: "townsfolkWinRate", label: "镇民胜率", fmt: pct, cls: "rate rate-good" },
-      { key: "outsiderWinRate", label: "外来者胜率", fmt: pct, cls: "rate rate-good" },
-      { key: "goodWinRate", label: "善良胜率", fmt: pct, cls: "rate rate-good" },
-      { key: "evilWinRate", label: "邪恶胜率", fmt: pct, cls: "rate rate-evil" },
-      { key: "demonWinRate", label: "恶魔胜率", fmt: pct, cls: "rate rate-evil" },
-      { key: "minionWinRate", label: "爪牙胜率", fmt: pct, cls: "rate rate-evil" },
-      { key: "totalCost", label: "总花费", fmt: v => v != null ? "$" + v.toFixed(3) : "—", cls: "cost" },
-      { key: "avgCostPerGame", label: "均花费/局", fmt: v => v != null ? "$" + v.toFixed(4) : "—", cls: "cost" }
-    ];
-    function pct(v) { return v != null ? (v * 100).toFixed(1) + "%" : "N/A"; }
+  (function() {
+    /* ── helpers ── */
+    const pct = v => v != null ? (v * 100).toFixed(1) + "%" : "N/A";
+    const dollar = (v, d=2) => v != null ? "$" + v.toFixed(d) : "—";
+    const num = v => v != null ? v.toLocaleString() : "—";
 
+    /* ── tab table definitions ── */
+    const tabDefs = {
+      overall: {
+        defaultSort: "overallWinRate",
+        cols: [
+          { key: "rank", label: "#", fmt: v => v, noSort: true },
+          { key: "label", label: "模型", fmt: v => v },
+          { key: "games", label: "总局数", fmt: num },
+          { key: "totalWins", label: "总胜场", fmt: num },
+          { key: "overallWinRate", label: "综合胜率", fmt: pct, bar: true, barColor: "#c9a84c" },
+          { key: "goodWinRate", label: "善良胜率", fmt: pct, cls: "good-col" },
+          { key: "evilWinRate", label: "邪恶胜率", fmt: pct, cls: "evil-col" },
+          { key: "avgCostPerGame", label: "场均花费", fmt: v => dollar(v, 4), cls: "cost" },
+        ]
+      },
+      good: {
+        defaultSort: "goodWinRate",
+        cols: [
+          { key: "rank", label: "#", fmt: v => v, noSort: true },
+          { key: "label", label: "模型", fmt: v => v },
+          { key: "goodGames", label: "善良局数", fmt: num },
+          { key: "goodWins", label: "善良胜场", fmt: num },
+          { key: "goodWinRate", label: "善良胜率", fmt: pct, bar: true, barColor: "#28a060" },
+          { key: "townsfolkGames", label: "镇民局数", fmt: num },
+          { key: "townsfolkWins", label: "镇民胜场", fmt: num },
+          { key: "townsfolkWinRate", label: "镇民胜率", fmt: pct, cls: "good-col" },
+          { key: "outsiderGames", label: "外来者局数", fmt: num },
+          { key: "outsiderWins", label: "外来者胜场", fmt: num },
+          { key: "outsiderWinRate", label: "外来者胜率", fmt: pct, cls: "good-col" },
+        ]
+      },
+      evil: {
+        defaultSort: "evilWinRate",
+        cols: [
+          { key: "rank", label: "#", fmt: v => v, noSort: true },
+          { key: "label", label: "模型", fmt: v => v },
+          { key: "evilGames", label: "邪恶局数", fmt: num },
+          { key: "evilWins", label: "邪恶胜场", fmt: num },
+          { key: "evilWinRate", label: "邪恶胜率", fmt: pct, bar: true, barColor: "#b22222" },
+          { key: "demonGames", label: "恶魔局数", fmt: num },
+          { key: "demonWins", label: "恶魔胜场", fmt: num },
+          { key: "demonWinRate", label: "恶魔胜率", fmt: pct, cls: "evil-col" },
+          { key: "minionGames", label: "爪牙局数", fmt: num },
+          { key: "minionWins", label: "爪牙胜场", fmt: num },
+          { key: "minionWinRate", label: "爪牙胜率", fmt: pct, cls: "evil-col" },
+        ]
+      },
+      detail: {
+        defaultSort: "overallWinRate",
+        cols: [
+          { key: "rank", label: "#", fmt: v => v, noSort: true },
+          { key: "label", label: "模型", fmt: v => v },
+          { key: "overallWinRate", label: "综合胜率", fmt: pct, bar: true, barColor: "#c9a84c" },
+          { key: "demonWinRate", label: "恶魔胜率", fmt: pct, cls: "evil-col" },
+          { key: "minionWinRate", label: "爪牙胜率", fmt: pct, cls: "evil-col" },
+          { key: "townsfolkWinRate", label: "镇民胜率", fmt: pct, cls: "good-col" },
+          { key: "outsiderWinRate", label: "外来者胜率", fmt: pct, cls: "good-col" },
+          { key: "goodWinRate", label: "善良胜率", fmt: pct, cls: "good-col" },
+          { key: "evilWinRate", label: "邪恶胜率", fmt: pct, cls: "evil-col" },
+        ]
+      },
+      cost: {
+        defaultSort: "avgCostPerGame", defaultAsc: true,
+        cols: [
+          { key: "rank", label: "#", fmt: v => v, noSort: true },
+          { key: "label", label: "模型", fmt: v => v },
+          { key: "overallWinRate", label: "综合胜率", fmt: pct },
+          { key: "totalCost", label: "总花费", fmt: v => dollar(v, 3), cls: "cost" },
+          { key: "avgCostPerGame", label: "场均花费", fmt: v => dollar(v, 4), cls: "cost", bar: true, barColor: "#4a90d9" },
+          { key: "totalTokens", label: "总Token数", fmt: num, cls: "cost" },
+          { key: "avgTokensPerGame", label: "场均Token数", fmt: num, cls: "cost" },
+        ]
+      },
+    };
+
+    /* ── state ── */
     let data = null;
-    let sortKey = "overallWinRate";
-    let sortAsc = false;
-
-    async function load() {
-      try {
-        const resp = await fetch("results/leaderboard.json");
-        if (!resp.ok) throw new Error(resp.status);
-        data = await resp.json();
-        render();
-      } catch (e) {
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("error").style.display = "";
-      }
+    const tabState = {};
+    for (const [tab, def] of Object.entries(tabDefs)) {
+      tabState[tab] = { sortKey: def.defaultSort, sortAsc: def.defaultAsc || false };
     }
 
-    function render() {
+    /* ── hardcoded data ── */
+    data = {"generatedAt":"2026-04-16T04:09:17.569512","totalGames":60,"totalCost":648.656,"groups":5,"config":{"playerCount":12,"gamesPerGroup":12,"groups":5,"totalGames":60,"discussionRounds":3},"globalStats":{"goodGameWins":37,"evilGameWins":23,"totalGames":60,"goodGameWinRate":0.617,"evilGameWinRate":0.383,"avgModelWinRate":0.558,"avgGoodSideWinRate":0.617,"avgEvilSideWinRate":0.383},"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":3,"minionWins":8,"townsfolkWins":22,"outsiderWins":11,"evilWins":11,"goodWins":33,"totalWins":44,"totalCost":239.401164,"totalTokens":55996922,"demonWinRate":0.6,"minionWinRate":0.8,"townsfolkWinRate":0.71,"outsiderWinRate":0.786,"evilWinRate":0.733,"goodWinRate":0.733,"overallWinRate":0.733,"avgCostPerGame":3.9832,"avgTokensPerGame":933282},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":3,"minionWins":7,"townsfolkWins":21,"outsiderWins":11,"evilWins":10,"goodWins":32,"totalWins":42,"totalCost":147.064285,"totalTokens":49562661,"demonWinRate":0.6,"minionWinRate":0.7,"townsfolkWinRate":0.677,"outsiderWinRate":0.786,"evilWinRate":0.667,"goodWinRate":0.711,"overallWinRate":0.7,"avgCostPerGame":2.3032,"avgTokensPerGame":826044},{"model":"z-ai/glm-5","label":"GLM-5","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":3,"minionWins":5,"townsfolkWins":20,"outsiderWins":10,"evilWins":8,"goodWins":30,"totalWins":38,"totalCost":28.289373109999996,"totalTokens":28368856,"demonWinRate":0.6,"minionWinRate":0.5,"townsfolkWinRate":0.645,"outsiderWinRate":0.714,"evilWinRate":0.533,"goodWinRate":0.667,"overallWinRate":0.633,"avgCostPerGame":0.4878,"avgTokensPerGame":472814},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":3,"minionWins":3,"townsfolkWins":20,"outsiderWins":8,"evilWins":6,"goodWins":28,"totalWins":34,"totalCost":10.61211425,"totalTokens":29576496,"demonWinRate":0.6,"minionWinRate":0.3,"townsfolkWinRate":0.645,"outsiderWinRate":0.571,"evilWinRate":0.4,"goodWinRate":0.622,"overallWinRate":0.567,"avgCostPerGame":0.2122,"avgTokensPerGame":492942},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":1,"minionWins":4,"townsfolkWins":19,"outsiderWins":8,"evilWins":5,"goodWins":27,"totalWins":32,"totalCost":22.371944,"totalTokens":30166444,"demonWinRate":0.2,"minionWinRate":0.4,"townsfolkWinRate":0.613,"outsiderWinRate":0.571,"evilWinRate":0.333,"goodWinRate":0.6,"overallWinRate":0.533,"avgCostPerGame":0.3213,"avgTokensPerGame":502774},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":2,"minionWins":3,"townsfolkWins":18,"outsiderWins":9,"evilWins":5,"goodWins":27,"totalWins":32,"totalCost":43.21530759999999,"totalTokens":26836807,"demonWinRate":0.4,"minionWinRate":0.3,"townsfolkWinRate":0.581,"outsiderWinRate":0.643,"evilWinRate":0.333,"goodWinRate":0.6,"overallWinRate":0.533,"avgCostPerGame":0.6632,"avgTokensPerGame":447280},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":2,"minionWins":3,"townsfolkWins":17,"outsiderWins":10,"evilWins":5,"goodWins":27,"totalWins":32,"totalCost":86.82849,"totalTokens":33750193,"demonWinRate":0.4,"minionWinRate":0.3,"townsfolkWinRate":0.548,"outsiderWinRate":0.714,"evilWinRate":0.333,"goodWinRate":0.6,"overallWinRate":0.533,"avgCostPerGame":1.4581,"avgTokensPerGame":562503},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":2,"minionWins":3,"townsfolkWins":20,"outsiderWins":7,"evilWins":5,"goodWins":27,"totalWins":32,"totalCost":14.93459167444928,"totalTokens":25566331,"demonWinRate":0.4,"minionWinRate":0.3,"townsfolkWinRate":0.645,"outsiderWinRate":0.5,"evilWinRate":0.333,"goodWinRate":0.6,"overallWinRate":0.533,"avgCostPerGame":0.2513,"avgTokensPerGame":426106},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":1,"minionWins":3,"townsfolkWins":19,"outsiderWins":7,"evilWins":4,"goodWins":26,"totalWins":30,"totalCost":4.39447436,"totalTokens":32367350,"demonWinRate":0.2,"minionWinRate":0.3,"townsfolkWinRate":0.613,"outsiderWinRate":0.5,"evilWinRate":0.267,"goodWinRate":0.578,"overallWinRate":0.5,"avgCostPerGame":0.0725,"avgTokensPerGame":539456},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":1,"minionWins":3,"townsfolkWins":17,"outsiderWins":9,"evilWins":4,"goodWins":26,"totalWins":30,"totalCost":9.716693359999999,"totalTokens":27579526,"demonWinRate":0.2,"minionWinRate":0.3,"townsfolkWinRate":0.548,"outsiderWinRate":0.643,"evilWinRate":0.267,"goodWinRate":0.578,"overallWinRate":0.5,"avgCostPerGame":0.162,"avgTokensPerGame":459659},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":1,"minionWins":2,"townsfolkWins":17,"outsiderWins":8,"evilWins":3,"goodWins":25,"totalWins":28,"totalCost":8.343113667999999,"totalTokens":27451427,"demonWinRate":0.2,"minionWinRate":0.2,"townsfolkWinRate":0.548,"outsiderWinRate":0.571,"evilWinRate":0.2,"goodWinRate":0.556,"overallWinRate":0.467,"avgCostPerGame":0.1358,"avgTokensPerGame":457524},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":60,"demonGames":5,"minionGames":10,"townsfolkGames":31,"outsiderGames":14,"goodGames":45,"evilGames":15,"demonWins":1,"minionWins":2,"townsfolkWins":19,"outsiderWins":6,"evilWins":3,"goodWins":25,"totalWins":28,"totalCost":33.4840602,"totalTokens":33861766,"demonWinRate":0.2,"minionWinRate":0.2,"townsfolkWinRate":0.613,"outsiderWinRate":0.429,"evilWinRate":0.2,"goodWinRate":0.556,"overallWinRate":0.467,"avgCostPerGame":0.5591,"avgTokensPerGame":564363}],"h2h":{"models":["anthropic/claude-sonnet-4.6","openai/gpt-5.4","z-ai/glm-5","bytedance-seed/seed-2.0-lite","xiaomi/mimo-v2-pro","x-ai/grok-4.20-beta","google/gemini-3.1-pro-preview","moonshotai/kimi-k2.5","stepfun/step-3.5-flash","minimax/minimax-m2.7","deepseek/deepseek-v3.2","qwen/qwen3.5-397b-a17b"],"labels":["Claude Sonnet 4.6","GPT-5.4","GLM-5","Seed 2.0 Lite","MiMo V2 Pro","Grok 4.20 Beta","Gemini 3.1 Pro","kimi k2.5","step 3.5 flash","MiniMax M2.7","DeepSeek V3.2","Qwen3.5 397B"],"matrix":{"anthropic/claude-sonnet-4.6":{"openai/gpt-5.4":{"wins":11,"encounters":20,"winRate":0.55},"z-ai/glm-5":{"wins":15,"encounters":24,"winRate":0.625},"bytedance-seed/seed-2.0-lite":{"wins":18,"encounters":26,"winRate":0.692},"xiaomi/mimo-v2-pro":{"wins":20,"encounters":28,"winRate":0.714},"x-ai/grok-4.20-beta":{"wins":18,"encounters":24,"winRate":0.75},"google/gemini-3.1-pro-preview":{"wins":20,"encounters":28,"winRate":0.714},"moonshotai/kimi-k2.5":{"wins":18,"encounters":24,"winRate":0.75},"stepfun/step-3.5-flash":{"wins":20,"encounters":26,"winRate":0.769},"minimax/minimax-m2.7":{"wins":17,"encounters":20,"winRate":0.85},"deepseek/deepseek-v3.2":{"wins":20,"encounters":24,"winRate":0.833},"qwen/qwen3.5-397b-a17b":{"wins":21,"encounters":26,"winRate":0.808}},"openai/gpt-5.4":{"anthropic/claude-sonnet-4.6":{"wins":9,"encounters":20,"winRate":0.45},"z-ai/glm-5":{"wins":12,"encounters":20,"winRate":0.6},"bytedance-seed/seed-2.0-lite":{"wins":16,"encounters":24,"winRate":0.667},"xiaomi/mimo-v2-pro":{"wins":17,"encounters":24,"winRate":0.708},"x-ai/grok-4.20-beta":{"wins":18,"encounters":26,"winRate":0.692},"google/gemini-3.1-pro-preview":{"wins":19,"encounters":28,"winRate":0.679},"moonshotai/kimi-k2.5":{"wins":19,"encounters":28,"winRate":0.679},"stepfun/step-3.5-flash":{"wins":18,"encounters":24,"winRate":0.75},"minimax/minimax-m2.7":{"wins":18,"encounters":24,"winRate":0.75},"deepseek/deepseek-v3.2":{"wins":20,"encounters":26,"winRate":0.769},"qwen/qwen3.5-397b-a17b":{"wins":20,"encounters":26,"winRate":0.769}},"z-ai/glm-5":{"anthropic/claude-sonnet-4.6":{"wins":9,"encounters":24,"winRate":0.375},"openai/gpt-5.4":{"wins":8,"encounters":20,"winRate":0.4},"bytedance-seed/seed-2.0-lite":{"wins":12,"encounters":20,"winRate":0.6},"xiaomi/mimo-v2-pro":{"wins":16,"encounters":26,"winRate":0.615},"x-ai/grok-4.20-beta":{"wins":16,"encounters":26,"winRate":0.615},"google/gemini-3.1-pro-preview":{"wins":15,"encounters":24,"winRate":0.625},"moonshotai/kimi-k2.5":{"wins":17,"encounters":28,"winRate":0.607},"stepfun/step-3.5-flash":{"wins":18,"encounters":28,"winRate":0.643},"minimax/minimax-m2.7":{"wins":17,"encounters":26,"winRate":0.654},"deepseek/deepseek-v3.2":{"wins":17,"encounters":24,"winRate":0.708},"qwen/qwen3.5-397b-a17b":{"wins":17,"encounters":24,"winRate":0.708}},"bytedance-seed/seed-2.0-lite":{"anthropic/claude-sonnet-4.6":{"wins":8,"encounters":26,"winRate":0.308},"openai/gpt-5.4":{"wins":8,"encounters":24,"winRate":0.333},"z-ai/glm-5":{"wins":8,"encounters":20,"winRate":0.4},"xiaomi/mimo-v2-pro":{"wins":14,"encounters":26,"winRate":0.538},"x-ai/grok-4.20-beta":{"wins":13,"encounters":24,"winRate":0.542},"google/gemini-3.1-pro-preview":{"wins":14,"encounters":26,"winRate":0.538},"moonshotai/kimi-k2.5":{"wins":13,"encounters":24,"winRate":0.542},"stepfun/step-3.5-flash":{"wins":16,"encounters":28,"winRate":0.571},"minimax/minimax-m2.7":{"wins":14,"encounters":24,"winRate":0.583},"deepseek/deepseek-v3.2":{"wins":13,"encounters":20,"winRate":0.65},"qwen/qwen3.5-397b-a17b":{"wins":17,"encounters":28,"winRate":0.607}},"xiaomi/mimo-v2-pro":{"anthropic/claude-sonnet-4.6":{"wins":8,"encounters":28,"winRate":0.286},"openai/gpt-5.4":{"wins":7,"encounters":24,"winRate":0.292},"z-ai/glm-5":{"wins":10,"encounters":26,"winRate":0.385},"bytedance-seed/seed-2.0-lite":{"wins":12,"encounters":26,"winRate":0.462},"x-ai/grok-4.20-beta":{"wins":10,"encounters":20,"winRate":0.5},"google/gemini-3.1-pro-preview":{"wins":10,"encounters":20,"winRate":0.5},"moonshotai/kimi-k2.5":{"wins":12,"encounters":24,"winRate":0.5},"stepfun/step-3.5-flash":{"wins":14,"encounters":26,"winRate":0.538},"minimax/minimax-m2.7":{"wins":15,"encounters":28,"winRate":0.536},"deepseek/deepseek-v3.2":{"wins":14,"encounters":24,"winRate":0.583},"qwen/qwen3.5-397b-a17b":{"wins":14,"encounters":24,"winRate":0.583}},"x-ai/grok-4.20-beta":{"anthropic/claude-sonnet-4.6":{"wins":6,"encounters":24,"winRate":0.25},"openai/gpt-5.4":{"wins":8,"encounters":26,"winRate":0.308},"z-ai/glm-5":{"wins":10,"encounters":26,"winRate":0.385},"bytedance-seed/seed-2.0-lite":{"wins":11,"encounters":24,"winRate":0.458},"xiaomi/mimo-v2-pro":{"wins":10,"encounters":20,"winRate":0.5},"google/gemini-3.1-pro-preview":{"wins":12,"encounters":24,"winRate":0.5},"moonshotai/kimi-k2.5":{"wins":13,"encounters":26,"winRate":0.5},"stepfun/step-3.5-flash":{"wins":13,"encounters":24,"winRate":0.542},"minimax/minimax-m2.7":{"wins":15,"encounters":28,"winRate":0.536},"deepseek/deepseek-v3.2":{"wins":16,"encounters":28,"winRate":0.571},"qwen/qwen3.5-397b-a17b":{"wins":12,"encounters":20,"winRate":0.6}},"google/gemini-3.1-pro-preview":{"anthropic/claude-sonnet-4.6":{"wins":8,"encounters":28,"winRate":0.286},"openai/gpt-5.4":{"wins":9,"encounters":28,"winRate":0.321},"z-ai/glm-5":{"wins":9,"encounters":24,"winRate":0.375},"bytedance-seed/seed-2.0-lite":{"wins":12,"encounters":26,"winRate":0.462},"xiaomi/mimo-v2-pro":{"wins":10,"encounters":20,"winRate":0.5},"x-ai/grok-4.20-beta":{"wins":12,"encounters":24,"winRate":0.5},"moonshotai/kimi-k2.5":{"wins":10,"encounters":20,"winRate":0.5},"stepfun/step-3.5-flash":{"wins":13,"encounters":24,"winRate":0.542},"minimax/minimax-m2.7":{"wins":13,"encounters":24,"winRate":0.542},"deepseek/deepseek-v3.2":{"wins":15,"encounters":26,"winRate":0.577},"qwen/qwen3.5-397b-a17b":{"wins":15,"encounters":26,"winRate":0.577}},"moonshotai/kimi-k2.5":{"anthropic/claude-sonnet-4.6":{"wins":6,"encounters":24,"winRate":0.25},"openai/gpt-5.4":{"wins":9,"encounters":28,"winRate":0.321},"z-ai/glm-5":{"wins":11,"encounters":28,"winRate":0.393},"bytedance-seed/seed-2.0-lite":{"wins":11,"encounters":24,"winRate":0.458},"xiaomi/mimo-v2-pro":{"wins":12,"encounters":24,"winRate":0.5},"x-ai/grok-4.20-beta":{"wins":13,"encounters":26,"winRate":0.5},"google/gemini-3.1-pro-preview":{"wins":10,"encounters":20,"winRate":0.5},"stepfun/step-3.5-flash":{"wins":11,"encounters":20,"winRate":0.55},"minimax/minimax-m2.7":{"wins":14,"encounters":26,"winRate":0.538},"deepseek/deepseek-v3.2":{"wins":15,"encounters":26,"winRate":0.577},"qwen/qwen3.5-397b-a17b":{"wins":14,"encounters":24,"winRate":0.583}},"stepfun/step-3.5-flash":{"anthropic/claude-sonnet-4.6":{"wins":6,"encounters":26,"winRate":0.231},"openai/gpt-5.4":{"wins":6,"encounters":24,"winRate":0.25},"z-ai/glm-5":{"wins":10,"encounters":28,"winRate":0.357},"bytedance-seed/seed-2.0-lite":{"wins":12,"encounters":28,"winRate":0.429},"xiaomi/mimo-v2-pro":{"wins":12,"encounters":26,"winRate":0.462},"x-ai/grok-4.20-beta":{"wins":11,"encounters":24,"winRate":0.458},"google/gemini-3.1-pro-preview":{"wins":11,"encounters":24,"winRate":0.458},"moonshotai/kimi-k2.5":{"wins":9,"encounters":20,"winRate":0.45},"minimax/minimax-m2.7":{"wins":13,"encounters":26,"winRate":0.5},"deepseek/deepseek-v3.2":{"wins":13,"encounters":24,"winRate":0.542},"qwen/qwen3.5-397b-a17b":{"wins":11,"encounters":20,"winRate":0.55}},"minimax/minimax-m2.7":{"anthropic/claude-sonnet-4.6":{"wins":3,"encounters":20,"winRate":0.15},"openai/gpt-5.4":{"wins":6,"encounters":24,"winRate":0.25},"z-ai/glm-5":{"wins":9,"encounters":26,"winRate":0.346},"bytedance-seed/seed-2.0-lite":{"wins":10,"encounters":24,"winRate":0.417},"xiaomi/mimo-v2-pro":{"wins":13,"encounters":28,"winRate":0.464},"x-ai/grok-4.20-beta":{"wins":13,"encounters":28,"winRate":0.464},"google/gemini-3.1-pro-preview":{"wins":11,"encounters":24,"winRate":0.458},"moonshotai/kimi-k2.5":{"wins":12,"encounters":26,"winRate":0.462},"stepfun/step-3.5-flash":{"wins":13,"encounters":26,"winRate":0.5},"deepseek/deepseek-v3.2":{"wins":11,"encounters":20,"winRate":0.55},"qwen/qwen3.5-397b-a17b":{"wins":13,"encounters":24,"winRate":0.542}},"deepseek/deepseek-v3.2":{"anthropic/claude-sonnet-4.6":{"wins":4,"encounters":24,"winRate":0.167},"openai/gpt-5.4":{"wins":6,"encounters":26,"winRate":0.231},"z-ai/glm-5":{"wins":7,"encounters":24,"winRate":0.292},"bytedance-seed/seed-2.0-lite":{"wins":7,"encounters":20,"winRate":0.35},"xiaomi/mimo-v2-pro":{"wins":10,"encounters":24,"winRate":0.417},"x-ai/grok-4.20-beta":{"wins":12,"encounters":28,"winRate":0.429},"google/gemini-3.1-pro-preview":{"wins":11,"encounters":26,"winRate":0.423},"moonshotai/kimi-k2.5":{"wins":11,"encounters":26,"winRate":0.423},"stepfun/step-3.5-flash":{"wins":11,"encounters":24,"winRate":0.458},"minimax/minimax-m2.7":{"wins":9,"encounters":20,"winRate":0.45},"qwen/qwen3.5-397b-a17b":{"wins":14,"encounters":28,"winRate":0.5}},"qwen/qwen3.5-397b-a17b":{"anthropic/claude-sonnet-4.6":{"wins":5,"encounters":26,"winRate":0.192},"openai/gpt-5.4":{"wins":6,"encounters":26,"winRate":0.231},"z-ai/glm-5":{"wins":7,"encounters":24,"winRate":0.292},"bytedance-seed/seed-2.0-lite":{"wins":11,"encounters":28,"winRate":0.393},"xiaomi/mimo-v2-pro":{"wins":10,"encounters":24,"winRate":0.417},"x-ai/grok-4.20-beta":{"wins":8,"encounters":20,"winRate":0.4},"google/gemini-3.1-pro-preview":{"wins":11,"encounters":26,"winRate":0.423},"moonshotai/kimi-k2.5":{"wins":10,"encounters":24,"winRate":0.417},"stepfun/step-3.5-flash":{"wins":9,"encounters":20,"winRate":0.45},"minimax/minimax-m2.7":{"wins":11,"encounters":24,"winRate":0.458},"deepseek/deepseek-v3.2":{"wins":14,"encounters":28,"winRate":0.5}}}},"roleStats":{"categories":[{"name":"demon","label":"恶魔","roles":[{"role":"小恶魔","totalGames":60,"totalWins":23,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":5,"wins":3,"winRate":0.6},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":5,"wins":3,"winRate":0.6},{"model":"z-ai/glm-5","label":"GLM-5","games":5,"wins":3,"winRate":0.6},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":5,"wins":3,"winRate":0.6},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":5,"wins":2,"winRate":0.4},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":5,"wins":2,"winRate":0.4},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":5,"wins":2,"winRate":0.4},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":5,"wins":1,"winRate":0.2},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":5,"wins":1,"winRate":0.2},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":5,"wins":1,"winRate":0.2},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":5,"wins":1,"winRate":0.2},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":5,"wins":1,"winRate":0.2}]}]},{"name":"minion","label":"爪牙","roles":[{"role":"投毒者","totalGames":60,"totalWins":23,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":5,"wins":3,"winRate":0.6},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":5,"wins":3,"winRate":0.6},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":5,"wins":3,"winRate":0.6},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":5,"wins":3,"winRate":0.6},{"model":"z-ai/glm-5","label":"GLM-5","games":5,"wins":2,"winRate":0.4},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":5,"wins":2,"winRate":0.4},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":5,"wins":2,"winRate":0.4},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":5,"wins":1,"winRate":0.2},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":5,"wins":1,"winRate":0.2},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":5,"wins":1,"winRate":0.2},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":5,"wins":1,"winRate":0.2},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":5,"wins":1,"winRate":0.2}]},{"role":"间谍","totalGames":12,"totalWins":3,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":1,"wins":1,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":1,"wins":1,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":1,"wins":1,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":1,"wins":0,"winRate":0.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":1,"wins":0,"winRate":0.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":1,"wins":0,"winRate":0.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":1,"wins":0,"winRate":0.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":1,"wins":0,"winRate":0.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":1,"wins":0,"winRate":0.0},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":1,"wins":0,"winRate":0.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":1,"wins":0,"winRate":0.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":1,"wins":0,"winRate":0.0}]},{"role":"红唇女郎","totalGames":24,"totalWins":11,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":2,"wins":2,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":2,"wins":2,"winRate":1.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":2,"wins":2,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":2,"wins":1,"winRate":0.5},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":2,"wins":1,"winRate":0.5},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":2,"wins":1,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":2,"wins":1,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":2,"wins":1,"winRate":0.5},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":2,"wins":0,"winRate":0.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":2,"wins":0,"winRate":0.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":2,"wins":0,"winRate":0.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":2,"wins":0,"winRate":0.0}]},{"role":"男爵","totalGames":24,"totalWins":9,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":2,"wins":2,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":2,"wins":2,"winRate":1.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":2,"wins":2,"winRate":1.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":2,"wins":1,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":2,"wins":1,"winRate":0.5},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":2,"wins":1,"winRate":0.5},{"model":"z-ai/glm-5","label":"GLM-5","games":2,"wins":0,"winRate":0.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":2,"wins":0,"winRate":0.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":2,"wins":0,"winRate":0.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":2,"wins":0,"winRate":0.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":2,"wins":0,"winRate":0.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":2,"wins":0,"winRate":0.0}]}]},{"name":"townsfolk","label":"镇民","roles":[{"role":"洗衣妇","totalGames":48,"totalWins":29,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":4,"wins":4,"winRate":1.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":4,"wins":4,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":4,"wins":3,"winRate":0.75},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":4,"wins":3,"winRate":0.75},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":4,"wins":3,"winRate":0.75},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":4,"wins":2,"winRate":0.5},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":4,"wins":2,"winRate":0.5},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":4,"wins":2,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":4,"wins":2,"winRate":0.5},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":4,"wins":2,"winRate":0.5},{"model":"z-ai/glm-5","label":"GLM-5","games":4,"wins":1,"winRate":0.25},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":4,"wins":1,"winRate":0.25}]},{"role":"图书管理员","totalGames":48,"totalWins":31,"models":[{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":4,"wins":4,"winRate":1.0},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":4,"wins":3,"winRate":0.75},{"model":"z-ai/glm-5","label":"GLM-5","games":4,"wins":3,"winRate":0.75},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":4,"wins":3,"winRate":0.75},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":4,"wins":3,"winRate":0.75},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":4,"wins":3,"winRate":0.75},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":4,"wins":2,"winRate":0.5},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":4,"wins":2,"winRate":0.5},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":4,"wins":2,"winRate":0.5},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":4,"wins":2,"winRate":0.5},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":4,"wins":2,"winRate":0.5},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":4,"wins":2,"winRate":0.5}]},{"role":"调查员","totalGames":24,"totalWins":15,"models":[{"model":"openai/gpt-5.4","label":"GPT-5.4","games":2,"wins":2,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":2,"wins":2,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":2,"wins":2,"winRate":1.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":2,"wins":2,"winRate":1.0},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":2,"wins":1,"winRate":0.5},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":2,"wins":1,"winRate":0.5},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":2,"wins":1,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":2,"wins":1,"winRate":0.5},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":2,"wins":1,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":2,"wins":1,"winRate":0.5},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":2,"wins":1,"winRate":0.5},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":2,"wins":0,"winRate":0.0}]},{"role":"厨师","totalGames":12,"totalWins":6,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":1,"wins":1,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":1,"wins":1,"winRate":1.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":1,"wins":1,"winRate":1.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":1,"wins":1,"winRate":1.0},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":1,"wins":1,"winRate":1.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":1,"wins":1,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":1,"wins":0,"winRate":0.0},{"model":"z-ai/glm-5","label":"GLM-5","games":1,"wins":0,"winRate":0.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":1,"wins":0,"winRate":0.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":1,"wins":0,"winRate":0.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":1,"wins":0,"winRate":0.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":1,"wins":0,"winRate":0.0}]},{"role":"共情者","totalGames":36,"totalWins":22,"models":[{"model":"z-ai/glm-5","label":"GLM-5","games":3,"wins":3,"winRate":1.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":3,"wins":3,"winRate":1.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":3,"wins":3,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":3,"wins":2,"winRate":0.667},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":3,"wins":2,"winRate":0.667},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":3,"wins":2,"winRate":0.667},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":3,"wins":2,"winRate":0.667},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":3,"wins":2,"winRate":0.667},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":3,"wins":1,"winRate":0.333},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":3,"wins":1,"winRate":0.333},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":3,"wins":1,"winRate":0.333},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":3,"wins":0,"winRate":0.0}]},{"role":"占卜师","totalGames":24,"totalWins":15,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":2,"wins":2,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":2,"wins":2,"winRate":1.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":2,"wins":2,"winRate":1.0},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":2,"wins":2,"winRate":1.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":2,"wins":2,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":2,"wins":2,"winRate":1.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":2,"wins":1,"winRate":0.5},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":2,"wins":1,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":2,"wins":1,"winRate":0.5},{"model":"z-ai/glm-5","label":"GLM-5","games":2,"wins":0,"winRate":0.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":2,"wins":0,"winRate":0.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":2,"wins":0,"winRate":0.0}]},{"role":"送葬者","totalGames":12,"totalWins":6,"models":[{"model":"z-ai/glm-5","label":"GLM-5","games":1,"wins":1,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":1,"wins":1,"winRate":1.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":1,"wins":1,"winRate":1.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":1,"wins":1,"winRate":1.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":1,"wins":1,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":1,"wins":1,"winRate":1.0},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":1,"wins":0,"winRate":0.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":1,"wins":0,"winRate":0.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":1,"wins":0,"winRate":0.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":1,"wins":0,"winRate":0.0},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":1,"wins":0,"winRate":0.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":1,"wins":0,"winRate":0.0}]},{"role":"僧侣","totalGames":36,"totalWins":23,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":3,"wins":3,"winRate":1.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":3,"wins":3,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":3,"wins":3,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":3,"wins":2,"winRate":0.667},{"model":"z-ai/glm-5","label":"GLM-5","games":3,"wins":2,"winRate":0.667},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":3,"wins":2,"winRate":0.667},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":3,"wins":2,"winRate":0.667},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":3,"wins":2,"winRate":0.667},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":3,"wins":1,"winRate":0.333},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":3,"wins":1,"winRate":0.333},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":3,"wins":1,"winRate":0.333},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":3,"wins":1,"winRate":0.333}]},{"role":"守鸦人","totalGames":12,"totalWins":7,"models":[{"model":"openai/gpt-5.4","label":"GPT-5.4","games":1,"wins":1,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":1,"wins":1,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":1,"wins":1,"winRate":1.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":1,"wins":1,"winRate":1.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":1,"wins":1,"winRate":1.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":1,"wins":1,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":1,"wins":1,"winRate":1.0},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":1,"wins":0,"winRate":0.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":1,"wins":0,"winRate":0.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":1,"wins":0,"winRate":0.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":1,"wins":0,"winRate":0.0},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":1,"wins":0,"winRate":0.0}]},{"role":"贞洁者","totalGames":24,"totalWins":16,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":2,"wins":2,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":2,"wins":2,"winRate":1.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":2,"wins":2,"winRate":1.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":2,"wins":2,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":2,"wins":2,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":2,"wins":1,"winRate":0.5},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":2,"wins":1,"winRate":0.5},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":2,"wins":1,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":2,"wins":1,"winRate":0.5},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":2,"wins":1,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":2,"wins":1,"winRate":0.5},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":2,"wins":0,"winRate":0.0}]},{"role":"猎手","totalGames":48,"totalWins":30,"models":[{"model":"z-ai/glm-5","label":"GLM-5","games":4,"wins":4,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":4,"wins":4,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":4,"wins":3,"winRate":0.75},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":4,"wins":3,"winRate":0.75},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":4,"wins":3,"winRate":0.75},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":4,"wins":3,"winRate":0.75},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":4,"wins":2,"winRate":0.5},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":4,"wins":2,"winRate":0.5},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":4,"wins":2,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":4,"wins":2,"winRate":0.5},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":4,"wins":1,"winRate":0.25},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":4,"wins":1,"winRate":0.25}]},{"role":"士兵","totalGames":36,"totalWins":22,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":3,"wins":3,"winRate":1.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":3,"wins":3,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":3,"wins":2,"winRate":0.667},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":3,"wins":2,"winRate":0.667},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":3,"wins":2,"winRate":0.667},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":3,"wins":2,"winRate":0.667},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":3,"wins":2,"winRate":0.667},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":3,"wins":2,"winRate":0.667},{"model":"z-ai/glm-5","label":"GLM-5","games":3,"wins":1,"winRate":0.333},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":3,"wins":1,"winRate":0.333},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":3,"wins":1,"winRate":0.333},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":3,"wins":1,"winRate":0.333}]},{"role":"镇长","totalGames":12,"totalWins":7,"models":[{"model":"z-ai/glm-5","label":"GLM-5","games":1,"wins":1,"winRate":1.0},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":1,"wins":1,"winRate":1.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":1,"wins":1,"winRate":1.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":1,"wins":1,"winRate":1.0},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":1,"wins":1,"winRate":1.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":1,"wins":1,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":1,"wins":1,"winRate":1.0},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":1,"wins":0,"winRate":0.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":1,"wins":0,"winRate":0.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":1,"wins":0,"winRate":0.0},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":1,"wins":0,"winRate":0.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":1,"wins":0,"winRate":0.0}]}]},{"name":"outsider","label":"外来者","roles":[{"role":"管家","totalGames":24,"totalWins":15,"models":[{"model":"openai/gpt-5.4","label":"GPT-5.4","games":2,"wins":2,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":2,"wins":2,"winRate":1.0},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":2,"wins":2,"winRate":1.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":2,"wins":2,"winRate":1.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":2,"wins":2,"winRate":1.0},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":2,"wins":2,"winRate":1.0},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":2,"wins":1,"winRate":0.5},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":2,"wins":1,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":2,"wins":1,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":2,"wins":0,"winRate":0.0},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":2,"wins":0,"winRate":0.0},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":2,"wins":0,"winRate":0.0}]},{"role":"酒鬼","totalGames":48,"totalWins":31,"models":[{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":4,"wins":4,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":4,"wins":3,"winRate":0.75},{"model":"z-ai/glm-5","label":"GLM-5","games":4,"wins":3,"winRate":0.75},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":4,"wins":3,"winRate":0.75},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":4,"wins":3,"winRate":0.75},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":4,"wins":3,"winRate":0.75},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":4,"wins":3,"winRate":0.75},{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":4,"wins":2,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":4,"wins":2,"winRate":0.5},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":4,"wins":2,"winRate":0.5},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":4,"wins":2,"winRate":0.5},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":4,"wins":1,"winRate":0.25}]},{"role":"陌客","totalGames":48,"totalWins":28,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":4,"wins":4,"winRate":1.0},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":4,"wins":3,"winRate":0.75},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":4,"wins":3,"winRate":0.75},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":4,"wins":3,"winRate":0.75},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":4,"wins":3,"winRate":0.75},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":4,"wins":3,"winRate":0.75},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":4,"wins":2,"winRate":0.5},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":4,"wins":2,"winRate":0.5},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":4,"wins":2,"winRate":0.5},{"model":"z-ai/glm-5","label":"GLM-5","games":4,"wins":1,"winRate":0.25},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":4,"wins":1,"winRate":0.25},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":4,"wins":1,"winRate":0.25}]},{"role":"圣徒","totalGames":48,"totalWins":30,"models":[{"model":"anthropic/claude-sonnet-4.6","label":"Claude Sonnet 4.6","games":4,"wins":4,"winRate":1.0},{"model":"openai/gpt-5.4","label":"GPT-5.4","games":4,"wins":4,"winRate":1.0},{"model":"z-ai/glm-5","label":"GLM-5","games":4,"wins":4,"winRate":1.0},{"model":"x-ai/grok-4.20-beta","label":"Grok 4.20 Beta","games":4,"wins":3,"winRate":0.75},{"model":"minimax/minimax-m2.7","label":"MiniMax M2.7","games":4,"wins":3,"winRate":0.75},{"model":"bytedance-seed/seed-2.0-lite","label":"Seed 2.0 Lite","games":4,"wins":2,"winRate":0.5},{"model":"google/gemini-3.1-pro-preview","label":"Gemini 3.1 Pro","games":4,"wins":2,"winRate":0.5},{"model":"moonshotai/kimi-k2.5","label":"kimi k2.5","games":4,"wins":2,"winRate":0.5},{"model":"stepfun/step-3.5-flash","label":"step 3.5 flash","games":4,"wins":2,"winRate":0.5},{"model":"qwen/qwen3.5-397b-a17b","label":"Qwen3.5 397B","games":4,"wins":2,"winRate":0.5},{"model":"xiaomi/mimo-v2-pro","label":"MiMo V2 Pro","games":4,"wins":1,"winRate":0.25},{"model":"deepseek/deepseek-v3.2","label":"DeepSeek V3.2","games":4,"wins":1,"winRate":0.25}]}]}]}};
+
+    function load() {
+      init();
+    }
+
+    function init() {
       document.getElementById("loading").style.display = "none";
-      document.getElementById("leaderboard").style.display = "";
+      document.getElementById("mainContent").style.display = "";
+      renderSummary();
+      for (const tab of Object.keys(tabDefs)) renderTab(tab);
+      renderH2H();
+      renderRoleStats();
+      bindTabs();
+    }
 
-      // Meta
-      const meta = document.getElementById("metaRow");
-      const dt = data.generatedAt ? new Date(data.generatedAt).toLocaleString("zh-CN") : "—";
-      meta.innerHTML = `<span>总局数：${data.totalGames}</span><span>总花费：$${(data.totalCost || 0).toFixed(2)}</span><span>生成时间：${dt}</span>`;
+    /* ── summary cards ── */
+    function renderSummary() {
+      const c = document.getElementById("summaryCards");
+      const top = data.models[0];
+      const gs = data.globalStats || {};
+      const n = data.models.length;
 
-      // Sort
+      const cards = [
+        { label: "总局数", value: data.totalGames, cls: "gold" },
+        { label: "参赛模型", value: n, cls: "blue" },
+        { label: "善良阵营胜场", value: `${gs.goodGameWins || 0}/${gs.totalGames || 60}`, cls: "green" },
+        { label: "邪恶阵营胜场", value: `${gs.evilGameWins || 0}/${gs.totalGames || 60}`, cls: "blood" },
+        { label: "善良局胜率", value: pct(gs.goodGameWinRate), cls: "green" },
+        { label: "邪恶局胜率", value: pct(gs.evilGameWinRate), cls: "blood" },
+        { label: "模型平均胜率", value: pct(gs.avgModelWinRate), cls: "gold" },
+        { label: "冠军模型", value: top ? top.label : "—", cls: "gold" },
+        { label: "最高胜率", value: top ? pct(top.overallWinRate) : "—", cls: "gold" },
+        { label: "总花费", value: dollar(data.totalCost), cls: "blue" },
+      ];
+
+      c.innerHTML = cards.map(cd =>
+        `<div class="card ${cd.cls}"><div class="card-value">${cd.value}</div><div class="card-label">${cd.label}</div></div>`
+      ).join("");
+    }
+
+    /* ── render sortable tab table ── */
+    function renderTab(tab) {
+      const def = tabDefs[tab];
+      const state = tabState[tab];
+      const cols = def.cols;
+
       const models = data.models.slice().sort((a, b) => {
-        const va = a[sortKey] ?? -Infinity;
-        const vb = b[sortKey] ?? -Infinity;
-        return sortAsc ? va - vb : vb - va;
+        let va = a[state.sortKey], vb = b[state.sortKey];
+        if (va == null) va = -Infinity;
+        if (vb == null) vb = -Infinity;
+        if (typeof va === "string") return state.sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        return state.sortAsc ? va - vb : vb - va;
       });
       models.forEach((m, i) => m.rank = i + 1);
 
-      // Header
-      const thead = document.getElementById("thead");
-      thead.innerHTML = "<tr>" + columns.map(c => {
-        const arrow = c.key === sortKey ? (sortAsc ? "▲" : "▼") : "";
-        return `<th data-key="${c.key}">${c.label}<span class="arrow">${arrow}</span></th>`;
+      const barCol = cols.find(c => c.bar);
+      let barMax = barCol ? Math.max(...models.map(m => m[barCol.key] || 0), 0.01) : 1;
+
+      const thead = document.getElementById("thead-" + tab);
+      thead.innerHTML = "<tr>" + cols.map(c => {
+        const arrow = c.key === state.sortKey ? (state.sortAsc ? " ▲" : " ▼") : "";
+        return `<th data-key="${c.key}" data-tab="${tab}">${c.label}<span class="arrow">${arrow}</span></th>`;
       }).join("") + "</tr>";
       thead.querySelectorAll("th").forEach(th => {
+        if (cols.find(c => c.key === th.dataset.key)?.noSort) return;
         th.addEventListener("click", () => {
           const key = th.dataset.key;
-          if (key === sortKey) sortAsc = !sortAsc;
-          else { sortKey = key; sortAsc = false; }
-          render();
+          if (key === state.sortKey) state.sortAsc = !state.sortAsc;
+          else { state.sortKey = key; state.sortAsc = false; }
+          renderTab(tab);
         });
       });
 
-      // Body
-      const tbody = document.getElementById("tbody");
+      const tbody = document.getElementById("tbody-" + tab);
       tbody.innerHTML = models.map(m => {
-        return "<tr>" + columns.map(c => {
+        return "<tr>" + cols.map(c => {
           let cls = c.cls || "";
           if (c.key === "rank") cls = `rank${m.rank <= 3 ? " rank-" + m.rank : ""}`;
           if (c.key === "label") cls = "model-name";
           const val = c.fmt(m[c.key]);
+          if (c.bar && m[c.key] != null) {
+            const w = Math.max(0, Math.min(100, (m[c.key] / barMax) * 100));
+            return `<td class="rate-cell ${cls}"><div class="rate-bar" style="width:${w}%;background:${c.barColor}"></div><span class="rate-val">${val}</span></td>`;
+          }
           return `<td class="${cls}">${val}</td>`;
         }).join("") + "</tr>";
       }).join("");
     }
 
+    /* ── H2H Matrix ── */
+    function renderH2H() {
+      const h2h = data.h2h;
+      if (!h2h) return;
+      const wrap = document.getElementById("h2h-wrap");
+      const models = h2h.models;
+      const labels = h2h.labels;
+      const matrix = h2h.matrix;
+
+      // Color interpolation: winRate 0→red, 0.5→neutral, 1→green
+      function cellColor(wr) {
+        if (wr == null) return "transparent";
+        // hue: 0(red) to 120(green), saturation varies
+        const h = wr * 120;
+        const s = 30 + Math.abs(wr - 0.5) * 60;  // more saturated at extremes
+        const l = 18 + Math.abs(wr - 0.5) * 12;
+        return `hsl(${h}, ${s}%, ${l}%)`;
+      }
+
+      let html = '';
+      html += '<div class="h2h-legend">';
+      html += '<span>劣势</span>';
+      html += '<div class="h2h-legend-bar"></div>';
+      html += '<span>优势</span>';
+      html += '<span style="margin-left:20px;font-size:0.75rem">单元格: 行模型 vs 列模型 (胜场/总对局)</span>';
+      html += '</div>';
+      html += '<table class="h2h-table"><thead><tr>';
+      html += '<th class="h2h-corner"></th>';
+      for (let j = 0; j < models.length; j++) {
+        html += `<th class="h2h-col-label">${labels[j]}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+
+      for (let i = 0; i < models.length; i++) {
+        html += '<tr>';
+        html += `<td class="h2h-row-label">${labels[i]}</td>`;
+        for (let j = 0; j < models.length; j++) {
+          if (i === j) {
+            html += '<td class="h2h-self">—</td>';
+            continue;
+          }
+          const a = models[i], b = models[j];
+          const cell = matrix[a] && matrix[a][b];
+          if (!cell || cell.encounters === 0) {
+            html += '<td class="h2h-cell" style="color:var(--muted)">—</td>';
+            continue;
+          }
+          const wr = cell.winRate;
+          const bg = cellColor(wr);
+          const wrPct = (wr * 100).toFixed(0) + "%";
+          html += `<td class="h2h-cell" style="background:${bg}" title="${labels[i]} vs ${labels[j]}: ${cell.wins}胜/${cell.encounters}局 (${wrPct})">`;
+          html += `${cell.wins}/${cell.encounters}`;
+          html += `<span class="h2h-sub">${wrPct}</span>`;
+          html += '</td>';
+        }
+        html += '</tr>';
+      }
+
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    }
+
+    /* ── Role Stats ── */
+    function renderRoleStats() {
+      const rs = data.roleStats;
+      if (!rs) return;
+      const wrap = document.getElementById("roles-wrap");
+
+      const catColors = {
+        demon: "evil-col",
+        minion: "evil-col",
+        townsfolk: "good-col",
+        outsider: "good-col",
+      };
+
+      let html = '';
+      for (const cat of rs.categories) {
+        html += `<div class="role-section">`;
+        html += `<div class="role-cat-header ${cat.name}">${cat.label}</div>`;
+
+        for (const role of cat.roles) {
+          const roleTotalWR = role.totalGames > 0 ? ((role.totalWins / role.totalGames) * 100).toFixed(1) + "%" : "N/A";
+          html += '<div class="role-block">';
+          html += `<div class="role-block-title">${role.role} <span class="role-meta">${role.totalGames}局 | ${role.totalWins}胜 | 整体胜率 ${roleTotalWR}</span></div>`;
+          html += '<div class="table-wrap"><table class="role-table"><thead><tr>';
+          html += '<th>#</th><th>模型</th><th>局数</th><th>胜场</th><th>胜率</th>';
+          html += '</tr></thead><tbody>';
+
+          role.models.forEach((m, idx) => {
+            const wr = (m.winRate * 100).toFixed(1) + "%";
+            const cls = catColors[cat.name] || "";
+            html += '<tr>';
+            html += `<td class="rank${idx < 3 ? " rank-" + (idx+1) : ""}">${idx + 1}</td>`;
+            html += `<td class="model-name">${m.label}</td>`;
+            html += `<td>${m.games}</td>`;
+            html += `<td>${m.wins}</td>`;
+            html += `<td class="${cls}" style="font-weight:600">${wr}</td>`;
+            html += '</tr>';
+          });
+
+          html += '</tbody></table></div></div>';
+        }
+        html += '</div>';
+      }
+      wrap.innerHTML = html;
+    }
+
+    /* ── tab switching ── */
+    function bindTabs() {
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+        });
+      });
+    }
+
     load();
+  })();
   </script>
 </body>
 </html>
