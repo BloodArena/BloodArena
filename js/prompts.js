@@ -480,8 +480,6 @@ export async function compressPlayerSessions(player) {
 
 export async function compressDaySessions() {
   if (!state || !state.players) return;
-  for (const player of state.players) {
-    if (player.isHuman) continue;
-    await compressPlayerSessions(player);
-  }
+  const aiPlayers = state.players.filter(p => !p.isHuman);
+  await Promise.all(aiPlayers.map(p => compressPlayerSessions(p)));
 }

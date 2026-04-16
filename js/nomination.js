@@ -21,8 +21,7 @@ import {
   formatChatForPrompt,
   formatPrivateInfoForPrompt,
   buildPlayerPromptMessages,
-  getAliveDeadSummary,
-  compressDaySessions
+  getAliveDeadSummary
 } from './prompts.js';
 import { formatPlayerPrivateChats, formatEvilChatForPrompt } from './chat.js';
 import {
@@ -619,7 +618,6 @@ export async function finalizeDayExecution() {
     renderAll();
     return;
   }
-  await compressDaySessions();
   switchPhase();
 }
 

@@ -25,6 +25,7 @@ import { renderAll, renderStatus, renderHumanAction } from './ui-helpers.js';
 import { hideModal, showDawnNarration } from './overlays.js';
 import { addChat, addLogEntry, addReplayEvent } from './chat.js';
 import { setPrivateInfo, recordRoleChange, recordFirstNightRecognition } from './night-actions.js';
+import { compressDaySessions } from './prompts.js';
 import {
   enterNomination,
   scheduleNominationTimeout,
@@ -539,7 +540,9 @@ export function switchPhase() {
   }
   renderAll();
   if (state.phase === "night") {
-    scheduleAutoNight();
+    compressDaySessions().then(() => {
+      scheduleAutoNight();
+    });
   }
 }
 
