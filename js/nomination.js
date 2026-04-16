@@ -545,11 +545,11 @@ export function beginParallelVoting() {
       const result = await Promise.race([
         aiVoteSingle(voter),
         new Promise((resolve) => {
-          setTimeout(() => resolve({ vote: "no", reason: "超时弃票" }), 60000);
+          setTimeout(() => resolve({ vote: "no", timeout: true }), 60000);
         })
       ]);
       if (!state || state.nominationPhase !== "voting" || state.votingToken !== token || state.paused) return;
-      recordVote(voter, result.vote, result.reason);
+      recordVote(voter, result.vote, result.timeout ? "超时弃票" : "");
       state.pendingAiVotes = Math.max(0, state.pendingAiVotes - 1);
       maybeFinalizeVotes();
     })
@@ -656,7 +656,7 @@ export async function aiVoteSingle(voter) {
   const privateChatHistory = formatPlayerPrivateChats(voter);
   const evilChatHistory = formatEvilChatForPrompt(voter);
   if (!voter.alive && voter.deadVoteUsed) {
-    return { vote: "no", reason: "遗言票已用" };
+    return { vote: "no" };
   }
   const aliveDeadSummary = getAliveDeadSummary();
   const deadVoteNote = !voter.alive
@@ -669,19 +669,18 @@ ${aliveDeadSummary}
 ${deadVoteNote}
 你的私密信息增量：${privateInfo}
 你需要对提名${nominee ? nominee.name : "某玩家"}投票。若你已知邪恶队友，请谨慎投他们，除非有明确牺牲/转移视线的理由。
-reason 是公开可说的一小段话，可留空；不要泄露私密信息，不要输出心理活动/内心独白，不要在括号里写心里话。
-请输出 JSON：{"vote":"yes|no","reason":"一小段话或空字符串"}`;
+请输出 JSON：{"vote":"yes|no"}`;
   const prompt = buildPlayerPromptMessages(voter, "json", userContent, {
     systemPrompt: PLAYER_JSON_SYSTEM_PROMPT
   });
   try {
     const content = await callDeepSeek(prompt, Number(tempInput.value) || 1.0, voter, "json");
     const json = extractJson(content);
-    if (!json) return { vote: "no", reason: "" };
+    if (!json) return { vote: "no" };
     const vote = json.vote === "yes" ? "yes" : "no";
-    return { vote, reason: json.reason || "" };
+    return { vote };
   } catch (error) {
-    return { vote: "no", reason: "" };
+    return { vote: "no" };
   }
 }
 
