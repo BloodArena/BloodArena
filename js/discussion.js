@@ -244,7 +244,7 @@ export async function runEvilInternalChat() {
 
       const evilHistory = formatEvilChatForPrompt(player);
       const privateInfo = formatPrivateInfoForPrompt(player, "evil", 4);
-      const evilNames = evilPlayers.map((p) => `${p.name}(${p.roleName})`).join("、");
+      const evilNames = evilPlayers.map((p) => `${p.name}(${p.team === "demon" ? "恶魔" : "爪牙"})`).join("、");
 
       const prompt = buildPlayerPromptMessages(player, "evil",
         `现在是白天1开始前的邪恶阵营密聊环节。只有邪恶阵营成员能看到这些消息。
@@ -273,6 +273,11 @@ ${evilHistory ? `当前密聊记录：\n${evilHistory}` : "（尚无发言）"}
 export async function startDiscussion(auto = true) {
   if (state && state.paused) return;
   resetDiscussion();
+  // Day 1: evil team internal chat before public discussion (before timer starts)
+  if (state.dayCount === 1) {
+    await runEvilInternalChat();
+    if (state.ended || state.paused) return;
+  }
   const duration = getDiscussionDurationSeconds();
   state.discussionDurationSeconds = duration;
   state.discussionMaxRemaining = duration;
@@ -280,11 +285,6 @@ export async function startDiscussion(auto = true) {
   startDayDiscussionTimer(true);
   addChat("说书人", "白天讨论开始。", "storyteller");
   addLogEntry("进入讨论阶段", "phase");
-  // Day 1: evil team internal chat before public discussion
-  if (state.dayCount === 1) {
-    await runEvilInternalChat();
-    if (state.ended || state.paused) return;
-  }
   renderAll();
   if (auto) {
     await advanceDiscussion();

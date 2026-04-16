@@ -2801,7 +2801,7 @@ async function runEvilInternalChat(state) {
 
       const evilHistory = formatEvilChatForPrompt(state, player);
       const privateInfo = formatPrivateInfoForPrompt(player, "evil", 4);
-      const evilNames = evilPlayers.map(p => `${p.name}(${p.roleName})`).join("、");
+      const evilNames = evilPlayers.map(p => `${p.name}(${p.team === "demon" ? "恶魔" : "爪牙"})`).join("、");
 
       const prompt = buildPlayerPromptMessages(state, player, "evil",
         `现在是白天1开始前的邪恶阵营密聊环节。只有邪恶阵营成员能看到这些消息。
