@@ -107,7 +107,6 @@ ${aliveDeadSummary}
 ${state.phase === "day" && state.dayStage === "discussion" && !state.ended
   ? `猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。\n`
   : ""}你的私密信息增量：${privateInfo}
-你自己最近说过：${player.memory.slice(-4).join(" / ") || "无"}。
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。请给出一小段回应。`
   );
   try {
@@ -129,7 +128,6 @@ export async function aiSpeak(player) {
   const privateInfo = formatPrivateInfoForPrompt(player, "chat", 4);
   const privateChatHistory = formatPlayerPrivateChats(player);
   const evilChatHistory = formatEvilChatForPrompt(player);
-  const recentSelf = player.memory.slice(-5).join(" / ") || "无";
   const recentChat = formatChatForPrompt(12, player, "chat");
   const dayRuleNote = getDayRuleNote();
   const aliveDeadSummary = getAliveDeadSummary();
@@ -143,7 +141,6 @@ ${aliveDeadSummary}
 时间规则：${dayRuleNote || "无"}
 猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
 你的私密信息增量：${privateInfo}
-你自己之前说过：${recentSelf}\n
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话进行公聊发言。`
   );
   try {
@@ -205,7 +202,7 @@ export async function advanceDiscussion() {
       return;
     }
     await aiSpeak(player);
-    if (state.paused) {
+    if (!state || !state.started || state.phase !== "day" || state.dayStage !== "discussion" || state.paused) {
       return;
     }
   }
