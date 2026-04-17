@@ -251,7 +251,7 @@ python3 -m http.server 8000
 ## 🎮 游戏流程（完整教程）
 
 <details>
-<summary>🎲 <strong>一、开局准备</strong></summary>
+<summary>🎲 <strong>一、开局准备</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>设置人数、名字、座位、角色，选择 AI 模型，点击「生成玩家 → 随机发牌 → 开局」即可开始</sub></summary>
 
 1. 打开游戏页面，点击 **「开始游戏」**（可跳过开场视频）
 2. 点击左上角 ⚙️ 打开设置面板，设置基本信息：
@@ -265,7 +265,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>🌙 <strong>二、第一个夜晚（首夜）</strong></summary>
+<summary>🌙 <strong>二、第一个夜晚（首夜）</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>说书人按顺序唤醒各角色执行能力，首夜恶魔不杀人。若你有夜晚行动，右侧面板会出现操作界面</sub></summary>
 
 1. 开局后自动进入首夜，说书人按角色顺序依次唤醒执行能力：
    - 投毒者选人下毒 → 间谍查看魔典 → 信息类角色获得首夜信息 → 占卜师查验…
@@ -276,7 +276,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>😈 <strong>三、邪恶阵营密聊</strong> <code>🆕</code></summary>
+<summary>😈 <strong>三、邪恶阵营密聊</strong> <code>🆕</code><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>首夜结束后、公开讨论前，恶魔与爪牙进行一轮内部密聊，统一口径协调策略</sub></summary>
 
 首夜结束后、第一个白天公开讨论之前，恶魔与爪牙进行一轮内部密聊：
 
@@ -290,7 +290,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>☀️ <strong>四、白天讨论</strong></summary>
+<summary>☀️ <strong>四、白天讨论</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>AI 玩家轮流发言，你可以输入发言或 @ 点名。第一个白天可私聊交换线索，讨论限时 8 分钟</sub></summary>
 
 1. 天亮后说书人播报昨晚死亡信息，进入讨论阶段
 2. AI 玩家按座位顺序轮流发言；轮到你时在输入框发言，或点击 **「跳过讨论」**
@@ -302,7 +302,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>⚖️ <strong>五、提名与投票（黄昏）</strong></summary>
+<summary>⚖️ <strong>五、提名与投票（黄昏）</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>每人可提名一人，被提名者需辩解，全员投票决定是否处决。得票过半上处决台，票最高者被处决</sub></summary>
 
 **提名阶段**：每个存活玩家可提名一人（含自己），每人仅一次机会，每人最多被提名一次
 
@@ -315,7 +315,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>🔁 <strong>六、后续夜晚</strong></summary>
+<summary>🔁 <strong>六、后续夜晚</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>小恶魔每晚杀一人，其他角色继续执行夜晚能力，天亮后说书人宣布死亡信息</sub></summary>
 
 - 从第二夜开始，**小恶魔每晚选择一名玩家杀害**
 - 有夜晚行动的角色继续执行能力（僧侣保护、占卜师查验等）
@@ -324,7 +324,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>⚡ <strong>七、特殊情况</strong></summary>
+<summary>⚡ <strong>七、特殊情况</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>猎手开枪、死亡玩家投票、贞洁者/圣徒/镇长的特殊触发条件</sub></summary>
 
 | 情况 | 说明 |
 |------|------|
@@ -338,7 +338,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>🏁 <strong>八、游戏结束</strong></summary>
+<summary>🏁 <strong>八、游戏结束</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>恶魔被处决或猎手击杀则善良胜；仅剩 2 人恶魔存活或圣徒被处决则邪恶胜。赛后可复盘聊天</sub></summary>
 
 **胜利条件**
 
@@ -546,60 +546,87 @@ The-Bloody/
 
 ## ❓ 常见问题 / FAQ
 
-### Q：打开页面后模型列表为空，怎么办？
+<details>
+<summary><b>Q：打开页面后模型列表为空，怎么办？</b></summary>
 
-**A**：这通常是因为浏览器无法读取 `model_catalog.yaml` 文件。请使用以下方法之一：
-- **推荐**：使用 `python3 -m http.server 8000` 启动本地服务器，然后通过 `http://localhost:8000` 访问
-- 页面上会出现 **「选择 model_catalog.yaml」** 按钮，点击后手动选择配置文件
+> **A**：这通常是因为浏览器无法读取 `model_catalog.yaml` 文件。请使用以下方法之一：
+> - **推荐**：使用 `python3 -m http.server 8000` 启动本地服务器，然后通过 `http://localhost:8000` 访问
+> - 页面上会出现 **「选择 model_catalog.yaml」** 按钮，点击后手动选择配置文件
 
-### Q：点击「开局」后报错了怎么办？
+</details>
 
-**A**：请检查以下几点：
-1. 确保你在 `model_catalog.yaml` 中至少填写了一个有效的 API Key
-2. 在设置面板中选择了一个可用的默认模型
-3. 点击 **「重新检查模型配置」** 按钮，查看模型健康状态
-4. 确保你的网络可以访问对应的 API 服务
+<details>
+<summary><b>Q：点击「开局」后报错了怎么办？</b></summary>
 
-### Q：游戏进行中刷新了页面，数据会丢失吗？
+> **A**：请检查以下几点：
+> 1. 确保你在 `model_catalog.yaml` 中至少填写了一个有效的 API Key
+> 2. 在设置面板中选择了一个可用的默认模型
+> 3. 点击 **「重新检查模型配置」** 按钮，查看模型健康状态
+> 4. 确保你的网络可以访问对应的 API 服务
 
-**A**：不会！游戏状态会自动保存在浏览器的 localStorage 中。刷新页面后会自动恢复之前的进度。如果想重新开始，请点击顶部的 **「重置」** 按钮。
+</details>
 
-### Q：如何换一个角色重新开始？
+<details>
+<summary><b>Q：游戏进行中刷新了页面，数据会丢失吗？</b></summary>
 
-**A**：点击顶部的 **「重置」** 按钮清除当前游戏，然后在设置面板中重新设置人数、角色，重新走一遍「生成玩家 → 随机发牌 → 开局」的流程。
+> **A**：不会！游戏状态会自动保存在浏览器的 localStorage 中。刷新页面后会自动恢复之前的进度。如果想重新开始，请点击顶部的 **「重置」** 按钮。
 
-### Q：TTS 语音没有声音怎么办？
+</details>
 
-**A**：请确认以下几点：
-1. 在 `model_catalog.yaml` 中填写了 `mimo` 的 API Key
-2. 设置面板中的「AI 语音播报」开关已打开
-3. 语音音量滑块不是 0
-4. 浏览器没有静音
+<details>
+<summary><b>Q：如何换一个角色重新开始？</b></summary>
 
-### Q：AI 发言很慢怎么办？
+> **A**：点击顶部的 **「重置」** 按钮清除当前游戏，然后在设置面板中重新设置人数、角色，重新走一遍「生成玩家 → 随机发牌 → 开局」的流程。
 
-**A**：AI 发言速度取决于所使用模型的响应速度和网络状况。建议：
-- 使用响应速度较快的模型（如 DeepSeek Chat、Gemini Flash）
-- 确保网络连接稳定
-- 可以适当减少游戏人数以减少 AI 调用次数
+</details>
 
-### Q：费用大概是多少？
+<details>
+<summary><b>Q：TTS 语音没有声音怎么办？</b></summary>
 
-**A**：不同模型价格差异很大。游戏界面的「Token 用量 & 花费」区域会实时显示当前费用（以美元 USD 计算）。一般来说：
-- **DeepSeek Chat**：一局约 $0.01-0.05（最便宜）
-- **Claude Haiku**：一局约 $0.1-0.5
-- **Claude Sonnet/Mimo-V2-pro**：一局约 $0.5-2
-- **Claude Opus**：一局约 $5+（最贵）
+> **A**：请确认以下几点：
+> 1. 在 `model_catalog.yaml` 中填写了 `mimo` 的 API Key
+> 2. 设置面板中的「AI 语音播报」开关已打开
+> 3. 语音音量滑块不是 0
+> 4. 浏览器没有静音
 
+</details>
+
+<details>
+<summary><b>Q：AI 发言很慢怎么办？</b></summary>
+
+> **A**：AI 发言速度取决于所使用模型的响应速度和网络状况。建议：
+> - 使用响应速度较快的模型（如 DeepSeek Chat、Gemini Flash）
+> - 确保网络连接稳定
+> - 可以适当减少游戏人数以减少 AI 调用次数
+
+</details>
+
+<details>
+<summary><b>Q：费用大概是多少？</b></summary>
+
+> **A**：不同模型价格差异很大。游戏界面的「Token 用量 & 花费」区域会实时显示当前费用（以美元 USD 计算）。一般来说：
+> - **DeepSeek Chat**：一局约 $0.01-0.05（最便宜）
+> - **Claude Haiku**：一局约 $0.1-0.5
+> - **Claude Sonnet/Mimo-V2-pro**：一局约 $0.5-2
+> - **Claude Opus**：一局约 $5+（最贵）
+>
 > 💡 建议新手先用便宜的模型体验流程，熟悉后再尝试更高级的模型。
 
-### Q：支持手机玩吗？
+</details>
 
-**A**：页面有基本的响应式适配，但推荐在 **电脑浏览器** 上游玩以获得最佳体验。手机屏幕较小，操作可能不太方便。
+<details>
+<summary><b>Q：支持手机玩吗？</b></summary>
 
-### Q：如何使用 AI 对战评测系统？
+> **A**：页面有基本的响应式适配，但推荐在 **电脑浏览器** 上游玩以获得最佳体验。手机屏幕较小，操作可能不太方便。
 
-**A**：请参阅 [benchmark/README.md](benchmark/README.md) 获取详细的评测系统使用说明，包括环境配置、运行评测、查看排行榜等。
+</details>
+
+<details>
+<summary><b>Q：如何使用 AI 对战评测系统？</b></summary>
+
+> **A**：请参阅 [benchmark/README.md](benchmark/README.md) 获取详细的评测系统使用说明，包括环境配置、运行评测、查看排行榜等。
+
+</details>
 
 ---
 
