@@ -47,22 +47,14 @@
 
 ## 📋 环境准备 / 前置要求
 
-在开始之前，请确保你的电脑满足以下条件：
-
 1. **现代浏览器**（必需）
-   - 推荐使用 **Google Chrome**（最新版）或 **Microsoft Edge**（最新版）
-   - 也支持 Firefox、Safari 等主流浏览器
-   - ⚠️ 不支持 IE 浏览器
+   - 建议使用 Chrome 或 Edge，不支持 IE 浏览器
 
 2. **Python 3**（推荐，用于启动本地服务器）
-   - 如果你的电脑已经安装了 Python，可以直接使用
-   - 没有安装也没关系，后面会介绍替代方法
 
 3. **Node.js 18+**（Benchmark 评测需要）
-   - 仅在运行全自动 AI 对战评测时需要，单人模式不需要
 
-4. **至少一个 AI 模型的 API Key**（必需）
-   - 你需要有至少一个大模型服务商的 API Key，游戏才能运行
+4. **至少一个大模型 API Key**（必需）
    - 推荐选择以下之一：
      - **DeepSeek**（价格便宜，效果不错）：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
      - **OpenRouter**（一个 Key 用多个模型）：在 [openrouter.ai](https://openrouter.ai) 注册获取
@@ -76,7 +68,7 @@
 
 ```bash
 # 方法一：使用 git 克隆（推荐）
-git clone <项目地址>
+git clone https://github.com/mjywf-creator/The-Bloody
 cd The-Bloody
 
 # 方法二：直接下载 ZIP 压缩包，解压到任意文件夹
@@ -363,6 +355,8 @@ python3 -m http.server 8000
 > [!TIP]
 > 😇 **善良阵营** — 镇民 13 个 + 外来者 4 个
 
+> 👆 打开折叠，查看角色详细介绍。
+
 <details>
 <summary><sub>洗衣妇 · 图书管理员 · 调查员 · 厨师 · 共情者 · 占卜师 · 送葬者 · 僧侣 · 守鸦人 · 贞洁者 · 猎手 · 士兵 · 镇长 · 管家 · 酒鬼 · 陌客 · 圣徒</sub></summary>
 
@@ -397,6 +391,8 @@ python3 -m http.server 8000
 
 > [!CAUTION]
 > 😈 **邪恶阵营** — 爪牙 4 个 + 恶魔 1 个
+
+> 👆 打开折叠，查看角色详细介绍。
 
 <details>
 <summary><sub>投毒者 · 间谍 · 红唇女郎 · 男爵 · 小恶魔</sub></summary>
@@ -653,3 +649,9 @@ The-Bloody/
 **技术栈**：
 - 单人模式：纯前端实现（HTML + CSS + JavaScript），无需后端服务器，通过浏览器直接调用各大模型的 API
 - 评测系统：Node.js 命令行工具，支持 OpenRouter 统一路由和 MiMo 直连
+
+---
+
+## 🔗 项目地址
+
+**GitHub**: [https://github.com/mjywf-creator/The-Bloody](https://github.com/mjywf-creator/The-Bloody)
