@@ -549,82 +549,82 @@ The-Bloody/
 <details>
 <summary><b>Q：打开页面后模型列表为空，怎么办？</b></summary>
 
-> **A**：这通常是因为浏览器无法读取 `model_catalog.yaml` 文件。请使用以下方法之一：
-> - **推荐**：使用 `python3 -m http.server 8000` 启动本地服务器，然后通过 `http://localhost:8000` 访问
-> - 页面上会出现 **「选择 model_catalog.yaml」** 按钮，点击后手动选择配置文件
+**A**：这通常是因为浏览器无法读取 `model_catalog.yaml` 文件。请使用以下方法之一：
+- **推荐**：使用 `python3 -m http.server 8000` 启动本地服务器，然后通过 `http://localhost:8000` 访问
+- 页面上会出现 **「选择 model_catalog.yaml」** 按钮，点击后手动选择配置文件
 
 </details>
 
 <details>
 <summary><b>Q：点击「开局」后报错了怎么办？</b></summary>
 
-> **A**：请检查以下几点：
-> 1. 确保你在 `model_catalog.yaml` 中至少填写了一个有效的 API Key
-> 2. 在设置面板中选择了一个可用的默认模型
-> 3. 点击 **「重新检查模型配置」** 按钮，查看模型健康状态
-> 4. 确保你的网络可以访问对应的 API 服务
+**A**：请检查以下几点：
+1. 确保你在 `model_catalog.yaml` 中至少填写了一个有效的 API Key
+2. 在设置面板中选择了一个可用的默认模型
+3. 点击 **「重新检查模型配置」** 按钮，查看模型健康状态
+4. 确保你的网络可以访问对应的 API 服务
 
 </details>
 
 <details>
 <summary><b>Q：游戏进行中刷新了页面，数据会丢失吗？</b></summary>
 
-> **A**：不会！游戏状态会自动保存在浏览器的 localStorage 中。刷新页面后会自动恢复之前的进度。如果想重新开始，请点击顶部的 **「重置」** 按钮。
+**A**：不会！游戏状态会自动保存在浏览器的 localStorage 中。刷新页面后会自动恢复之前的进度。如果想重新开始，请点击顶部的 **「重置」** 按钮。
 
 </details>
 
 <details>
 <summary><b>Q：如何换一个角色重新开始？</b></summary>
 
-> **A**：点击顶部的 **「重置」** 按钮清除当前游戏，然后在设置面板中重新设置人数、角色，重新走一遍「生成玩家 → 随机发牌 → 开局」的流程。
+**A**：点击顶部的 **「重置」** 按钮清除当前游戏，然后在设置面板中重新设置人数、角色，重新走一遍「生成玩家 → 随机发牌 → 开局」的流程。
 
 </details>
 
 <details>
 <summary><b>Q：TTS 语音没有声音怎么办？</b></summary>
 
-> **A**：请确认以下几点：
-> 1. 在 `model_catalog.yaml` 中填写了 `mimo` 的 API Key
-> 2. 设置面板中的「AI 语音播报」开关已打开
-> 3. 语音音量滑块不是 0
-> 4. 浏览器没有静音
+**A**：请确认以下几点：
+1. 在 `model_catalog.yaml` 中填写了 `mimo` 的 API Key
+2. 设置面板中的「AI 语音播报」开关已打开
+3. 语音音量滑块不是 0
+4. 浏览器没有静音
 
 </details>
 
 <details>
 <summary><b>Q：AI 发言很慢怎么办？</b></summary>
 
-> **A**：AI 发言速度取决于所使用模型的响应速度和网络状况。建议：
-> - 使用响应速度较快的模型（如 DeepSeek Chat、Gemini Flash）
-> - 确保网络连接稳定
-> - 可以适当减少游戏人数以减少 AI 调用次数
+**A**：AI 发言速度取决于所使用模型的响应速度和网络状况。建议：
+- 使用响应速度较快的模型（如 DeepSeek Chat、Gemini Flash）
+- 确保网络连接稳定
+- 可以适当减少游戏人数以减少 AI 调用次数
 
 </details>
 
 <details>
 <summary><b>Q：费用大概是多少？</b></summary>
 
-> **A**：不同模型价格差异很大。游戏界面的「Token 用量 & 花费」区域会实时显示当前费用（以美元 USD 计算）。一般来说：
-> - **DeepSeek Chat**：一局约 $0.01-0.05（最便宜）
-> - **Claude Haiku**：一局约 $0.1-0.5
-> - **Claude Sonnet/Mimo-V2-pro**：一局约 $0.5-2
-> - **Claude Opus**：一局约 $5+（最贵）
->
-> 💡 建议新手先用便宜的模型体验流程，熟悉后再尝试更高级的模型。
+**A**：不同模型价格差异很大。游戏界面的「Token 用量 & 花费」区域会实时显示当前费用（以美元 USD 计算）。一般来说：
+- **DeepSeek Chat**：一局约 $0.01-0.05（最便宜）
+- **Claude Haiku**：一局约 $0.1-0.5
+- **Claude Sonnet/Mimo-V2-pro**：一局约 $0.5-2
+- **Claude Opus**：一局约 $5+（最贵）
+
+💡 建议新手先用便宜的模型体验流程，熟悉后再尝试更高级的模型。
 
 </details>
 
 <details>
 <summary><b>Q：支持手机玩吗？</b></summary>
 
-> **A**：页面有基本的响应式适配，但推荐在 **电脑浏览器** 上游玩以获得最佳体验。手机屏幕较小，操作可能不太方便。
+**A**：页面有基本的响应式适配，但推荐在 **电脑浏览器** 上游玩以获得最佳体验。手机屏幕较小，操作可能不太方便。
 
 </details>
 
 <details>
 <summary><b>Q：如何使用 AI 对战评测系统？</b></summary>
 
-> **A**：请参阅 [benchmark/README.md](benchmark/README.md) 获取详细的评测系统使用说明，包括环境配置、运行评测、查看排行榜等。
+**A**：请参阅 [benchmark/README.md](benchmark/README.md) 获取详细的评测系统使用说明，包括环境配置、运行评测、查看排行榜等。
 
 </details>
 
