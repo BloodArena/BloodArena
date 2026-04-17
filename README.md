@@ -168,10 +168,7 @@ python3 -m http.server 8000
 ## 🖥️ 界面说明
 
 <details>
-<summary>📐 <strong>游戏界面总览</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>顶部导航栏 · 左侧设置面板 · 主游戏区域（城镇广场 / 聊天 / 个人信息） · 底部BGM播放器</sub></summary>
-
-<details>
-<summary>&nbsp;&nbsp;🔝 <strong>顶部导航栏</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>齿轮设置 · 阶段指示器 · 导出复盘 · 导出轨迹 · 重置</sub></summary>
+<summary>🔝 <strong>顶部导航栏</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>齿轮设置 · 阶段指示器 · 导出复盘 · 导出轨迹 · 重置</sub></summary>
 
 | 元素 | 说明 |
 |------|------|
@@ -185,7 +182,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;⚙️ <strong>左侧设置面板</strong>（点击齿轮打开）<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>游戏设置 · 模型配置 · 游戏控制 · TTS语音配置</sub></summary>
+<summary>⚙️ <strong>左侧设置面板</strong>（点击齿轮打开）<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>游戏设置 · 模型配置 · 游戏控制 · TTS语音配置</sub></summary>
 
 | 分区 | 选项 | 说明 |
 |------|------|------|
@@ -204,7 +201,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🏠 <strong>主游戏区域</strong>（三栏布局）<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>城镇广场（座位圆环 · Token用量） · 聊天与操作（公聊 · 私聊 · @提及） · 个人信息（身份 · 夜晚行动）</sub></summary>
+<summary>🏠 <strong>主游戏区域</strong>（三栏布局）<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>城镇广场（座位圆环 · Token用量） · 聊天与操作（公聊 · 私聊 · @提及） · 个人信息（身份 · 夜晚行动）</sub></summary>
 
 **左栏 — 城镇广场**
 
@@ -237,7 +234,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🎵 <strong>底部 BGM 播放器</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>歌单面板 · 播放控制 · 音量调节 · 角色板一览</sub></summary>
+<summary>🎵 <strong>底部 BGM 播放器</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>歌单面板 · 播放控制 · 音量调节 · 角色板一览</sub></summary>
 
 | 元素 | 说明 |
 |------|------|
@@ -249,17 +246,12 @@ python3 -m http.server 8000
 
 </details>
 
-</details>
-
 ---
 
 ## 🎮 游戏流程（完整教程）
 
 <details>
-<summary>📖 <strong>完整游戏流程指南</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>开局准备 → 🌙 首夜 → 😈 邪恶密聊 → ☀️ 白天讨论 → ⚖️ 提名投票 → 🌙 后续夜晚 → 🔁 循环 → 🏁 游戏结束</sub></summary>
-
-<details>
-<summary>&nbsp;&nbsp;🎲 <strong>一、开局准备</strong></summary>
+<summary>🎲 <strong>一、开局准备</strong></summary>
 
 1. 打开游戏页面，点击 **「开始游戏」**（可跳过开场视频）
 2. 点击左上角 ⚙️ 打开设置面板，设置基本信息：
@@ -273,7 +265,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🌙 <strong>二、第一个夜晚（首夜）</strong></summary>
+<summary>🌙 <strong>二、第一个夜晚（首夜）</strong></summary>
 
 1. 开局后自动进入首夜，说书人按角色顺序依次唤醒执行能力：
    - 投毒者选人下毒 → 间谍查看魔典 → 信息类角色获得首夜信息 → 占卜师查验…
@@ -284,7 +276,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;😈 <strong>三、邪恶阵营密聊</strong> <code>🆕</code></summary>
+<summary>😈 <strong>三、邪恶阵营密聊</strong> <code>🆕</code></summary>
 
 首夜结束后、第一个白天公开讨论之前，恶魔与爪牙进行一轮内部密聊：
 
@@ -298,7 +290,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;☀️ <strong>四、白天讨论</strong></summary>
+<summary>☀️ <strong>四、白天讨论</strong></summary>
 
 1. 天亮后说书人播报昨晚死亡信息，进入讨论阶段
 2. AI 玩家按座位顺序轮流发言；轮到你时在输入框发言，或点击 **「跳过讨论」**
@@ -310,7 +302,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;⚖️ <strong>五、提名与投票（黄昏）</strong></summary>
+<summary>⚖️ <strong>五、提名与投票（黄昏）</strong></summary>
 
 **提名阶段**：每个存活玩家可提名一人（含自己），每人仅一次机会，每人最多被提名一次
 
@@ -323,7 +315,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🔁 <strong>六、后续夜晚</strong></summary>
+<summary>🔁 <strong>六、后续夜晚</strong></summary>
 
 - 从第二夜开始，**小恶魔每晚选择一名玩家杀害**
 - 有夜晚行动的角色继续执行能力（僧侣保护、占卜师查验等）
@@ -332,7 +324,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;⚡ <strong>七、特殊情况</strong></summary>
+<summary>⚡ <strong>七、特殊情况</strong></summary>
 
 | 情况 | 说明 |
 |------|------|
@@ -346,7 +338,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🏁 <strong>八、游戏结束</strong></summary>
+<summary>🏁 <strong>八、游戏结束</strong></summary>
 
 **胜利条件**
 
@@ -364,55 +356,66 @@ python3 -m http.server 8000
 
 </details>
 
-</details>
-
 ---
 
 ## 🎯 角色一览
 
-### 镇民（善良阵营）— 13 个
+<details>
+<summary>😇 <strong>善良阵营</strong> — 镇民 13 个 + 外来者 4 个<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>洗衣妇 · 图书管理员 · 调查员 · 厨师 · 共情者 · 占卜师 · 送葬者 · 僧侣 · 守鸦人 · 贞洁者 · 猎手 · 士兵 · 镇长 · 管家 · 酒鬼 · 陌客 · 圣徒</sub></summary>
 
-| 角色 | 能力简述 |
-|------|----------|
-| 洗衣妇 | 首夜得知两人中谁是某个镇民 |
-| 图书管理员 | 首夜得知两人中谁是某个外来者（或没有外来者） |
-| 调查员 | 首夜得知两人中谁是某个爪牙 |
-| 厨师 | 首夜得知相邻邪恶玩家的对数（最多 3 对） |
-| 共情者 | 每晚得知左右邻居中邪恶玩家的数量 |
-| 占卜师 | 每晚选两人查验是否有恶魔（有一个善良干扰项） |
-| 送葬者 | 每晚（非首夜）得知白天被处决者的角色 |
-| 僧侣 | 每晚（非首夜）保护一人免受恶魔杀害 |
-| 守鸦人 | 若夜晚死亡，可以查验一人的角色 |
-| 贞洁者 | 首次被镇民提名时，提名者被处决 |
-| 猎手 | 每局一次，白天宣言射击一人，若是恶魔则其死亡 |
-| 士兵 | 免疫恶魔的杀害能力 |
-| 镇长 | 仅剩 3 人时无处决则善良获胜；夜晚可能有人替死 |
+> [!TIP]
+> ### 镇民（善良阵营）— 13 个
+>
+> | 角色 | 能力简述 |
+> |------|----------|
+> | 洗衣妇 | 首夜得知两人中谁是某个镇民 |
+> | 图书管理员 | 首夜得知两人中谁是某个外来者（或没有外来者） |
+> | 调查员 | 首夜得知两人中谁是某个爪牙 |
+> | 厨师 | 首夜得知相邻邪恶玩家的对数（最多 3 对） |
+> | 共情者 | 每晚得知左右邻居中邪恶玩家的数量 |
+> | 占卜师 | 每晚选两人查验是否有恶魔（有一个善良干扰项） |
+> | 送葬者 | 每晚（非首夜）得知白天被处决者的角色 |
+> | 僧侣 | 每晚（非首夜）保护一人免受恶魔杀害 |
+> | 守鸦人 | 若夜晚死亡，可以查验一人的角色 |
+> | 贞洁者 | 首次被镇民提名时，提名者被处决 |
+> | 猎手 | 每局一次，白天宣言射击一人，若是恶魔则其死亡 |
+> | 士兵 | 免疫恶魔的杀害能力 |
+> | 镇长 | 仅剩 3 人时无处决则善良获胜；夜晚可能有人替死 |
+>
+> ### 外来者（善良阵营）— 4 个
+>
+> | 角色 | 能力简述 |
+> |------|----------|
+> | 管家 | 每晚选一个"主人"，次日只能在主人投票时跟投 |
+> | 酒鬼 | 以为自己是某个镇民，但技能无效、信息可能错误 |
+> | 陌客 | 可能被识别为邪恶阵营或爪牙/恶魔角色 |
+> | 圣徒 | 若被处决，善良阵营立刻失败 |
 
-### 外来者（善良阵营）— 4 个
+</details>
 
-| 角色 | 能力简述 |
-|------|----------|
-| 管家 | 每晚选一个"主人"，次日只能在主人投票时跟投 |
-| 酒鬼 | 以为自己是某个镇民，但技能无效、信息可能错误 |
-| 陌客 | 可能被识别为邪恶阵营或爪牙/恶魔角色 |
-| 圣徒 | 若被处决，善良阵营立刻失败 |
+<details>
+<summary>😈 <strong>邪恶阵营</strong> — 爪牙 4 个 + 恶魔 1 个<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>投毒者 · 间谍 · 红唇女郎 · 男爵 · 小恶魔</sub></summary>
 
-### 爪牙（邪恶阵营）— 4 个
+> [!CAUTION]
+> ### 爪牙（邪恶阵营）— 4 个
+>
+> | 角色 | 能力简述 |
+> |------|----------|
+> | 投毒者 | 每晚选一人中毒，其技能失效、信息可能错误 |
+> | 间谍 | 每晚查看魔典；可能被识别为善良阵营 |
+> | 红唇女郎 | 恶魔死亡时（≥5人存活），变为新恶魔 |
+> | 男爵 | 游戏中多出 2 名外来者（替换镇民） |
+>
+> ### 恶魔 — 1 个
+>
+> | 角色 | 能力简述 |
+> |------|----------|
+> | 小恶魔 | 每晚杀一人；自杀时一名爪牙变为新恶魔 |
 
-| 角色 | 能力简述 |
-|------|----------|
-| 投毒者 | 每晚选一人中毒，其技能失效、信息可能错误 |
-| 间谍 | 每晚查看魔典；可能被识别为善良阵营 |
-| 红唇女郎 | 恶魔死亡时（≥5人存活），变为新恶魔 |
-| 男爵 | 游戏中多出 2 名外来者（替换镇民） |
+</details>
 
-### 恶魔 — 1 个
-
-| 角色 | 能力简述 |
-|------|----------|
-| 小恶魔 | 每晚杀一人；自杀时一名爪牙变为新恶魔 |
-
-### 玩家人数与角色分配
+<details>
+<summary>📊 <strong>玩家人数与角色分配</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>5-15 人对应阵营配比表</sub></summary>
 
 | 人数 | 镇民 | 外来者 | 爪牙 | 恶魔 |
 |------|------|--------|------|------|
@@ -429,6 +432,8 @@ python3 -m http.server 8000
 | 15 | 9 | 2 | 3 | 1 |
 
 > 💡 如果有男爵在场，会额外增加 2 名外来者（替换 2 名镇民）。
+
+</details>
 
 ---
 
