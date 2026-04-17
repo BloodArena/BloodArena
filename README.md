@@ -360,10 +360,10 @@ python3 -m http.server 8000
 
 ## 🎯 角色一览
 
-<details>
-<summary>😇 <strong>善良阵营</strong> — 镇民 13 个 + 外来者 4 个<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>洗衣妇 · 图书管理员 · 调查员 · 厨师 · 共情者 · 占卜师 · 送葬者 · 僧侣 · 守鸦人 · 贞洁者 · 猎手 · 士兵 · 镇长 · 管家 · 酒鬼 · 陌客 · 圣徒</sub></summary>
-
 > [!TIP]
+> <details>
+> <summary>😇 <strong>善良阵营</strong> — 镇民 13 个 + 外来者 4 个<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>洗衣妇 · 图书管理员 · 调查员 · 厨师 · 共情者 · 占卜师 · 送葬者 · 僧侣 · 守鸦人 · 贞洁者 · 猎手 · 士兵 · 镇长 · 管家 · 酒鬼 · 陌客 · 圣徒</sub></summary>
+>
 > ### 镇民（善良阵营）— 13 个
 >
 > | 角色 | 能力简述 |
@@ -390,13 +390,13 @@ python3 -m http.server 8000
 > | 酒鬼 | 以为自己是某个镇民，但技能无效、信息可能错误 |
 > | 陌客 | 可能被识别为邪恶阵营或爪牙/恶魔角色 |
 > | 圣徒 | 若被处决，善良阵营立刻失败 |
-
-</details>
-
-<details>
-<summary>😈 <strong>邪恶阵营</strong> — 爪牙 4 个 + 恶魔 1 个<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>投毒者 · 间谍 · 红唇女郎 · 男爵 · 小恶魔</sub></summary>
+>
+> </details>
 
 > [!CAUTION]
+> <details>
+> <summary>😈 <strong>邪恶阵营</strong> — 爪牙 4 个 + 恶魔 1 个<br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>投毒者 · 间谍 · 红唇女郎 · 男爵 · 小恶魔</sub></summary>
+>
 > ### 爪牙（邪恶阵营）— 4 个
 >
 > | 角色 | 能力简述 |
@@ -411,8 +411,8 @@ python3 -m http.server 8000
 > | 角色 | 能力简述 |
 > |------|----------|
 > | 小恶魔 | 每晚杀一人；自杀时一名爪牙变为新恶魔 |
-
-</details>
+>
+> </details>
 
 <details>
 <summary>📊 <strong>玩家人数与角色分配</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>5-15 人对应阵营配比表</sub></summary>
