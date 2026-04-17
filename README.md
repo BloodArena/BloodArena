@@ -565,7 +565,7 @@ The-Bloody/
 </details>
 
 <details>
-<summary><b>Q：`TTS` 语音没有声音怎么办？</b></summary>
+<summary><b>Q：TTS 语音没有声音怎么办？</b></summary>
 
 **A**：请确认以下几点：
 1. 在 `model_catalog.yaml` 中填写了 `mimo` 的 `API Key`
