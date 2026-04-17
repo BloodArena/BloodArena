@@ -171,7 +171,7 @@ python3 -m http.server 8000
 <summary>📐 <strong>游戏界面总览</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;<sub>顶部导航栏 · 左侧设置面板 · 主游戏区域（城镇广场 / 聊天 / 个人信息） · 底部BGM播放器</sub></summary>
 
 <details>
-<summary>&nbsp;&nbsp;🔝 <strong>顶部导航栏</strong></summary>
+<summary>&nbsp;&nbsp;🔝 <strong>顶部导航栏</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>齿轮设置 · 阶段指示器 · 导出复盘 · 导出轨迹 · 重置</sub></summary>
 
 | 元素 | 说明 |
 |------|------|
@@ -185,7 +185,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;⚙️ <strong>左侧设置面板</strong>（点击齿轮打开）</summary>
+<summary>&nbsp;&nbsp;⚙️ <strong>左侧设置面板</strong>（点击齿轮打开）<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>游戏设置 · 模型配置 · 游戏控制 · TTS语音配置</sub></summary>
 
 | 分区 | 选项 | 说明 |
 |------|------|------|
@@ -204,7 +204,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🏠 <strong>主游戏区域</strong>（三栏布局）</summary>
+<summary>&nbsp;&nbsp;🏠 <strong>主游戏区域</strong>（三栏布局）<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>城镇广场（座位圆环 · Token用量） · 聊天与操作（公聊 · 私聊 · @提及） · 个人信息（身份 · 夜晚行动）</sub></summary>
 
 **左栏 — 城镇广场**
 
@@ -237,7 +237,7 @@ python3 -m http.server 8000
 </details>
 
 <details>
-<summary>&nbsp;&nbsp;🎵 <strong>底部 BGM 播放器</strong></summary>
+<summary>&nbsp;&nbsp;🎵 <strong>底部 BGM 播放器</strong><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<sub>歌单面板 · 播放控制 · 音量调节 · 角色板一览</sub></summary>
 
 | 元素 | 说明 |
 |------|------|
