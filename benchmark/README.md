@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
   <a href="https://github.com/mjywf-creator/BloodyArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodyArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
-  <a href="https://bloodarena.github.io/leaderboard.html"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
+  <a href="https://bloodarena.github.io/#rankings"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
 </p>
 
 ## 这是什么
@@ -179,8 +179,8 @@ cd /path/to/BloodyArena
 python3 -m http.server 8000
 ```
 
-- **排行榜**：浏览器打开 `http://localhost:8000/leaderboard.html`，也可直接访问[在线排行榜](https://bloodarena.github.io/leaderboard.html)
-- **数据浏览器**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`），也可直接访问[在线数据浏览器](https://bloodarena.github.io/viewer.html)
+- **排行榜**：浏览器打开 `http://localhost:8000/leaderboard.html`。
+- **数据浏览器**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`）。
 
 排行榜默认读取 `results/leaderboard.json`。如果用了 `--scan-all`，需要把生成的文件复制过去：
 
