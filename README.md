@@ -32,7 +32,7 @@
 
 ### 🏆 AI 对战评测系统（benchmark/）
 
-> 📊 详细的模型评测结果与排行榜请查看 [leaderboard.html](leaderboard.html)，也可访问我们的[在线排行榜](https://bloodarena.github.io/leaderboard.html)。
+> 📊 详细的模型评测结果与排行榜请查看 [leaderboard.html](leaderboard.html)，也可访问我们的[在线排行榜](https://bloodarena.github.io)。
 
 | | 功能 | 说明 |
 |---|---|---|
