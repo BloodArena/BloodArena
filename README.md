@@ -1,5 +1,11 @@
 # 🩸 血染钟楼 · 暗流涌动
 
+<p align="center">
+  <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
+  <a href="https://github.com/mjywf-creator/BloodyArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodyArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
+  <a href="https://bloodarena.github.io/leaderboard.html"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
+</p>
+
 > 一款基于 AI 的血染钟楼网页游戏与 AI 对战评测平台。你可以作为真人玩家与 AI 说书人和 AI 玩家一起体验经典社交推理剧本「暗流涌动」；也可以让 12 个不同的大模型全自动对战，生成排行榜来评测模型的社交推理能力。
 
 ---
@@ -25,6 +31,8 @@
 | 💾 | 自动保存 | 游戏状态保存在浏览器 `localStorage`，刷新页面不会丢失进度 |
 
 ### 🏆 AI 对战评测系统（benchmark/）
+
+> 📊 详细的模型评测结果与排行榜请查看 [leaderboard.html](leaderboard.html)，也可访问我们的[在线排行榜](https://bloodarena.github.io/leaderboard.html)。
 
 | | 功能 | 说明 |
 |---|---|---|
@@ -642,4 +650,6 @@ The-Bloody/
 
 ## 🔗 项目地址
 
-**GitHub**: [https://github.com/mjywf-creator/The-Bloody](https://github.com/mjywf-creator/The-Bloody)
+**GitHub**: [https://github.com/mjywf-creator/BloodyArena](https://github.com/mjywf-creator/BloodyArena)
+
+**项目网页**: [https://bloodarena.github.io/](https://bloodarena.github.io/)

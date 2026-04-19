@@ -1,5 +1,11 @@
 # 血染钟楼 AI 对战评测系统 — 上手指南
 
+<p align="center">
+  <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
+  <a href="https://github.com/mjywf-creator/BloodyArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodyArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
+  <a href="https://bloodarena.github.io/leaderboard.html"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
+</p>
+
 ## 这是什么
 
 这是一个纯 Node.js 的全 AI 对战评测脚本。12 个不同的大模型各扮演一个玩家，在「暗流涌动」剧本下进行 12 人局的血染钟楼对战。脚本自动运行完整的游戏流程（夜晚结算 → 白天讨论 → 提名投票 → 处决），最终统计每个模型的胜率并生成排行榜。
@@ -169,12 +175,12 @@ node benchmark/stats.js --scan-all --out results/my_leaderboard.json
 
 ```bash
 # 在项目根目录启动 HTTP 服务器
-cd /mnt/user-ssd/yangqibin/The-Bloody
+cd /path/to/BloodyArena
 python3 -m http.server 8000
 ```
 
-- **排行榜**：浏览器打开 `http://localhost:8000/leaderboard.html`
-- **数据浏览器**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`）
+- **排行榜**：浏览器打开 `http://localhost:8000/leaderboard.html`，也可直接访问[在线排行榜](https://bloodarena.github.io/leaderboard.html)
+- **数据浏览器**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`），也可直接访问[在线数据浏览器](https://bloodarena.github.io/viewer.html)
 
 排行榜默认读取 `results/leaderboard.json`。如果用了 `--scan-all`，需要把生成的文件复制过去：
 
