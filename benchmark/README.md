@@ -171,7 +171,7 @@ node benchmark/stats.js --scan-all
 node benchmark/stats.js --scan-all --out results/my_leaderboard.json
 ```
 
-### 第七步：查看排行榜与数据浏览器
+### 第七步：查看排行榜与轨迹查看与可视化
 
 ```bash
 # 在项目根目录启动 HTTP 服务器
@@ -180,7 +180,7 @@ python3 -m http.server 8000
 ```
 
 - **排行榜**：浏览器打开 `http://localhost:8000/leaderboard.html`。
-- **数据浏览器**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`）。
+- **轨迹查看与可视化**：浏览器打开 `http://localhost:8000/viewer.html`（需要先生成文件索引：`node benchmark/gen-index.js`）。
 
 排行榜默认读取 `results/leaderboard.json`。如果用了 `--scan-all`，需要把生成的文件复制过去：
 
