@@ -1,4 +1,8 @@
-# 🩸 血染钟楼 · 暗流涌动
+<h1><img src="logo.png" width="40" align="absmiddle"> 血染钟楼 · 暗流涌动</h1>
+
+<p align="center">
+  <img src="logo2.png" width="800" alt="BloodyArena Banner">
+</p>
 
 <p align="center">
   <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
