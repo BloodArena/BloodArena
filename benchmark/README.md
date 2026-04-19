@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
-  <a href="https://github.com/mjywf-creator/BloodyArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodyArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
+  <a href="https://github.com/BloodArena/BloodArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
   <a href="https://bloodarena.github.io/#rankings"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
 </p>
 
@@ -175,7 +175,7 @@ node benchmark/stats.js --scan-all --out results/my_leaderboard.json
 
 ```bash
 # 在项目根目录启动 HTTP 服务器
-cd /path/to/BloodyArena
+cd /path/to/BloodArena
 python3 -m http.server 8000
 ```
 

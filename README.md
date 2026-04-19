@@ -1,4 +1,4 @@
-<h1><img src="logo.png" width="40" align="absmiddle"> 血染钟楼 · 暗流涌动</h1>
+<h1 align="center"><img src="logo.png" width="40" align="absmiddle"> 血染钟楼 · 暗流涌动</h1>
 
 <p align="center">
   <img src="logo2.png" width="800" alt="BloodyArena Banner">
@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
-  <a href="https://github.com/mjywf-creator/BloodyArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodyArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
+  <a href="https://github.com/BloodArena/BloodArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
   <a href="https://bloodarena.github.io/#rankings"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
 </p>
 
@@ -74,8 +74,8 @@
 
 ```bash
 # 方法一：使用 git 克隆（推荐）
-git clone https://github.com/mjywf-creator/The-Bloody
-cd The-Bloody
+git clone https://github.com/BloodArena/BloodArena
+cd BloodArena
 
 # 方法二：直接下载 ZIP 压缩包，解压到任意文件夹
 ```
@@ -477,7 +477,7 @@ python3 -m http.server 8000
 ## 📁 项目结构
 
 ```
-The-Bloody/
+BloodArena/
 ├── index.html                 # 主页面（单人模式游戏入口）
 ├── leaderboard.html           # AI 对战排行榜页面
 ├── viewer.html                # 游戏数据浏览器（回放与分析）
@@ -654,6 +654,6 @@ The-Bloody/
 
 ## 🔗 项目地址
 
-**GitHub**: [https://github.com/mjywf-creator/BloodyArena](https://github.com/mjywf-creator/BloodyArena)
+**GitHub**: [https://github.com/BloodArena/BloodArena](https://github.com/BloodArena/BloodArena)
 
 **项目网页**: [https://bloodarena.github.io/](https://bloodarena.github.io/)
