@@ -452,6 +452,7 @@ python3 -m http.server 8000
 ### `TTS` 语音播报
 
 开启 `TTS` 后，AI 玩家的发言会自动用语音朗读出来，每位 AI 拥有独特的音色风格（如"成熟男性 低沉磁性"、"少女 元气可爱"、"东北口音 豪爽大方"等共 15 种）。
+我们的 `TTS` 使用的是 `Mimo TTS`，需要配置 `mimo API Key`，但目前 `Mimo TTS` 是免费的。
 
 **配置方法**：
 1. 在 `model_catalog.yaml` 的 `api_keys` 中填写 `mimo` 的密钥
@@ -659,4 +660,3 @@ BloodArena/
 **GitHub**: [https://github.com/BloodArena/BloodArena](https://github.com/BloodArena/BloodArena)
 
 **项目网页**: [https://bloodarena.github.io/](https://bloodarena.github.io/)
-
