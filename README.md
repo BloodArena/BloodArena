@@ -62,9 +62,11 @@
 
 4. **至少一个大模型 `API Key`**（必需）
    - 推荐选择以下之一：
-     - **`DeepSeek`**（价格便宜，效果不错）：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
+     - **`Mimo`**
+     - **`DeepSeek`**（价格便宜）：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
      - **`OpenRouter`**（一个 Key 用多个模型）：在 [openrouter.ai](https://openrouter.ai) 注册获取
-     - **`Gemini`** / **`Claude`** / **`GPT`**：分别从对应平台获取
+     - **`Gemini` / `Claude`**（整体体验最好，效果稳定）
+       
 
 ---
 
