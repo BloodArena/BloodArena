@@ -107,7 +107,7 @@ api_keys:
   openrouter: "YOUR_OPENROUTER_KEY"        # OpenRouter API Key (optional)
 ```
 
-3. **Paste your `API Key` into the corresponding quotes**. For example, you can get a DeepSeek API key from [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) and update your YAML configuration as follows:
+3. **Paste your `API Key` into the corresponding quotes**. For example, you can get a DeepSeek API key from [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) and update your configuration file as follows:
 
 ```yaml
 api_keys:

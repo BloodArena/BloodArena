@@ -109,7 +109,7 @@ api_keys:
   openrouter: "YOUR_OPENROUTER_KEY"        # OpenRouter API Key（可选）
 ```
 
-3. **把你拥有的 `API Key` 填进对应的引号里**。例如，你可以在 [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) 获取 DeepSeek 的 API Key，然后按下面的 YAML 示例修改配置：
+3. **把你拥有的 `API Key` 填进对应的引号里**。例如，你可以在 [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) 获取 DeepSeek 的 API Key，然后按下面的示例修改配置文件：
 
 ```yaml
 api_keys:
