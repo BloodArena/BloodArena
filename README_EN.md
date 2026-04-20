@@ -450,6 +450,7 @@ Storyteller decisions are now driven by LLMs, replacing the previous hard-coded 
 ### `TTS` Voice Narration
 
 When `TTS` is enabled, AI players' messages are automatically read aloud. Each AI has a unique voice style (e.g., "mature male with a deep resonant voice," "energetic cheerful girl," "bold and hearty regional accent," etc. — 15 styles in total).
+Our `TTS` uses `Mimo TTS`, requires a `mimo API Key`, and `Mimo TTS` is currently free.
 
 **How to configure**:
 1. Enter your `mimo` key in the `api_keys` section of `model_catalog.yaml`
