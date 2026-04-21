@@ -1,4 +1,4 @@
-<h1 align="center"><img src="logo.png" width="40" align="absmiddle"> Blood on the Clocktower · Trouble Brewing</h1>
+<h1 align="center"><img src="logo.png" width="40" align="absmiddle"> BloodArena: Blood on the Clocktower · Trouble Brewing</h1>
 
 <p align="center">
   <img src="logo2.png" width="800" alt="BloodyArena Banner">
