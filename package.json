@@ -1,0 +1,24 @@
+{
+  "name": "bloodarena",
+  "version": "1.0.0",
+  "description": "<h1 align=\"center\"><img src=\"logo.png\" width=\"40\" align=\"absmiddle\"> 血染钟楼 · 暗流涌动</h1>",
+  "main": "index.js",
+  "scripts": {
+    "build": "esbuild js/main.js --bundle --format=iife --outfile=bundle.js",
+    "dev": "esbuild js/main.js --bundle --format=iife --outfile=bundle.js --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BloodArena/BloodArena.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BloodArena/BloodArena/issues"
+  },
+  "homepage": "https://github.com/BloodArena/BloodArena#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}
