@@ -1511,6 +1511,9 @@ ${summaryText}` };
   var introVideo2;
   var dawnOverlay2;
   var dawnText2;
+  var saveApiKeysBtn;
+  var clearApiKeysBtn;
+  var apiKeysSection;
   var playerModelListEl;
   function initDomRefs() {
     modelSelect = document.getElementById("modelSelect");
@@ -1607,6 +1610,9 @@ ${summaryText}` };
     dawnOverlay2 = document.getElementById("dawnOverlay");
     dawnText2 = document.getElementById("dawnText");
     playerModelListEl = document.getElementById("playerModelList");
+    saveApiKeysBtn = document.getElementById("saveApiKeysBtn");
+    clearApiKeysBtn = document.getElementById("clearApiKeysBtn");
+    apiKeysSection = document.getElementById("apiKeysSection");
   }
   function renderLog() {
     logList.innerHTML = "";
@@ -3693,6 +3699,127 @@ ${summaryText}` };
   }
 
   // js/model-catalog.js
+  var DEFAULT_CATALOG_YAML = `
+api_keys:
+  mimo: "YOUR_MIMO_KEY"
+  deepseek: "YOUR_DEEPSEEK_KEY"
+  gemini: "YOUR_GEMINI_KEY"
+  claude: "YOUR_CLAUDE_KEY"
+  gpt: "YOUR_GPT_KEY"
+  openrouter: "YOUR_OPENROUTER_KEY"
+
+providers:
+  deepseek:
+    label: "DeepSeek"
+    base_url: "https://api.deepseek.com/v1"
+    api_key: "\${deepseek}"
+    protocol: "openai"
+    models:
+      - "deepseek-chat"
+      - "deepseek-reasoner"
+    default_model: "deepseek-chat"
+
+  gemini:
+    label: "Gemini"
+    base_url: ""
+    api_key: "\${gemini}"
+    protocol: "openai"
+    models:
+      - "gemini-3-pro-preview-high"
+      - "gemini-3-pro-preview-low"
+      - "gemini-3-pro-preview"
+      - "gemini-3-flash-preview"
+
+  claude:
+    label: "Claude"
+    base_url: ""
+    api_key: "\${claude}"
+    protocol: "claude"
+    models:
+      - "claude-3-5-haiku-20241022"
+      - "claude-3-7-sonnet-20250219"
+      - "claude-3-7-sonnet-20250219-thinking"
+      - "claude-3-haiku-20240307"
+      - "claude-haiku-4-5-20251001"
+      - "claude-haiku-4-5-20251001-thinking"
+      - "claude-opus-4-1-20250805"
+      - "claude-opus-4-1-20250805-thinking"
+      - "claude-opus-4-20250514"
+      - "claude-opus-4-20250514-thinking"
+      - "claude-opus-4-5-20251101"
+      - "claude-opus-4-5-20251101-thinking"
+      - "claude-sonnet-4-20250514"
+      - "claude-sonnet-4-20250514-thinking"
+      - "claude-sonnet-4-5-20250929"
+      - "claude-sonnet-4-5-20250929-thinking"
+
+  gpt:
+    label: "GPT"
+    base_url: ""
+    api_key: "\${gpt}"
+    protocol: "openai"
+    models:
+      - "gpt-5.1-2025-11-13"
+      - "gpt-5-chat-2025-08-07"
+
+  mimo:
+    label: "MiMo"
+    base_url: "https://api.xiaomimimo.com/v1"
+    api_key: "\${mimo}"
+    protocol: "openai"
+    models:
+      - "mimo-v2-pro"
+      - "mimo-v2-omni"
+    default_model: "mimo-v2-pro"
+
+  openrouter:
+    label: "OpenRouter"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key: "\${openrouter}"
+    protocol: "openai"
+    models:
+      - "xiaomi/mimo-v2-pro"
+      - "minimax/minimax-m2.7"
+      - "openai/gpt-5.4"
+      - "google/gemini-3.1-pro-preview"
+      - "anthropic/claude-sonnet-4.6"
+    default_model: "anthropic/claude-sonnet-4.6"
+    headers:
+      HTTP-Referer: "\${origin}"
+`;
+  var LOCAL_API_KEYS_STORAGE = "botc_user_api_keys";
+  var lastRawCatalogData = null;
+  function loadLocalApiKeys() {
+    try {
+      const raw = localStorage.getItem(LOCAL_API_KEYS_STORAGE);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+  function saveLocalApiKeys(keys) {
+    localStorage.setItem(LOCAL_API_KEYS_STORAGE, JSON.stringify(keys || {}));
+  }
+  function clearLocalApiKeys() {
+    localStorage.removeItem(LOCAL_API_KEYS_STORAGE);
+  }
+  function getKnownApiKeyNames() {
+    if (lastRawCatalogData) {
+      const keys = lastRawCatalogData.api_keys || lastRawCatalogData.variables || lastRawCatalogData.secrets || {};
+      return Object.keys(keys);
+    }
+    return ["deepseek", "gemini", "claude", "gpt", "mimo", "openrouter"];
+  }
+  function reapplyApiKeysFromUI(newKeys) {
+    saveLocalApiKeys(newKeys);
+    if (!lastRawCatalogData) return;
+    const catalog = normalizeModelCatalog(lastRawCatalogData);
+    if (catalog) {
+      setModelCatalogLoadStatus({ ok: true, message: "\u5DF2\u5E94\u7528\u7528\u6237\u5BC6\u94A5" });
+      applyModelCatalog(catalog);
+    }
+  }
   function looksLikePlaceholderKey(value) {
     const raw = String(value || "").trim();
     if (!raw) return true;
@@ -3855,7 +3982,7 @@ ${summaryText}` };
     const readyCount = modelCatalogHealth.filter((item) => item.status === "ready" || item.status === "warning").length;
     if (!readyCount && !modelHealthWarned) {
       setModelHealthWarned(true);
-      showModal("\u6A21\u578B\u914D\u7F6E\u6821\u9A8C\u672A\u901A\u8FC7\uFF1A\u5F53\u524D\u6CA1\u6709\u53EF\u7528 provider\uFF0C\u8BF7\u68C0\u67E5 model_catalog.yaml\u3002");
+      showModal("\u6A21\u578B\u914D\u7F6E\u6821\u9A8C\u672A\u901A\u8FC7\uFF1A\u5F53\u524D\u6CA1\u6709\u53EF\u7528 provider\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 API \u5BC6\u94A5\u6216\u68C0\u67E5 model_catalog.yaml\u3002");
     }
     return modelCatalogHealth;
   }
@@ -3879,8 +4006,14 @@ ${summaryText}` };
   }
   function normalizeModelCatalog(raw) {
     if (!raw) return null;
+    lastRawCatalogData = raw;
     const userVariables = raw.api_keys || raw.variables || raw.secrets || {};
-    setCatalogApiKeys(userVariables);
+    const localKeys = loadLocalApiKeys();
+    const mergedKeys = { ...userVariables };
+    Object.entries(localKeys).forEach(([k, v]) => {
+      if (v && typeof v === "string" && v.trim()) mergedKeys[k] = v.trim();
+    });
+    setCatalogApiKeys(mergedKeys);
     const runtimeVariables = {
       origin: window.location?.origin || "",
       host: window.location?.host || "",
@@ -3888,7 +4021,7 @@ ${summaryText}` };
     };
     const variables = {
       ...runtimeVariables,
-      ...userVariables
+      ...mergedKeys
     };
     let providers = [];
     if (Array.isArray(raw)) {
@@ -4014,40 +4147,41 @@ ${summaryText}` };
   async function autoLoadModelCatalog() {
     setModelCatalogLoadStatus({ ok: false, message: "\u6B63\u5728\u52A0\u8F7D model_catalog.yaml..." });
     renderModelHealthCheck();
+    let text = null;
+    let fromYaml = false;
     try {
       const response = await fetch("model_catalog.yaml", { cache: "no-store" });
-      if (!response.ok) {
-        setModelCatalogLoadStatus({ ok: false, message: `\u8BFB\u53D6\u5931\u8D25\uFF08HTTP ${response.status}\uFF09` });
-        renderModelHealthCheck();
-        showModelCatalogFallback();
-        return modelCatalogLoadStatus;
+      if (response.ok) {
+        text = await response.text();
+        fromYaml = true;
       }
-      const text = await response.text();
-      const parsed = parseModelCatalogText(text);
-      if (!parsed.data) {
-        setModelCatalogLoadStatus({ ok: false, message: parsed.error || "\u89E3\u6790\u5931\u8D25" });
-        renderModelHealthCheck();
-        showModelCatalogFallback();
-        return modelCatalogLoadStatus;
-      }
-      const raw = parsed.data;
-      const catalog = normalizeModelCatalog(raw);
-      if (!catalog) {
-        setModelCatalogLoadStatus({ ok: false, message: "providers \u4E3A\u7A7A\u6216\u683C\u5F0F\u4E0D\u6B63\u786E" });
-        renderModelHealthCheck();
-        showModelCatalogFallback();
-        return modelCatalogLoadStatus;
-      }
-      setModelCatalogLoadStatus({ ok: true, message: "\u52A0\u8F7D\u6210\u529F" });
-      applyModelCatalog(catalog);
-      hideModelCatalogFallback();
-      return modelCatalogLoadStatus;
-    } catch (error) {
-      setModelCatalogLoadStatus({ ok: false, message: `\u52A0\u8F7D\u5F02\u5E38\uFF1A${error?.message || "\u672A\u77E5\u9519\u8BEF"}` });
+    } catch {
+    }
+    if (!text) {
+      text = DEFAULT_CATALOG_YAML;
+      fromYaml = false;
+    }
+    const parsed = parseModelCatalogText(text);
+    if (!parsed.data) {
+      setModelCatalogLoadStatus({ ok: false, message: parsed.error || "\u89E3\u6790\u5931\u8D25" });
       renderModelHealthCheck();
       showModelCatalogFallback();
       return modelCatalogLoadStatus;
     }
+    const catalog = normalizeModelCatalog(parsed.data);
+    if (!catalog) {
+      setModelCatalogLoadStatus({ ok: false, message: "providers \u4E3A\u7A7A\u6216\u683C\u5F0F\u4E0D\u6B63\u786E" });
+      renderModelHealthCheck();
+      showModelCatalogFallback();
+      return modelCatalogLoadStatus;
+    }
+    const msg = fromYaml ? "\u52A0\u8F7D\u6210\u529F" : "\u5DF2\u4F7F\u7528\u5185\u7F6E\u9ED8\u8BA4\u914D\u7F6E\uFF08\u8BF7\u5728\u9875\u9762\u4E2D\u586B\u5199 API \u5BC6\u94A5\uFF09";
+    setModelCatalogLoadStatus({ ok: true, message: msg });
+    applyModelCatalog(catalog);
+    if (fromYaml) {
+      hideModelCatalogFallback();
+    }
+    return modelCatalogLoadStatus;
   }
   function getModelConfig(actor) {
     const choice = getEffectiveModelChoice(actor);
@@ -4055,7 +4189,7 @@ ${summaryText}` };
     const temperature = Number(tempInput.value) || 1;
     const custom = getCustomProviderConfig(provider);
     if (!custom) {
-      alert("\u672A\u627E\u5230\u6A21\u578B\u914D\u7F6E\uFF0C\u8BF7\u68C0\u67E5 model_catalog.yaml\u3002");
+      alert("\u672A\u627E\u5230\u6A21\u578B\u914D\u7F6E\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 API \u5BC6\u94A5\u6216\u68C0\u67E5 model_catalog.yaml\u3002");
       return {
         provider: provider || "",
         model: model || "",
@@ -7967,6 +8101,57 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
       }
     });
   }
+  function populateApiKeyInputs() {
+    const saved3 = loadLocalApiKeys();
+    const names = getKnownApiKeyNames();
+    names.forEach((name) => {
+      const input = document.getElementById(`apiKey_${name}`);
+      if (input && saved3[name]) input.value = saved3[name];
+    });
+  }
+  function collectApiKeyInputs() {
+    const names = getKnownApiKeyNames();
+    const keys = {};
+    names.forEach((name) => {
+      const input = document.getElementById(`apiKey_${name}`);
+      if (input && input.value.trim()) keys[name] = input.value.trim();
+    });
+    return keys;
+  }
+  if (saveApiKeysBtn) {
+    saveApiKeysBtn.addEventListener("click", () => {
+      const keys = collectApiKeyInputs();
+      reapplyApiKeysFromUI(keys);
+      const count = Object.keys(keys).length;
+      if (typeof window.alert === "function") {
+        alert(count ? `\u5DF2\u4FDD\u5B58 ${count} \u4E2A\u5BC6\u94A5\u5E76\u5237\u65B0\u6A21\u578B\u914D\u7F6E\u3002` : "\u672A\u586B\u5199\u4EFB\u4F55\u5BC6\u94A5\u3002");
+      }
+    });
+  }
+  if (clearApiKeysBtn) {
+    clearApiKeysBtn.addEventListener("click", () => {
+      const names = getKnownApiKeyNames();
+      names.forEach((name) => {
+        const input = document.getElementById(`apiKey_${name}`);
+        if (input) input.value = "";
+      });
+      clearLocalApiKeys();
+      reapplyApiKeysFromUI({});
+      if (typeof window.alert === "function") {
+        alert("\u5DF2\u6E05\u9664\u5168\u90E8\u5BC6\u94A5\u3002");
+      }
+    });
+  }
+  if (apiKeysSection) {
+    apiKeysSection.addEventListener("click", (e) => {
+      const btn = e.target.closest(".api-key-toggle");
+      if (!btn) return;
+      const targetId = btn.getAttribute("data-target");
+      const input = document.getElementById(targetId);
+      if (!input) return;
+      input.type = input.type === "password" ? "text" : "password";
+    });
+  }
   autoNightToggle.addEventListener("change", () => {
     localStorage.setItem(AUTO_NIGHT_STORAGE, autoNightToggle.checked ? "1" : "0");
     scheduleAutoNight();
@@ -8439,6 +8624,7 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
   restoreSettings();
   renderModelHealthCheck();
   autoLoadModelCatalog();
+  populateApiKeyInputs();
   initSpeechRecognition();
   setupSeatCircleObserver();
   setupChatLayoutObserver();

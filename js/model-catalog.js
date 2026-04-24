@@ -30,6 +30,141 @@ import { initModelSelect } from "./settings.js";
 import { showModal } from "./overlays.js";
 
 // ============================================================================
+// Embedded default catalog (fallback when YAML fetch fails)
+// ============================================================================
+
+const DEFAULT_CATALOG_YAML = `
+api_keys:
+  mimo: "YOUR_MIMO_KEY"
+  deepseek: "YOUR_DEEPSEEK_KEY"
+  gemini: "YOUR_GEMINI_KEY"
+  claude: "YOUR_CLAUDE_KEY"
+  gpt: "YOUR_GPT_KEY"
+  openrouter: "YOUR_OPENROUTER_KEY"
+
+providers:
+  deepseek:
+    label: "DeepSeek"
+    base_url: "https://api.deepseek.com/v1"
+    api_key: "\${deepseek}"
+    protocol: "openai"
+    models:
+      - "deepseek-chat"
+      - "deepseek-reasoner"
+    default_model: "deepseek-chat"
+
+  gemini:
+    label: "Gemini"
+    base_url: ""
+    api_key: "\${gemini}"
+    protocol: "openai"
+    models:
+      - "gemini-3-pro-preview-high"
+      - "gemini-3-pro-preview-low"
+      - "gemini-3-pro-preview"
+      - "gemini-3-flash-preview"
+
+  claude:
+    label: "Claude"
+    base_url: ""
+    api_key: "\${claude}"
+    protocol: "claude"
+    models:
+      - "claude-3-5-haiku-20241022"
+      - "claude-3-7-sonnet-20250219"
+      - "claude-3-7-sonnet-20250219-thinking"
+      - "claude-3-haiku-20240307"
+      - "claude-haiku-4-5-20251001"
+      - "claude-haiku-4-5-20251001-thinking"
+      - "claude-opus-4-1-20250805"
+      - "claude-opus-4-1-20250805-thinking"
+      - "claude-opus-4-20250514"
+      - "claude-opus-4-20250514-thinking"
+      - "claude-opus-4-5-20251101"
+      - "claude-opus-4-5-20251101-thinking"
+      - "claude-sonnet-4-20250514"
+      - "claude-sonnet-4-20250514-thinking"
+      - "claude-sonnet-4-5-20250929"
+      - "claude-sonnet-4-5-20250929-thinking"
+
+  gpt:
+    label: "GPT"
+    base_url: ""
+    api_key: "\${gpt}"
+    protocol: "openai"
+    models:
+      - "gpt-5.1-2025-11-13"
+      - "gpt-5-chat-2025-08-07"
+
+  mimo:
+    label: "MiMo"
+    base_url: "https://api.xiaomimimo.com/v1"
+    api_key: "\${mimo}"
+    protocol: "openai"
+    models:
+      - "mimo-v2-pro"
+      - "mimo-v2-omni"
+    default_model: "mimo-v2-pro"
+
+  openrouter:
+    label: "OpenRouter"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key: "\${openrouter}"
+    protocol: "openai"
+    models:
+      - "xiaomi/mimo-v2-pro"
+      - "minimax/minimax-m2.7"
+      - "openai/gpt-5.4"
+      - "google/gemini-3.1-pro-preview"
+      - "anthropic/claude-sonnet-4.6"
+    default_model: "anthropic/claude-sonnet-4.6"
+    headers:
+      HTTP-Referer: "\${origin}"
+`;
+
+// ============================================================================
+// localStorage API key helpers
+// ============================================================================
+
+const LOCAL_API_KEYS_STORAGE = "botc_user_api_keys";
+
+let lastRawCatalogData = null;
+
+export function loadLocalApiKeys() {
+  try {
+    const raw = localStorage.getItem(LOCAL_API_KEYS_STORAGE);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch { return {}; }
+}
+
+export function saveLocalApiKeys(keys) {
+  localStorage.setItem(LOCAL_API_KEYS_STORAGE, JSON.stringify(keys || {}));
+}
+
+export function clearLocalApiKeys() {
+  localStorage.removeItem(LOCAL_API_KEYS_STORAGE);
+}
+
+export function getKnownApiKeyNames() {
+  if (lastRawCatalogData) {
+    const keys = lastRawCatalogData.api_keys || lastRawCatalogData.variables || lastRawCatalogData.secrets || {};
+    return Object.keys(keys);
+  }
+  return ["deepseek", "gemini", "claude", "gpt", "mimo", "openrouter"];
+}
+
+export function reapplyApiKeysFromUI(newKeys) {
+  saveLocalApiKeys(newKeys);
+  if (!lastRawCatalogData) return;
+  const catalog = normalizeModelCatalog(lastRawCatalogData);
+  if (catalog) {
+    setModelCatalogLoadStatus({ ok: true, message: "已应用用户密钥" });
+    applyModelCatalog(catalog);
+  }
+}
+
+// ============================================================================
 // Pure / low-level helpers
 // ============================================================================
 
@@ -222,7 +357,7 @@ function runModelCatalogHealthCheck() {
   const readyCount = modelCatalogHealth.filter((item) => item.status === "ready" || item.status === "warning").length;
   if (!readyCount && !modelHealthWarned) {
     setModelHealthWarned(true);
-    showModal("模型配置校验未通过：当前没有可用 provider，请检查 model_catalog.yaml。");
+    showModal("模型配置校验未通过：当前没有可用 provider，请在设置中填写 API 密钥或检查 model_catalog.yaml。");
   }
   return modelCatalogHealth;
 }
@@ -252,8 +387,14 @@ export function parseModelCatalogText(text) {
 
 export function normalizeModelCatalog(raw) {
   if (!raw) return null;
+  lastRawCatalogData = raw;
   const userVariables = raw.api_keys || raw.variables || raw.secrets || {};
-  setCatalogApiKeys(userVariables);
+  const localKeys = loadLocalApiKeys();
+  const mergedKeys = { ...userVariables };
+  Object.entries(localKeys).forEach(([k, v]) => {
+    if (v && typeof v === "string" && v.trim()) mergedKeys[k] = v.trim();
+  });
+  setCatalogApiKeys(mergedKeys);
   const runtimeVariables = {
     origin: window.location?.origin || "",
     host: window.location?.host || "",
@@ -261,7 +402,7 @@ export function normalizeModelCatalog(raw) {
   };
   const variables = {
     ...runtimeVariables,
-    ...userVariables
+    ...mergedKeys
   };
   let providers = [];
   if (Array.isArray(raw)) {
@@ -402,40 +543,46 @@ export function loadModelCatalogFromText(text) {
 export async function autoLoadModelCatalog() {
   setModelCatalogLoadStatus({ ok: false, message: "正在加载 model_catalog.yaml..." });
   renderModelHealthCheck();
+
+  let text = null;
+  let fromYaml = false;
+
   try {
     const response = await fetch("model_catalog.yaml", { cache: "no-store" });
-    if (!response.ok) {
-      setModelCatalogLoadStatus({ ok: false, message: `读取失败（HTTP ${response.status}）` });
-      renderModelHealthCheck();
-      showModelCatalogFallback();
-      return modelCatalogLoadStatus;
+    if (response.ok) {
+      text = await response.text();
+      fromYaml = true;
     }
-    const text = await response.text();
-    const parsed = parseModelCatalogText(text);
-    if (!parsed.data) {
-      setModelCatalogLoadStatus({ ok: false, message: parsed.error || "解析失败" });
-      renderModelHealthCheck();
-      showModelCatalogFallback();
-      return modelCatalogLoadStatus;
-    }
-    const raw = parsed.data;
-    const catalog = normalizeModelCatalog(raw);
-    if (!catalog) {
-      setModelCatalogLoadStatus({ ok: false, message: "providers 为空或格式不正确" });
-      renderModelHealthCheck();
-      showModelCatalogFallback();
-      return modelCatalogLoadStatus;
-    }
-    setModelCatalogLoadStatus({ ok: true, message: "加载成功" });
-    applyModelCatalog(catalog);
-    hideModelCatalogFallback();
-    return modelCatalogLoadStatus;
-  } catch (error) {
-    setModelCatalogLoadStatus({ ok: false, message: `加载异常：${error?.message || "未知错误"}` });
+  } catch {}
+
+  if (!text) {
+    text = DEFAULT_CATALOG_YAML;
+    fromYaml = false;
+  }
+
+  const parsed = parseModelCatalogText(text);
+  if (!parsed.data) {
+    setModelCatalogLoadStatus({ ok: false, message: parsed.error || "解析失败" });
     renderModelHealthCheck();
     showModelCatalogFallback();
     return modelCatalogLoadStatus;
   }
+
+  const catalog = normalizeModelCatalog(parsed.data);
+  if (!catalog) {
+    setModelCatalogLoadStatus({ ok: false, message: "providers 为空或格式不正确" });
+    renderModelHealthCheck();
+    showModelCatalogFallback();
+    return modelCatalogLoadStatus;
+  }
+
+  const msg = fromYaml ? "加载成功" : "已使用内置默认配置（请在页面中填写 API 密钥）";
+  setModelCatalogLoadStatus({ ok: true, message: msg });
+  applyModelCatalog(catalog);
+  if (fromYaml) {
+    hideModelCatalogFallback();
+  }
+  return modelCatalogLoadStatus;
 }
 
 export function getModelConfig(actor) {
@@ -444,7 +591,7 @@ export function getModelConfig(actor) {
   const temperature = Number(tempInput.value) || 1.0;
   const custom = getCustomProviderConfig(provider);
   if (!custom) {
-    alert("未找到模型配置，请检查 model_catalog.yaml。");
+    alert("未找到模型配置，请在设置中填写 API 密钥或检查 model_catalog.yaml。");
     return {
       provider: provider || "",
       model: model || "",

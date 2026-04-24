@@ -263,6 +263,62 @@
         </div>
       </div>
 
+      <!-- API key config -->
+      <div class="section" id="apiKeysSection">
+        <h3 style="margin:0 0 8px 0;font-size:1em">API 密钥配置</h3>
+        <div class="hint" style="margin-bottom:10px">
+          填入 API 密钥后点击「保存」即可开始游戏，无需编辑 YAML 文件。密钥保存在浏览器本地。
+        </div>
+        <div id="apiKeyInputs" class="api-key-inputs">
+          <div class="api-key-row">
+            <label>DeepSeek</label>
+            <div class="api-key-field">
+              <input type="password" id="apiKey_deepseek" placeholder="sk-..." autocomplete="off" />
+              <button type="button" class="api-key-toggle" data-target="apiKey_deepseek" title="显示/隐藏">&#128065;</button>
+            </div>
+          </div>
+          <div class="api-key-row">
+            <label>Gemini</label>
+            <div class="api-key-field">
+              <input type="password" id="apiKey_gemini" placeholder="AIza..." autocomplete="off" />
+              <button type="button" class="api-key-toggle" data-target="apiKey_gemini" title="显示/隐藏">&#128065;</button>
+            </div>
+          </div>
+          <div class="api-key-row">
+            <label>Claude</label>
+            <div class="api-key-field">
+              <input type="password" id="apiKey_claude" placeholder="sk-ant-..." autocomplete="off" />
+              <button type="button" class="api-key-toggle" data-target="apiKey_claude" title="显示/隐藏">&#128065;</button>
+            </div>
+          </div>
+          <div class="api-key-row">
+            <label>GPT</label>
+            <div class="api-key-field">
+              <input type="password" id="apiKey_gpt" placeholder="sk-..." autocomplete="off" />
+              <button type="button" class="api-key-toggle" data-target="apiKey_gpt" title="显示/隐藏">&#128065;</button>
+            </div>
+          </div>
+          <div class="api-key-row">
+            <label>MiMo</label>
+            <div class="api-key-field">
+              <input type="password" id="apiKey_mimo" placeholder="密钥..." autocomplete="off" />
+              <button type="button" class="api-key-toggle" data-target="apiKey_mimo" title="显示/隐藏">&#128065;</button>
+            </div>
+          </div>
+          <div class="api-key-row">
+            <label>OpenRouter</label>
+            <div class="api-key-field">
+              <input type="password" id="apiKey_openrouter" placeholder="sk-or-..." autocomplete="off" />
+              <button type="button" class="api-key-toggle" data-target="apiKey_openrouter" title="显示/隐藏">&#128065;</button>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="secondary" id="saveApiKeysBtn">保存密钥</button>
+          <button class="secondary" id="clearApiKeysBtn">清除全部密钥</button>
+        </div>
+      </div>
+
       <!-- Model config -->
       <div class="section">
         <div class="row" style="margin-top:8px">
@@ -282,7 +338,7 @@
           </label>
         </div>
         <div class="hint" style="margin-top:6px">
-          模型列表自动读取同目录的 model_catalog.yaml（用户在外部编辑即可）。
+          模型列表自动读取同目录的 model_catalog.yaml；如需添加自定义 provider 请编辑该文件。
         </div>
         <div id="modelCatalogFallback" style="display:none; margin-top:8px; padding:8px; background:rgba(0,0,0,0.06); border-radius:6px;">
           <p class="hint" style="margin:0 0 8px 0">通过本地文件（file://）打开时，浏览器不允许页面自动读取同目录的 YAML，因此无法加载模型配置。</p>
@@ -340,8 +396,8 @@
           <button class="secondary" id="ttsPauseBtn" type="button" disabled>暂停播放</button>
         </div>
         <div class="hint" style="margin-top:6px">
-          开启后可为 AI 发言生成语音；关闭“新消息自动播放”后，可在聊天区逐条手动点播。<br/>
-          请在 model_catalog.yaml 的 api_keys 中填写 <code>mimo</code> 密钥。
+          开启后可为 AI 发言生成语音；关闭”新消息自动播放”后，可在聊天区逐条手动点播。<br/>
+          请在上方「API 密钥配置」中填写 MiMo 密钥。
         </div>
         <div class="tts-status" id="ttsStatus"></div>
       </div>

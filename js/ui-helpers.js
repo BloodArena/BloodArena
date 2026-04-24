@@ -26,6 +26,7 @@ export let replayPanel, replayRoles, replayActions, replayPrivate, replayChat;
 export let taskSection, taskTitle, taskDesc, taskHint, storySummaryBtn, storySummaryBox;
 export let modalOverlay, modalMessage, modalCloseBtn, nomineeSelect;
 export let startOverlay, introOverlay, enterGameBtn, skipIntroBtn, introVideo, dawnOverlay, dawnText;
+export let saveApiKeysBtn, clearApiKeysBtn, apiKeysSection;
 let playerModelListEl;
 
 export function initDomRefs() {
@@ -123,6 +124,9 @@ export function initDomRefs() {
   dawnOverlay = document.getElementById("dawnOverlay");
   dawnText = document.getElementById("dawnText");
   playerModelListEl = document.getElementById("playerModelList");
+  saveApiKeysBtn = document.getElementById("saveApiKeysBtn");
+  clearApiKeysBtn = document.getElementById("clearApiKeysBtn");
+  apiKeysSection = document.getElementById("apiKeysSection");
 }
 
 /* ===== Rendering Functions ===== */

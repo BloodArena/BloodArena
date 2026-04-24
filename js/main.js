@@ -31,7 +31,11 @@ import {
   autoLoadModelCatalog,
   loadModelCatalogFromText,
   renderModelHealthCheck,
-  getModelStartupReadiness
+  getModelStartupReadiness,
+  loadLocalApiKeys,
+  reapplyApiKeysFromUI,
+  clearLocalApiKeys,
+  getKnownApiKeyNames
 } from './model-catalog.js';
 
 /* ---- settings ---- */
@@ -81,6 +85,7 @@ import {
   humanRoleBox, humanPrivateBox, humanActionBox, playerList, logList,
   privateChatBox, publicLogList, publicLogDrawerList, chatResultHint, townLayoutEl,
   dawnOverlay, dawnText,
+  saveApiKeysBtn, clearApiKeysBtn, apiKeysSection,
   renderAll, renderSeatCircle, renderConfigSummary, renderTaskCardStatus,
   renderStatus, renderPlayers, renderHumanInfo, renderHumanAction,
   renderLog, renderPublicLog, setupSeatCircleObserver, resetSeatCircleView,
@@ -218,6 +223,65 @@ if (modelHealthRefreshBtn) {
     } finally {
       modelHealthRefreshBtn.disabled = false;
     }
+  });
+}
+
+/* ================================================================
+ * API key inputs: save, clear, show/hide toggles
+ * ================================================================ */
+function populateApiKeyInputs() {
+  const saved = loadLocalApiKeys();
+  const names = getKnownApiKeyNames();
+  names.forEach((name) => {
+    const input = document.getElementById(`apiKey_${name}`);
+    if (input && saved[name]) input.value = saved[name];
+  });
+}
+
+function collectApiKeyInputs() {
+  const names = getKnownApiKeyNames();
+  const keys = {};
+  names.forEach((name) => {
+    const input = document.getElementById(`apiKey_${name}`);
+    if (input && input.value.trim()) keys[name] = input.value.trim();
+  });
+  return keys;
+}
+
+if (saveApiKeysBtn) {
+  saveApiKeysBtn.addEventListener("click", () => {
+    const keys = collectApiKeyInputs();
+    reapplyApiKeysFromUI(keys);
+    const count = Object.keys(keys).length;
+    if (typeof window.alert === "function") {
+      alert(count ? `已保存 ${count} 个密钥并刷新模型配置。` : "未填写任何密钥。");
+    }
+  });
+}
+
+if (clearApiKeysBtn) {
+  clearApiKeysBtn.addEventListener("click", () => {
+    const names = getKnownApiKeyNames();
+    names.forEach((name) => {
+      const input = document.getElementById(`apiKey_${name}`);
+      if (input) input.value = "";
+    });
+    clearLocalApiKeys();
+    reapplyApiKeysFromUI({});
+    if (typeof window.alert === "function") {
+      alert("已清除全部密钥。");
+    }
+  });
+}
+
+if (apiKeysSection) {
+  apiKeysSection.addEventListener("click", (e) => {
+    const btn = e.target.closest(".api-key-toggle");
+    if (!btn) return;
+    const targetId = btn.getAttribute("data-target");
+    const input = document.getElementById(targetId);
+    if (!input) return;
+    input.type = input.type === "password" ? "text" : "password";
   });
 }
 
@@ -827,6 +891,7 @@ initRoleSelect();
 restoreSettings();
 renderModelHealthCheck();
 autoLoadModelCatalog();
+populateApiKeyInputs();
 initSpeechRecognition();
 setupSeatCircleObserver();
 setupChatLayoutObserver();
