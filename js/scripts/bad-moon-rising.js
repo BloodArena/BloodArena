@@ -2,7 +2,7 @@ export const BAD_MOON_RISING = {
   id: "bad_moon_rising",
   name: "黯月初升",
   nameEn: "Bad Moon Rising",
-  boardImage: "pictures/bad_moon_rising.jpg",
+  boardImage: "pictures/moon_rising.jpg",
 
   roles: [
     {"id":"2_22","name":"祖母","team":"townsfolk","ability":"在你的首个夜晚，你会得知一名善良玩家和他的角色。如果恶魔杀死了他，你也会死亡。"},

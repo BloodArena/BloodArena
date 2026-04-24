@@ -866,8 +866,11 @@ if (editionSelect) {
     if (titleEl) titleEl.textContent = `血染钟楼 单人模式 - ${getCurrentEdition().name}`;
     const subtitleEl = document.querySelector(".config-header p");
     if (subtitleEl) subtitleEl.textContent = `脚本：${getCurrentEdition().name}（AI 说书人 + AI 玩家）`;
-    const boardImg = document.querySelector("#scriptBoardOverlay img");
-    if (boardImg && getCurrentEdition().boardImage) boardImg.src = getCurrentEdition().boardImage;
+    const boardImg = document.getElementById("scriptBoardImg");
+    if (boardImg && getCurrentEdition().boardImage) {
+      boardImg.src = getCurrentEdition().boardImage;
+      boardImg.alt = `${getCurrentEdition().name}板子`;
+    }
     const boardBtn = document.getElementById("scriptBoardBtn");
     if (boardBtn) boardBtn.title = `查看${getCurrentEdition().name}板子`;
   });

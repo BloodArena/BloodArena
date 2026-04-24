@@ -8201,7 +8201,7 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
     id: "bad_moon_rising",
     name: "\u9EEF\u6708\u521D\u5347",
     nameEn: "Bad Moon Rising",
-    boardImage: "pictures/bad_moon_rising.jpg",
+    boardImage: "pictures/moon_rising.jpg",
     roles: [
       { "id": "2_22", "name": "\u7956\u6BCD", "team": "townsfolk", "ability": "\u5728\u4F60\u7684\u9996\u4E2A\u591C\u665A\uFF0C\u4F60\u4F1A\u5F97\u77E5\u4E00\u540D\u5584\u826F\u73A9\u5BB6\u548C\u4ED6\u7684\u89D2\u8272\u3002\u5982\u679C\u6076\u9B54\u6740\u6B7B\u4E86\u4ED6\uFF0C\u4F60\u4E5F\u4F1A\u6B7B\u4EA1\u3002" },
       { "id": "2_21", "name": "\u6C34\u624B", "team": "townsfolk", "ability": "\u6BCF\u4E2A\u591C\u665A\uFF0C\u4F60\u8981\u9009\u62E9\u4E00\u540D\u5B58\u6D3B\u7684\u73A9\u5BB6\uFF1A\u4F60\u6216\u4ED6\u4E4B\u4E00\u4F1A\u9189\u9152\u76F4\u5230\u4E0B\u4E2A\u9EC4\u660F\u3002\u4F60\u4E0D\u4F1A\u6B7B\u4EA1\u3002" },
@@ -8369,7 +8369,7 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
     id: "sects_and_violets",
     name: "\u68A6\u6B92\u6625\u5BB5",
     nameEn: "Sects and Violets",
-    boardImage: "pictures/sects_and_violets.jpg",
+    boardImage: "pictures/violets.jpg",
     roles: [
       { "id": "3_22", "name": "\u949F\u8868\u5320", "team": "townsfolk", "ability": "\u5728\u4F60\u7684\u9996\u4E2A\u591C\u665A\uFF0C\u4F60\u4F1A\u5F97\u77E5\u6076\u9B54\u4E0E\u722A\u7259\u4E4B\u95F4\u6700\u8FD1\u7684\u8DDD\u79BB\u3002" },
       { "id": "3_21", "name": "\u7B51\u68A6\u5E08", "team": "townsfolk", "ability": "\u6BCF\u4E2A\u591C\u665A\uFF0C\u4F60\u8981\u9009\u62E9\u9664\u4F60\u4EE5\u5916\u7684\u4E00\u540D\u73A9\u5BB6\uFF1A\u4F60\u4F1A\u5F97\u77E5\u4E00\u4E2A\u5584\u826F\u89D2\u8272\u548C\u4E00\u4E2A\u90AA\u6076\u89D2\u8272\uFF0C\u8BE5\u73A9\u5BB6\u662F\u5176\u4E2D\u4E00\u4E2A\u89D2\u8272\u3002" },
@@ -10274,8 +10274,11 @@ ${question}` }
       if (titleEl) titleEl.textContent = `\u8840\u67D3\u949F\u697C \u5355\u4EBA\u6A21\u5F0F - ${getCurrentEdition().name}`;
       const subtitleEl = document.querySelector(".config-header p");
       if (subtitleEl) subtitleEl.textContent = `\u811A\u672C\uFF1A${getCurrentEdition().name}\uFF08AI \u8BF4\u4E66\u4EBA + AI \u73A9\u5BB6\uFF09`;
-      const boardImg = document.querySelector("#scriptBoardOverlay img");
-      if (boardImg && getCurrentEdition().boardImage) boardImg.src = getCurrentEdition().boardImage;
+      const boardImg = document.getElementById("scriptBoardImg");
+      if (boardImg && getCurrentEdition().boardImage) {
+        boardImg.src = getCurrentEdition().boardImage;
+        boardImg.alt = `${getCurrentEdition().name}\u677F\u5B50`;
+      }
       const boardBtn = document.getElementById("scriptBoardBtn");
       if (boardBtn) boardBtn.title = `\u67E5\u770B${getCurrentEdition().name}\u677F\u5B50`;
     });

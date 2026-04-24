@@ -2,7 +2,7 @@ export const SECTS_AND_VIOLETS = {
   id: "sects_and_violets",
   name: "梦殒春宵",
   nameEn: "Sects and Violets",
-  boardImage: "pictures/sects_and_violets.jpg",
+  boardImage: "pictures/violets.jpg",
 
   roles: [
     {"id":"3_22","name":"钟表匠","team":"townsfolk","ability":"在你的首个夜晚，你会得知恶魔与爪牙之间最近的距离。"},
