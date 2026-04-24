@@ -1,6 +1,6 @@
 /* ===== UI Helpers & Rendering ===== */
 import { state, saveState, speechActive } from './state.js';
-import { SCRIPT, PLAYER_DISTRIBUTION, MODEL_OPTIONS, MAX_NOMINATIONS_PER_DAY, SLAYER_DECLARATION_TEMPLATE, DEFAULT_MODEL, DEFAULT_DAY_DISCUSSION_MINUTES } from './constants.js';
+import { SCRIPT, PLAYER_DISTRIBUTION, MODEL_OPTIONS, MAX_NOMINATIONS_PER_DAY, getSlayerDeclarationTemplate, DEFAULT_MODEL, DEFAULT_DAY_DISCUSSION_MINUTES } from './constants.js';
 import { getRoleById, getApparentRole, getPromptName, playerOptionHtml } from './utils.js';
 import { getPhaseLabel, getDiscussionDurationSeconds } from './prompts.js';
 import { getTokenUsageSummary } from './api.js';

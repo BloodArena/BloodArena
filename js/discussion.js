@@ -4,7 +4,7 @@
  */
 
 import { state } from './state.js';
-import { SLAYER_DECLARATION_TEMPLATE } from './constants.js';
+import { getSlayerDeclarationTemplate } from './constants.js';
 import {
   formatPrivateInfoForPrompt,
   formatChatForPrompt,
@@ -105,7 +105,7 @@ ${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
 ${state.phase === "day" && state.dayStage === "discussion" && !state.ended
-  ? `猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。\n`
+  ? `猎手声明规则：若要触发开枪，整句必须严格为"${getSlayerDeclarationTemplate()}"。\n`
   : ""}你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。请给出一小段回应。`
   );
@@ -139,7 +139,7 @@ export async function aiSpeak(player) {
 ${aliveDeadSummary}
 你的当前状态：${player.alive ? "存活" : "死亡"}。
 时间规则：${dayRuleNote || "无"}
-猎手声明规则：若要触发开枪，整句必须严格为"${SLAYER_DECLARATION_TEMPLATE}"。
+猎手声明规则：若要触发开枪，整句必须严格为"${getSlayerDeclarationTemplate()}"。
 你的私密信息增量：${privateInfo}
 ${extraInstruction ? `额外约束：${extraInstruction}\n` : ""}这是公开聊天，所有玩家都能看到你的发言。只基于以上信息进行**公聊**发言。请输出一小段话进行公聊发言。`
   );

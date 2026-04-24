@@ -7,6 +7,7 @@
  */
 
 import { SCRIPT, PLAYER_DISTRIBUTION } from './constants.js';
+import { getCurrentEditionId, getCurrentEdition } from './scripts/edition-registry.js';
 import {
   state,
   setState,
@@ -70,6 +71,7 @@ export function setupPlayers() {
   players[humanSeat - 1].isHuman = true;
   setState({
     players,
+    editionId: getCurrentEditionId(),
     started: false,
     ended: false,
     paused: false,
@@ -148,7 +150,18 @@ export function setupPlayers() {
     discussionLogDrawerOpen: false,
     log: [],
     showRoles: false,
-    lastDawnNarration: ""
+    lastDawnNarration: "",
+    /* BMR state */
+    deathsToday: 0,
+    mastermindExtraDay: false,
+    minstrelDrunkActive: false,
+    outsiderDiedToday: false,
+    /* SV state */
+    demonVotedToday: false,
+    minionNominatedToday: false,
+    witchCurseTargetId: "",
+    cerenovusMadTargets: [],
+    executedToday: false
   });
   if (trajectoryToggle) {
     state.recordTrajectories = trajectoryToggle.checked;
@@ -201,8 +214,11 @@ export function adjustOutsiders(roles, lockedIds = new Set()) {
  * ================================================================ */
 
 export function assignRedHerring() {
-  const hasFortuneTeller = state.players.some((p) => p.roleName === "占卜师");
-  if (!hasFortuneTeller) return "";
+  const ed = getCurrentEdition();
+  if (!ed.hasRedHerring) return "";
+  const triggerRole = ed.redHerringTriggerRole || "占卜师";
+  const hasTrigger = state.players.some((p) => p.roleName === triggerRole);
+  if (!hasTrigger) return "";
   const goodPlayers = state.players.filter(
     (p) => p.team === "townsfolk" && p.alive
   );
@@ -216,13 +232,15 @@ export function assignRedHerring() {
  * ================================================================ */
 
 export function assignDrunkAppearance() {
+  const ed = getCurrentEdition();
+  const drunkRoleName = ed.drunkRole || "";
   const townsfolkRoles = SCRIPT.roles.filter((r) => r.team === "townsfolk");
   const inPlayRoleIds = new Set(state.players.map((p) => p.roleId));
   const notInPlayTownsfolk = townsfolkRoles.filter((r) => !inPlayRoleIds.has(r.id));
   state.players.forEach((player) => {
     const role = getRoleById(player.roleId);
     if (!role) return;
-    if (role.name === "酒鬼") {
+    if (drunkRoleName && role.name === drunkRoleName) {
       player.drunk = true;
       const pool = notInPlayTownsfolk.length ? notInPlayTownsfolk : townsfolkRoles;
       const fake = pool[Math.floor(Math.random() * pool.length)];
@@ -461,9 +479,12 @@ export function enablePostGameChat() {
  * ================================================================ */
 
 export function checkWin() {
+  const editionId = state.editionId || "trouble_brewing";
   const alive = state.players.filter((p) => p.alive);
   let demonAlive = alive.some((p) => p.team === "demon");
-  if (!demonAlive) {
+
+  // === Edition-specific demon succession ===
+  if (!demonAlive && editionId === "trouble_brewing") {
     const scarlet = alive.find((p) => p.roleName === "红唇女郎");
     if (scarlet && alive.length >= 5) {
       const demonRole = SCRIPT.roles.find((r) => r.team === "demon");
@@ -486,6 +507,38 @@ export function checkWin() {
       demonAlive = true;
     }
   }
+
+  // === BMR: Mastermind check ===
+  if (!demonAlive && editionId === "bad_moon_rising") {
+    const mastermind = state.players.find(p => p.roleName === "主谋" && p.alive);
+    if (mastermind && !state.mastermindExtraDay) {
+      state.mastermindExtraDay = true;
+      addChat("说书人", "恶魔死亡，但游戏并未结束……主谋启动了额外回合。", "storyteller");
+      demonAlive = true; // prevent win for now
+    }
+  }
+
+  // === BMR: Zombuul still alive check ===
+  if (!demonAlive && editionId === "bad_moon_rising") {
+    const zombuulAlive = state.players.find(p => p.roleName === "僵怖" && p.alive && !p.appearsAlive);
+    if (zombuulAlive) {
+      demonAlive = true;
+    }
+  }
+
+  // === SV: Evil Twin check (both alive = good cannot win) ===
+  if (editionId === "sects_and_violets" && !demonAlive) {
+    const evilTwin = state.players.find(p => p.roleName === "镜像双子" && p.alive);
+    if (evilTwin && evilTwin.evilTwinPairId) {
+      const goodTwin = state.players.find(p => p.id === evilTwin.evilTwinPairId && p.alive);
+      if (goodTwin) {
+        addChat("说书人", "恶魔死亡，但善良阵营无法获胜——镜像双子仍然存活。", "storyteller");
+        demonAlive = true;
+      }
+    }
+  }
+
+  // === Standard win conditions ===
   if (!demonAlive) {
     addChat("系统", "善良阵营获胜（恶魔死亡）。", "system");
     state.ended = true;
@@ -633,11 +686,13 @@ export function needsHumanNightAction() {
   if (!human) return false;
   const role = getApparentRole(human);
   if (!role) return false;
-  if (role.name === "僧侣" && state.nightCount === 1) return false;
-  if (role.name === "小恶魔" && state.nightCount === 1) return false;
-  if (["僧侣", "投毒者", "小恶魔", "管家"].includes(role.name)) return true;
-  if (role.name === "占卜师") return true;
-  return false;
+  const ed = getCurrentEdition();
+  if (!ed) return false;
+  const nightRoles = ed.nightActionRoles || [];
+  if (!nightRoles.includes(role.name)) return false;
+  const exclusions = ed.firstNightActionExclusions || {};
+  if (exclusions[role.name] && state.nightCount === 1) return false;
+  return true;
 }
 
 /* ================================================================
@@ -650,18 +705,17 @@ export function isHumanActionReady() {
   if (!human) return true;
   const role = getApparentRole(human);
   if (!role) return true;
-  if (role.name === "僧侣" && state.nightCount === 1) return true;
-  if (role.name === "小恶魔" && state.nightCount === 1) return true;
-  if (role.name === "小恶魔") {
-    return Boolean(state.humanActionTarget && state.humanActionConfirmed);
-  }
-  if (["僧侣", "投毒者", "小恶魔", "管家"].includes(role.name)) {
-    return Boolean(state.humanActionTarget && state.humanActionConfirmed);
-  }
-  if (role.name === "占卜师") {
+  const ed = getCurrentEdition();
+  if (!ed) return true;
+  const nightRoles = ed.nightActionRoles || [];
+  if (!nightRoles.includes(role.name)) return true;
+  const exclusions = ed.firstNightActionExclusions || {};
+  if (exclusions[role.name] && state.nightCount === 1) return true;
+  const dualTargets = ed.dualTargetRoles || [];
+  if (dualTargets.includes(role.name)) {
     return Boolean(state.humanActionTarget && state.humanActionTarget2 && state.humanActionConfirmed);
   }
-  return true;
+  return Boolean(state.humanActionTarget && state.humanActionConfirmed);
 }
 
 /* ================================================================

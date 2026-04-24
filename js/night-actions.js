@@ -1,6 +1,7 @@
 /* ===== Night Actions & Resolution ===== */
 import { state, saveState } from './state.js';
-import { SCRIPT, PLAYER_SYSTEM_PROMPT, PLAYER_JSON_SYSTEM_PROMPT, STORYTELLER_LLM_ENABLED, STORYTELLER_REGISTER_LLM_ENABLED, SLAYER_DECLARATION_TEMPLATE, INFO_FORMAT_HINTS, FULL_ROLE_RULES } from './constants.js';
+import { SCRIPT, STORYTELLER_LLM_ENABLED, STORYTELLER_REGISTER_LLM_ENABLED, getPlayerJsonSystemPrompt, getSlayerDeclarationTemplate, getInfoFormatHints, getFullRoleRules } from './constants.js';
+import { getCurrentEdition } from './scripts/edition-registry.js';
 import { getRoleById, getApparentRole, shuffle, sleep, extractJson, getPromptName, playerOptionLabel } from './utils.js';
 import { callDeepSeek } from './api.js';
 import { addChat, addLogEntry, addReplayEvent, formatPlayerPrivateChats } from './chat.js';
@@ -47,7 +48,7 @@ function storytellerTruthBias(player) {
   return Math.random() < Math.min(0.8, Math.max(0.2, chance));
 }
 
-function getAliveNeighbors(index) {
+export function getAliveNeighbors(index) {
   const total = state.players.length;
   if (!total) return [];
   const aliveIndices = state.players.map((p, i) => (p.alive ? i : -1)).filter((i) => i !== -1);
@@ -75,7 +76,7 @@ ${aliveDeadSummary}
 可选目标：${targetNames}。只能从列表中选择一个目标。${extraNote || ""}
 请输出 JSON：{"target":"玩家名"}`;
   const prompt = buildPlayerPromptMessages(actor, "json", userContent, {
-    systemPrompt: PLAYER_JSON_SYSTEM_PROMPT
+    systemPrompt: getPlayerJsonSystemPrompt()
   });
   try {
     const content = await callDeepSeek(prompt, getTempValue(), actor, "json");
@@ -103,7 +104,7 @@ ${aliveDeadSummary}
 可选目标：${targetNames}。只能从列表中选择两名不同目标。
 请输出 JSON：{"target1":"玩家名","target2":"玩家名"}`;
   const prompt = buildPlayerPromptMessages(actor, "json", userContent, {
-    systemPrompt: PLAYER_JSON_SYSTEM_PROMPT
+    systemPrompt: getPlayerJsonSystemPrompt()
   });
   try {
     const content = await callDeepSeek(prompt, getTempValue(), actor, "json");
@@ -126,7 +127,7 @@ export function getDayRuleNote() {
     notes.push("首夜没有恶魔击杀，白天1无人死亡是常规规则，不要将其当作线索。");
   }
   if (state.phase === "day" && state.dayStage === "discussion" && !state.ended) {
-    notes.push(`猎手声明格式：${SLAYER_DECLARATION_TEMPLATE}；不符合格式不会触发开枪。`);
+    notes.push(`猎手声明格式：${getSlayerDeclarationTemplate()}；不符合格式不会触发开枪。`);
   }
   return notes.join(" ");
 }
@@ -271,13 +272,13 @@ export async function storytellerChooseInfo(player, label, trueInfo, fallbackOpt
   const claimsSummary = getClaimsSummary(10);
   const relatedClaims = relatedNames.length ? getRelatedClaimsSummary(relatedNames) : "无";
   const relatedTruth = relatedNames.length ? getRelatedPlayerTruthSummary(relatedNames) : "无";
-  const formatHint = INFO_FORMAT_HINTS[label] || "请按该信息类型的常规格式输出。";
+  const formatHint = getInfoFormatHints()[label] || "请按该信息类型的常规格式输出。";
   const playerNames = state.players.map((p) => p.name);
   const demonSummaries = getDemonSummaries();
 
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。",
-    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `你是《血染钟楼·${getCurrentEdition().name}》的说书人。`,
+    `《血染钟楼·${getCurrentEdition().name}》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
     `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
     "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
     "该玩家当前醉酒或中毒，你需要决定给他什么信息（真实信息或你编造的假信息）。",
@@ -293,7 +294,7 @@ export async function storytellerChooseInfo(player, label, trueInfo, fallbackOpt
     getGrimoireSummary(),
     "",
     "## 完整角色能力表",
-    FULL_ROLE_RULES,
+    getFullRoleRules(),
     "",
     "## 信息格式要求",
     formatHint,
@@ -454,8 +455,8 @@ export async function storytellerChooseRegistrationProfile(player) {
   }
   const options = roleName === "间谍" ? "normal|good" : "normal|minion|demon";
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。",
-    `《血染钟楼·暗流涌动》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
+    `你是《血染钟楼·${getCurrentEdition().name}》的说书人。`,
+    `《血染钟楼·${getCurrentEdition().name}》是一款进阶版社交推理游戏，可理解为"每个人都有独特超能力的狼人杀"。`,
     `核心机制是"死而不僵"和"信息迷雾"：死人仍可参与讨论且拥有一票死人票；醉酒与中毒会让技能一定失效，信息则可能错误，需要逻辑验证。`,
     "游戏分为善良与邪恶阵营。镇民和外来者属于善良阵营，爪牙和恶魔属于邪恶阵营。善良阵营的获胜条件是处决恶魔，或触发善良阵营特殊的胜利机制（如镇长日）；邪恶阵营的获胜条件是让场上仅剩两名存活玩家且恶魔存活，或触发善良阵营特殊的失败机制（比如圣徒被处决）。",
     `你需要决定该玩家在本次夜晚信息判定中的"登记形态"。`,
@@ -472,7 +473,7 @@ export async function storytellerChooseRegistrationProfile(player) {
     getGrimoireSummary(),
     "",
     "## 完整角色能力表",
-    FULL_ROLE_RULES,
+    getFullRoleRules(),
     "",
     "你只能从给定选项里选一个 register_as，不要输出额外文本。",
     "若角色是间谍：normal=按真实邪恶/爪牙登记；good=按善良登记并显示镇民/外来者角色。",
@@ -565,10 +566,10 @@ export async function storytellerChooseTrueInfoPair(infoPlayer, label, infoMap) 
   if (!candidateDesc.length) return null;
 
   const pairNames = pairPool.map((p) => p.name).join("、");
-  const formatHint = INFO_FORMAT_HINTS[label] || "";
+  const formatHint = getInfoFormatHints()[label] || "";
 
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。",
+    `你是《血染钟楼·${getCurrentEdition().name}》的说书人。`,
     `该玩家（${infoPlayer.name}）没有醉酒或中毒，你必须给出真实信息。`,
     `但你可以策略性地选择展示哪个目标和配对哪个玩家，以及间谍/陌客是否使用其登记能力。`,
     "",
@@ -582,7 +583,7 @@ export async function storytellerChooseTrueInfoPair(infoPlayer, label, infoMap) 
     getGrimoireSummary(),
     "",
     "## 完整角色能力表",
-    FULL_ROLE_RULES,
+    getFullRoleRules(),
     "",
     "## 信息格式要求",
     formatHint,
@@ -647,7 +648,7 @@ export async function storytellerJudgeRecluseSlayer(shooter, target) {
   const demonSummaries = getDemonSummaries();
 
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。",
+    `你是《血染钟楼·${getCurrentEdition().name}》的说书人。`,
     "猎手正在对陌客开枪，你需要决定陌客是否被登记为恶魔（若登记为恶魔则陌客死亡）。",
     "",
     "## 策略原则",
@@ -661,7 +662,7 @@ export async function storytellerJudgeRecluseSlayer(shooter, target) {
     getGrimoireSummary(),
     "",
     "## 完整角色能力表",
-    FULL_ROLE_RULES,
+    getFullRoleRules(),
   ];
 
   if (demonSummaries) {
@@ -700,7 +701,7 @@ export async function storytellerChooseMayorRedirect(mayor) {
   const targetNames = alts.map((p) => p.name).join("、");
 
   const instructionParts = [
-    "你是《血染钟楼·暗流涌动》的说书人。",
+    `你是《血染钟楼·${getCurrentEdition().name}》的说书人。`,
     "恶魔今晚刀了镇长，镇长的能力是：如果你在夜晚死亡，可能另一名玩家替你死亡。你需要决定是否触发替死，以及由谁替死。",
     "",
     "## 策略原则",
@@ -714,7 +715,7 @@ export async function storytellerChooseMayorRedirect(mayor) {
     getGrimoireSummary(),
     "",
     "## 完整角色能力表",
-    FULL_ROLE_RULES,
+    getFullRoleRules(),
   ];
 
   if (demonSummaries) {
@@ -1006,7 +1007,7 @@ export function maybeHandleSlayerClaim(speaker, text) {
   if (!declaration.detected) return;
   if (!declaration.valid) {
     if (declaration.error === "format") {
-      addChat("说书人", `猎手声明格式不正确，本次不视为开枪。正确格式：${SLAYER_DECLARATION_TEMPLATE}`, "storyteller");
+      addChat("说书人", `猎手声明格式不正确，本次不视为开枪。正确格式：${getSlayerDeclarationTemplate()}`, "storyteller");
     } else {
       addChat("说书人", "猎手声明目标无效（目标不存在或已死亡），本次不视为开枪。", "storyteller");
     }
@@ -1131,7 +1132,26 @@ export function recordFirstNightRecognition() {
   state.firstNightRecognitionDone = true;
 }
 
+let _editionResolvers = {};
+export function registerEditionNightResolver(editionId, fn) {
+  _editionResolvers[editionId] = fn;
+}
+
 export async function resolveNight() {
+  if (!state.started || state.phase !== "night") return;
+  if (state.paused) return;
+  if (needsHumanNightAction() && !isHumanActionReady()) {
+    addChat("系统", "请先确认你的夜晚行动。", "system");
+    return;
+  }
+  const editionId = state.editionId || "trouble_brewing";
+  if (_editionResolvers[editionId]) {
+    return _editionResolvers[editionId]();
+  }
+  return resolveNightTB();
+}
+
+async function resolveNightTB() {
   if (!state.started || state.phase !== "night") return;
   if (state.paused) return;
   if (needsHumanNightAction() && !isHumanActionReady()) {
@@ -1501,7 +1521,7 @@ export async function resolveNight() {
     },
     {
       role: "user",
-      content: `当前剧本：暗流涌动。
+      content: `当前剧本：${getCurrentEdition().name}。
 夜晚${state.nightCount}刚结束。
 今晚死亡：${killed ? killed.name : "无人"}。
 请输出 JSON：

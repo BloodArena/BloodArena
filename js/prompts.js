@@ -16,12 +16,12 @@ import {
   DAY_DISCUSSION_STORAGE,
   DEFAULT_DAY_DISCUSSION_MINUTES,
   PLAYER_DISTRIBUTION,
-  ROLE_HINTS,
-  ROLE_STRATEGY_TIPS,
-  EVIL_GUIDELINES,
-  GOOD_GUIDELINES,
-  PLAYER_SYSTEM_PROMPT,
-  SLAYER_DECLARATION_TEMPLATE
+  getRoleHints,
+  getRoleStrategyTips,
+  getGoodGuidelines,
+  getEvilGuidelines,
+  getPlayerSystemPrompt,
+  getSlayerDeclarationTemplate
 } from './constants.js';
 import {
   sleep,
@@ -203,7 +203,7 @@ export function buildPlayerStaticSystemContext(actor, options = {}) {
   const apparentRole = getApparentRole(actor);
   const roleName = apparentRole ? apparentRole.name : "未知";
   const roleAbility = apparentRole ? apparentRole.ability : "无";
-  const roleHint = apparentRole ? (ROLE_HINTS[apparentRole.name] || "无") : "无";
+  const roleHint = apparentRole ? (getRoleHints()[apparentRole.name] || "无") : "无";
   const guidelines = getTeamGuidelines(actor);
   const strategyTips = getStrategyTips(actor);
   const roster = buildPromptRoster();
@@ -239,7 +239,7 @@ export function buildPlayerStaticSystemContext(actor, options = {}) {
 }
 
 export function buildPlayerPromptMessages(actor, sessionKey, userContent, options = {}) {
-  const systemPrompt = options.systemPrompt || PLAYER_SYSTEM_PROMPT;
+  const systemPrompt = options.systemPrompt || getPlayerSystemPrompt();
   const staticContext = buildPlayerStaticSystemContext(actor, options);
   const messages = [{ role: "system", content: systemPrompt }];
   if (staticContext) {
@@ -286,9 +286,9 @@ export function buildPromptRoster() {
 export function getTeamGuidelines(player) {
   if (!player) return "";
   if (player.team === "minion" || player.team === "demon") {
-    return EVIL_GUIDELINES;
+    return getEvilGuidelines();
   }
-  return GOOD_GUIDELINES;
+  return getGoodGuidelines();
 }
 
 export function getStrategyTips(player) {
@@ -317,8 +317,8 @@ export function getStrategyTips(player) {
   if (player?.privateInfo?.some((line) => line.includes("三个不在场身份"))) {
     tips.push("你知道不在场身份，只挑一个伪装，不要公开完整名单。");
   }
-  if (roleName && ROLE_STRATEGY_TIPS[roleName]) {
-    tips.push(ROLE_STRATEGY_TIPS[roleName]);
+  if (roleName && getRoleStrategyTips()[roleName]) {
+    tips.push(getRoleStrategyTips()[roleName]);
   }
   return tips.join(" ");
 }

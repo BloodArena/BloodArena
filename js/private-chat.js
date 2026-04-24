@@ -4,7 +4,7 @@
  */
 
 import { state } from './state.js';
-import { PLAYER_JSON_SYSTEM_PROMPT } from './constants.js';
+import { getPlayerJsonSystemPrompt } from './constants.js';
 import { extractJson, normalizeTargetName } from './utils.js';
 import { callDeepSeek, commitSessionMessages } from './api.js';
 import { addPrivateChat, formatPlayerPrivateChats, formatEvilChatForPrompt, isPrivateChatOpen } from './chat.js';

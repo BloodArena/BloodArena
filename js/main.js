@@ -20,7 +20,8 @@ import {
   STORAGE_KEY,
   SCRIPT,
   MODEL_OPTIONS,
-  ROLE_STRATEGY_TIPS
+  ROLE_STRATEGY_TIPS,
+  getRoleStrategyTips
 } from './constants.js';
 
 /* ---- api ---- */
@@ -140,6 +141,21 @@ import './tts.js';
 
 /* ---- utils ---- */
 import { sleep } from './utils.js';
+
+/* ---- edition registry ---- */
+import { registerEdition, setCurrentEdition, getCurrentEdition, listEditions } from './scripts/edition-registry.js';
+import { TROUBLE_BREWING } from './scripts/trouble-brewing.js';
+import { BAD_MOON_RISING } from './scripts/bad-moon-rising.js';
+import { SECTS_AND_VIOLETS } from './scripts/sects-and-violets.js';
+
+registerEdition("trouble_brewing", TROUBLE_BREWING);
+registerEdition("bad_moon_rising", BAD_MOON_RISING);
+registerEdition("sects_and_violets", SECTS_AND_VIOLETS);
+setCurrentEdition("trouble_brewing");
+
+/* ---- edition night resolvers ---- */
+import './scripts/bmr-night.js';
+import './scripts/sv-night.js';
 
 /* ================================================================
  * Initialize DOM references
@@ -823,6 +839,40 @@ if (saved) {
   renderAll();
 }
 initModelSelect();
+
+/* ---- edition selector ---- */
+const editionSelect = document.getElementById("editionSelect");
+if (editionSelect) {
+  const editions = listEditions();
+  editionSelect.innerHTML = "";
+  editions.forEach(({ id, name }) => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = name;
+    editionSelect.appendChild(opt);
+  });
+  if (state && state.editionId) {
+    try { setCurrentEdition(state.editionId); editionSelect.value = state.editionId; } catch (_) {}
+  }
+  editionSelect.addEventListener("change", () => {
+    if (state && state.started) {
+      editionSelect.value = state.editionId || "trouble_brewing";
+      return;
+    }
+    setCurrentEdition(editionSelect.value);
+    if (state) state.editionId = editionSelect.value;
+    initRoleSelect();
+    const titleEl = document.querySelector("title");
+    if (titleEl) titleEl.textContent = `血染钟楼 单人模式 - ${getCurrentEdition().name}`;
+    const subtitleEl = document.querySelector(".config-header p");
+    if (subtitleEl) subtitleEl.textContent = `脚本：${getCurrentEdition().name}（AI 说书人 + AI 玩家）`;
+    const boardImg = document.querySelector("#scriptBoardOverlay img");
+    if (boardImg && getCurrentEdition().boardImage) boardImg.src = getCurrentEdition().boardImage;
+    const boardBtn = document.getElementById("scriptBoardBtn");
+    if (boardBtn) boardBtn.title = `查看${getCurrentEdition().name}板子`;
+  });
+}
+
 initRoleSelect();
 restoreSettings();
 renderModelHealthCheck();

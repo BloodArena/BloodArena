@@ -8,7 +8,7 @@
 
 import { state, inactivityTimer, countdownTimer, voteTimer } from './state.js';
 import { setInactivityTimer, setCountdownTimer, setVoteTimer } from './state.js';
-import { MAX_NOMINATIONS_PER_DAY, PLAYER_JSON_SYSTEM_PROMPT } from './constants.js';
+import { MAX_NOMINATIONS_PER_DAY, getPlayerJsonSystemPrompt } from './constants.js';
 import { extractJson } from './utils.js';
 import { callDeepSeek } from './api.js';
 import {
@@ -582,17 +582,80 @@ export async function finalizeDayExecution() {
   ) {
     const nominee = state.players.find((p) => p.id === state.dayHighestNomineeId);
     if (nominee && nominee.alive) {
+      const editionId = state.editionId || "trouble_brewing";
+
+      // BMR: Devil's Advocate protection
+      if (editionId === "bad_moon_rising") {
+        const da = state.players.find(p => p.roleName === "魔鬼代言人");
+        if (da && da.devilsAdvocateTargetId === nominee.id && !isDroisoned(da)) {
+          state.lastExecutedId = nominee.id;
+          addChat("说书人", `${nominee.name} 被处决，但并未死亡。`, "storyteller");
+          addLogEntry(`处决不死（魔鬼代言人保护）：${nominee.name}`, "day");
+          addReplayEvent(`处决不死（魔鬼代言人保护）：${nominee.name}`, "day_action");
+          addPublicLogEntry(`处决：${nominee.name}（未死亡）`);
+          state.executedToday = true;
+          // Track outsider death for Godfather
+          // Track minion death for Minstrel
+          // No actual death, skip further checks
+          renderAll();
+          checkWin();
+          if (state.ended) return;
+          switchPhase();
+          return;
+        }
+      }
+
       nominee.alive = false;
+      nominee.appearsAlive = false;
       state.lastExecutedId = nominee.id;
+      state.executedToday = true;
       addChat("说书人", `${nominee.name} 被处决。`, "storyteller");
       addLogEntry(`处决：${nominee.name}`, "day");
       addReplayEvent(`处决：${nominee.name}`, "day_action");
       addPublicLogEntry(`处决：${nominee.name}`);
-      if (nominee.roleName === "圣徒") {
+
+      // Track deaths for BMR
+      if (editionId === "bad_moon_rising") {
+        state.deathsToday = (state.deathsToday || 0) + 1;
+        if (nominee.team === "outsider") state.outsiderDiedToday = true;
+        // Minstrel: if minion executed, all players drunk
+        const minstrel = state.players.find(p => p.roleName === "吟游诗人" && p.alive && !isDroisoned(p));
+        if (minstrel && nominee.team === "minion") {
+          state.players.forEach(p => {
+            if (p.id !== minstrel.id && p.alive) { p.drunk = true; }
+          });
+          state.minstrelDrunkActive = true;
+          addChat("说书人", "吟游诗人能力触发：除吟游诗人外所有人醉酒到明天黄昏。", "storyteller");
+          addReplayEvent(`吟游诗人触发：全员醉酒`, "day_action");
+        }
+      }
+
+      // TB: Saint execution
+      if (editionId === "trouble_brewing" && nominee.roleName === "圣徒") {
         addChat("系统", "圣徒被处决，邪恶阵营获胜。", "system");
         state.ended = true;
         state.winner = "evil";
         state.winCondition = "saint_executed";
+      }
+
+      // SV: Evil Twin good twin execution
+      if (editionId === "sects_and_violets" && nominee.evilTwinPairId) {
+        const evilTwin = state.players.find(p => p.id === nominee.evilTwinPairId && p.roleName === "镜像双子" && p.alive);
+        if (evilTwin && (nominee.team === "townsfolk" || nominee.team === "outsider")) {
+          addChat("系统", "善良双子被处决，邪恶阵营获胜。", "system");
+          state.ended = true;
+          state.winner = "evil";
+          state.winCondition = "evil_twin_win";
+        }
+      }
+
+      // SV: Klutz death trigger (呆瓜) - simplified for AI, auto-choose good player
+      if (editionId === "sects_and_violets" && nominee.roleName === "呆瓜") {
+        const alivePlayers = state.players.filter(p => p.alive);
+        const goodPlayer = alivePlayers.find(p => p.team === "townsfolk" || p.team === "outsider");
+        if (goodPlayer) {
+          addChat("说书人", `${nominee.name}（呆瓜）死亡时选择了 ${goodPlayer.name}。游戏继续。`, "storyteller");
+        }
       }
     }
   } else {
@@ -608,16 +671,57 @@ export async function finalizeDayExecution() {
   renderAll();
   checkWin();
   if (state.ended) return;
+  const edId = state.editionId || "trouble_brewing";
   const alive = state.players.filter((p) => p.alive);
-  const mayorAlive = alive.some((p) => p.roleName === "镇长");
-  if (mayorAlive && alive.length === 3 && !state.lastExecutedId) {
-    addChat("系统", "镇长触发胜利条件，善良阵营获胜。", "system");
-    state.ended = true;
-    state.winner = "good";
-    state.winCondition = "mayor_win";
-    renderAll();
-    return;
+
+  // TB: Mayor win condition
+  if (edId === "trouble_brewing") {
+    const mayorAlive = alive.some((p) => p.roleName === "镇长");
+    if (mayorAlive && alive.length === 3 && !state.lastExecutedId) {
+      addChat("系统", "镇长触发胜利条件，善良阵营获胜。", "system");
+      state.ended = true;
+      state.winner = "good";
+      state.winCondition = "mayor_win";
+      renderAll();
+      return;
+    }
   }
+
+  // SV: Vortox no-execution loss
+  if (edId === "sects_and_violets" && !state.executedToday) {
+    const vortoxAlive = state.players.find(p => p.roleName === "涡流" && p.alive);
+    if (vortoxAlive && !isDroisoned(vortoxAlive)) {
+      addChat("系统", "白天无人被处决，涡流获胜条件触发——邪恶阵营获胜。", "system");
+      state.ended = true;
+      state.winner = "evil";
+      state.winCondition = "vortox_no_execution";
+      renderAll();
+      return;
+    }
+  }
+
+  // BMR: Mastermind extra day check
+  if (edId === "bad_moon_rising" && state.mastermindExtraDay) {
+    if (state.lastExecutedId) {
+      const executed = state.players.find(p => p.id === state.lastExecutedId);
+      if (executed && (executed.team === "townsfolk" || executed.team === "outsider")) {
+        addChat("系统", "主谋额外回合：善良玩家被处决，邪恶阵营获胜。", "system");
+        state.ended = true;
+        state.winner = "evil";
+        state.winCondition = "mastermind_win";
+        renderAll();
+        return;
+      } else {
+        addChat("系统", "主谋额外回合：邪恶玩家被处决，善良阵营获胜。", "system");
+        state.ended = true;
+        state.winner = "good";
+        state.winCondition = "mastermind_failed";
+        renderAll();
+        return;
+      }
+    }
+  }
+
   switchPhase();
 }
 
