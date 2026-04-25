@@ -53,6 +53,10 @@
 
 ## 📋 Prerequisites
 
+> 🎮 **Just want to play?** If you choose to [Play Online](#option-1-play-online-easiest), all you need is a browser and an `API Key` — **no installation required**. You can skip the Prerequisites and Installation sections and jump straight to [🚀 Starting the Game](#-starting-the-game).
+
+The following are required for local deployment or running the Benchmark evaluation:
+
 1. **Modern Browser** (required)
    - `Chrome` or `Edge` recommended; `IE` is not supported
 
@@ -69,6 +73,8 @@
 ---
 
 ## 🔧 Installation
+
+> 💡 If you choose to [Play Online](#option-1-play-online-easiest), you can skip the entire Installation section.
 
 ### Step 1: Download the Project
 
@@ -140,7 +146,7 @@ providers:
 
 ### Option 1: Play Online (Easiest)
 
-No downloads required — just visit our hosted online version:
+No downloads, no environment setup, no configuration files — just visit our hosted online version:
 
 👉 **[https://bloodarena.github.io/BloodArena/](https://bloodarena.github.io/BloodArena/)**
 
@@ -149,6 +155,8 @@ Once the page loads, enter your `API Key` on the web page and click **"Save Keys
 > 💡 The online version's `model_catalog.yaml` does not contain any valid `API Keys` — you need to enter your own on the page. Just one key is enough to play!
 
 ### Option 2: Using a `Python` Local Server
+
+> The following methods require completing the [🔧 Installation](#-installation) steps above first.
 
 ```bash
 # Run in the project root directory
