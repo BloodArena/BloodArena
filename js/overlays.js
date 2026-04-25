@@ -9,6 +9,7 @@ import {
   saveState,
   dawnTypingTimer, dawnHideTimer, dawnSafetyTimer
 } from "./state.js";
+import { getCurrentEdition } from "./scripts/edition-registry.js";
 
 // --- DOM refs ---
 const modalOverlay = document.getElementById("modalOverlay");
@@ -136,12 +137,19 @@ export function initNotePicker() {
   const tagPicker = document.getElementById("noteTagPicker");
   let activePlayerId = null;
 
-  const ROLE_NAMES = Object.keys(window.ROLE_STRATEGY_TIPS || {});
-  const TAG_OPTIONS = [
-    "善良", "邪恶", "图管外来者", "猎手失去能力", "僧侣守护",
-    "是酒鬼", "被恶魔杀死", "干扰项", "中毒", "管家的主人",
-    "洗衣妇镇民", "外来者", "自定义笔记"
-  ];
+  function getRoleNames() {
+    const ed = typeof getCurrentEdition === "function" ? getCurrentEdition() : null;
+    if (ed && ed.roleStrategyTips) return Object.keys(ed.roleStrategyTips);
+    if (ed && ed.roles) return ed.roles.map(r => r.name);
+    return Object.keys(window.ROLE_STRATEGY_TIPS || {});
+  }
+  function getTagOptions() {
+    const ed = typeof getCurrentEdition === "function" ? getCurrentEdition() : null;
+    if (ed && Array.isArray(ed.tagOptions)) return ed.tagOptions;
+    return [
+      "善良", "邪恶", "被恶魔杀死", "中毒", "醉酒", "外来者", "自定义笔记"
+    ];
+  }
 
   function positionPicker(picker, anchorRect) {
     const pw = 260, ph = 320;
@@ -180,7 +188,7 @@ export function initNotePicker() {
     });
     rolePicker.appendChild(clearBtn);
     /* role options */
-    ROLE_NAMES.forEach((name) => {
+    getRoleNames().forEach((name) => {
       const btn = document.createElement("span");
       btn.className = "note-picker-item";
       btn.textContent = name;
@@ -200,7 +208,7 @@ export function initNotePicker() {
     closeAll();
     activePlayerId = playerId;
     tagPicker.innerHTML = "";
-    TAG_OPTIONS.forEach((tag) => {
+    getTagOptions().forEach((tag) => {
       const btn = document.createElement("span");
       btn.className = "note-picker-item";
       btn.textContent = tag;

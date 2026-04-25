@@ -163,4 +163,11 @@ export const SECTS_AND_VIOLETS = {
   redHerringTriggerRole: "",
   drunkRole: "",
   drunkAppearsAs: "",
+
+  tagOptions: [
+    "善良", "邪恶", "被恶魔杀死", "中毒", "醉酒",
+    "女巫诅咒", "洗脑师疯狂", "镜像双子", "善良双子", "邪恶双子",
+    "哲学家已使用", "女裁缝已使用", "艺术家已使用",
+    "诺-达鲺中毒", "涡流信息全错", "外来者", "自定义笔记"
+  ],
 };

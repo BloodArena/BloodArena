@@ -1056,22 +1056,25 @@ ${summaryText}` };
     const rolePicker = document.getElementById("noteRolePicker");
     const tagPicker = document.getElementById("noteTagPicker");
     let activePlayerId = null;
-    const ROLE_NAMES = Object.keys(window.ROLE_STRATEGY_TIPS || {});
-    const TAG_OPTIONS = [
-      "\u5584\u826F",
-      "\u90AA\u6076",
-      "\u56FE\u7BA1\u5916\u6765\u8005",
-      "\u730E\u624B\u5931\u53BB\u80FD\u529B",
-      "\u50E7\u4FA3\u5B88\u62A4",
-      "\u662F\u9152\u9B3C",
-      "\u88AB\u6076\u9B54\u6740\u6B7B",
-      "\u5E72\u6270\u9879",
-      "\u4E2D\u6BD2",
-      "\u7BA1\u5BB6\u7684\u4E3B\u4EBA",
-      "\u6D17\u8863\u5987\u9547\u6C11",
-      "\u5916\u6765\u8005",
-      "\u81EA\u5B9A\u4E49\u7B14\u8BB0"
-    ];
+    function getRoleNames() {
+      const ed = typeof getCurrentEdition === "function" ? getCurrentEdition() : null;
+      if (ed && ed.roleStrategyTips) return Object.keys(ed.roleStrategyTips);
+      if (ed && ed.roles) return ed.roles.map((r) => r.name);
+      return Object.keys(window.ROLE_STRATEGY_TIPS || {});
+    }
+    function getTagOptions() {
+      const ed = typeof getCurrentEdition === "function" ? getCurrentEdition() : null;
+      if (ed && Array.isArray(ed.tagOptions)) return ed.tagOptions;
+      return [
+        "\u5584\u826F",
+        "\u90AA\u6076",
+        "\u88AB\u6076\u9B54\u6740\u6B7B",
+        "\u4E2D\u6BD2",
+        "\u9189\u9152",
+        "\u5916\u6765\u8005",
+        "\u81EA\u5B9A\u4E49\u7B14\u8BB0"
+      ];
+    }
     function positionPicker(picker, anchorRect) {
       const pw = 260, ph = 320;
       let left = anchorRect.left + anchorRect.width / 2 - pw / 2;
@@ -1107,7 +1110,7 @@ ${summaryText}` };
         closeAll();
       });
       rolePicker.appendChild(clearBtn);
-      ROLE_NAMES.forEach((name) => {
+      getRoleNames().forEach((name) => {
         const btn = document.createElement("span");
         btn.className = "note-picker-item";
         btn.textContent = name;
@@ -1129,7 +1132,7 @@ ${summaryText}` };
       closeAll();
       activePlayerId = playerId;
       tagPicker.innerHTML = "";
-      TAG_OPTIONS.forEach((tag) => {
+      getTagOptions().forEach((tag) => {
         const btn = document.createElement("span");
         btn.className = "note-picker-item";
         btn.textContent = tag;
@@ -1812,14 +1815,21 @@ ${summaryText}` };
       humanActionBox.textContent = "\u65E0\u591C\u665A\u884C\u52A8";
       return;
     }
-    const nightActionRoles = /* @__PURE__ */ new Set(["\u5C0F\u6076\u9B54", "\u6295\u6BD2\u8005", "\u50E7\u4FA3", "\u7BA1\u5BB6", "\u5360\u535C\u5E08"]);
-    if (nightActionRoles.has(role.name)) {
+    const ed = getCurrentEdition();
+    const nightRoles = new Set(ed.nightActionRoles || []);
+    const dualTargets = new Set(ed.dualTargetRoles || []);
+    const firstNightExcl = ed.firstNightActionExclusions || {};
+    if (nightRoles.has(role.name)) {
       if (state.phase !== "night") {
         humanActionBox.textContent = "\u591C\u665A\u5230\u6765\u540E\u53EF\u6267\u884C\u884C\u52A8\u3002";
         return;
       }
       if (!human.alive) {
         humanActionBox.textContent = "\u4F60\u5DF2\u6B7B\u4EA1\uFF0C\u65E0\u6CD5\u884C\u52A8\u3002";
+        return;
+      }
+      if (firstNightExcl[role.name] && state.nightCount === 1) {
+        humanActionBox.textContent = `\u9996\u591C${role.name}\u4E0D\u6267\u884C\u884C\u52A8\u3002`;
         return;
       }
     }
@@ -1829,10 +1839,10 @@ ${summaryText}` };
         return;
       }
       const allTargets = state.players.slice();
-      const targetOptions2 = allTargets.map((p) => playerOptionHtml(p)).join("");
+      const targetOptions = allTargets.map((p) => playerOptionHtml(p)).join("");
       humanActionBox.innerHTML = `
       <div class="hint">\u8BF7\u9009\u62E9\u6076\u9B54\u51FB\u6740\u76EE\u6807\uFF1A</div>
-      <select id="humanTargetSelect">${targetOptions2}</select>
+      <select id="humanTargetSelect">${targetOptions}</select>
       <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
         ${state.humanActionConfirmed ? "\u5DF2\u786E\u8BA4" : "\u786E\u8BA4\u51FB\u6740"}
       </button>
@@ -1872,7 +1882,7 @@ ${summaryText}` };
       const targets = state.players.filter((p) => p.alive && p.id !== human.id);
       const options = targets.map((p) => playerOptionHtml(p)).join("");
       humanActionBox.innerHTML = `
-      <div class="hint">\u771F\u5B9E\u730E\u624B\u8BF7\u5728\u6B64\u9009\u62E9\u76EE\u6807\u5E76\u70B9\u51FB\u201C\u5F00\u67AA\u201D\u3002\u5176\u4ED6\u73A9\u5BB6\u53EA\u80FD\u7528\u804A\u5929\u683C\u5F0F\u5BA3\u79F0\u5F00\u67AA\u3002</div>
+      <div class="hint">\u771F\u5B9E\u730E\u624B\u8BF7\u5728\u6B64\u9009\u62E9\u76EE\u6807\u5E76\u70B9\u51FB"\u5F00\u67AA"\u3002\u5176\u4ED6\u73A9\u5BB6\u53EA\u80FD\u7528\u804A\u5929\u683C\u5F0F\u5BA3\u79F0\u5F00\u67AA\u3002</div>
       <div class="hint" style="margin-top:6px">\u730E\u624B\u5C04\u51FB\u76EE\u6807\uFF1A</div>
       <select id="slayerTargetSelect">${options}</select>
       <button class="secondary" id="slayerShootBtn" style="margin-top:8px">\u5F00\u67AA</button>
@@ -1886,102 +1896,93 @@ ${summaryText}` };
       });
       return;
     }
-    const allowSelf = role.name === "\u5C0F\u6076\u9B54";
-    const baseTargets = role.name === "\u5C0F\u6076\u9B54" || role.name === "\u6295\u6BD2\u8005" ? state.players.slice() : state.players.filter((p) => p.alive);
-    const filteredTargets = baseTargets.filter((p) => allowSelf || p.id !== human.id);
-    const targetOptions = filteredTargets.map((p) => playerOptionHtml(p)).join("");
-    if (role.name === "\u50E7\u4FA3" && state.nightCount === 1) {
-      humanActionBox.textContent = "\u9996\u591C\u50E7\u4FA3\u4E0D\u6267\u884C\u5B88\u62A4\u3002";
-      return;
-    }
-    if (role.name === "\u50E7\u4FA3" || role.name === "\u6295\u6BD2\u8005" || role.name === "\u7BA1\u5BB6") {
-      const actionLabel = role.name === "\u50E7\u4FA3" ? "\u5B88\u62A4" : role.name === "\u6295\u6BD2\u8005" ? "\u6295\u6BD2" : "\u4F8D\u4ECE";
-      humanActionBox.innerHTML = `
-      <div class="hint">\u8BF7\u9009\u62E9\u76EE\u6807\uFF1A</div>
-      <select id="humanTargetSelect">${targetOptions}</select>
-      <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
-        ${state.humanActionConfirmed ? "\u5DF2\u786E\u8BA4" : `\u786E\u8BA4${actionLabel}`}
-      </button>
-    `;
-      const select = humanActionBox.querySelector("#humanTargetSelect");
-      const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
-      select.value = state.humanActionTarget || select.options[0]?.value || "";
-      select.disabled = state.humanActionConfirmed;
-      confirmBtn.disabled = state.humanActionConfirmed;
-      select.addEventListener("change", () => {
-        state.humanActionTarget = select.value;
-        state.humanActionConfirmed = false;
-        saveState();
-        _deps.scheduleAutoNight();
-      });
-      confirmBtn.addEventListener("click", () => {
-        state.humanActionTarget = select.value;
-        state.humanActionConfirmed = true;
-        saveState();
-        _deps.scheduleAutoNight();
-        renderHumanAction();
-      });
-      return;
-    }
-    if (role.name === "\u5360\u535C\u5E08") {
-      const ftTargets = state.players.filter((p) => p.alive);
-      const ftOptions = ftTargets.map((p) => playerOptionHtml(p)).join("");
-      humanActionBox.innerHTML = `
-      <div class="hint">\u8BF7\u9009\u62E9\u4E24\u540D\u76EE\u6807\uFF1A</div>
-      <select id="humanTargetSelect">${ftOptions}</select>
-      <select id="humanTargetSelect2" style="margin-top:8px">${ftOptions}</select>
-      <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
-        ${state.humanActionConfirmed ? "\u5DF2\u786E\u8BA4" : "\u786E\u8BA4\u5360\u535C"}
-      </button>
-    `;
-      const select1 = humanActionBox.querySelector("#humanTargetSelect");
-      const select2 = humanActionBox.querySelector("#humanTargetSelect2");
-      const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
-      const pickAlternate = (current) => {
-        const options = Array.from(select2.options).map((o) => o.value);
-        const alt = options.find((value) => value !== current);
-        return alt || current;
-      };
-      select1.value = state.humanActionTarget || select1.options[0]?.value || "";
-      select2.value = state.humanActionTarget2 || select2.options[1]?.value || pickAlternate(select1.value);
-      if (select1.value === select2.value) {
-        select2.value = pickAlternate(select1.value);
-      }
-      select1.disabled = state.humanActionConfirmed;
-      select2.disabled = state.humanActionConfirmed;
-      confirmBtn.disabled = state.humanActionConfirmed;
-      select1.addEventListener("change", () => {
-        state.humanActionTarget = select1.value;
-        if (select1.value === select2.value) {
-          select2.value = pickAlternate(select1.value);
-          state.humanActionTarget2 = select2.value;
-        }
-        state.humanActionConfirmed = false;
-        saveState();
-        _deps.scheduleAutoNight();
-      });
-      select2.addEventListener("change", () => {
-        state.humanActionTarget2 = select2.value;
-        if (select1.value === select2.value) {
-          select1.value = pickAlternate(select2.value);
+    if (nightRoles.has(role.name)) {
+      const isDualTarget = dualTargets.has(role.name);
+      const allowSelf = role.team === "demon";
+      const baseTargets = role.team === "demon" || role.name === "\u6295\u6BD2\u8005" ? state.players.slice() : state.players.filter((p) => p.alive);
+      const filteredTargets = baseTargets.filter((p) => allowSelf || p.id !== human.id);
+      const targetOptions = filteredTargets.map((p) => playerOptionHtml(p)).join("");
+      if (isDualTarget) {
+        humanActionBox.innerHTML = `
+        <div class="hint">${role.name}\uFF1A\u8BF7\u9009\u62E9\u4E24\u540D\u76EE\u6807</div>
+        <select id="humanTargetSelect">${targetOptions}</select>
+        <select id="humanTargetSelect2" style="margin-top:8px">${targetOptions}</select>
+        <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
+          ${state.humanActionConfirmed ? "\u5DF2\u786E\u8BA4" : "\u786E\u8BA4"}
+        </button>
+      `;
+        const select1 = humanActionBox.querySelector("#humanTargetSelect");
+        const select2 = humanActionBox.querySelector("#humanTargetSelect2");
+        const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
+        const pickAlternate = (current) => {
+          const options = Array.from(select2.options).map((o) => o.value);
+          return options.find((value) => value !== current) || current;
+        };
+        select1.value = state.humanActionTarget || select1.options[0]?.value || "";
+        select2.value = state.humanActionTarget2 || select2.options[1]?.value || pickAlternate(select1.value);
+        if (select1.value === select2.value) select2.value = pickAlternate(select1.value);
+        select1.disabled = state.humanActionConfirmed;
+        select2.disabled = state.humanActionConfirmed;
+        confirmBtn.disabled = state.humanActionConfirmed;
+        select1.addEventListener("change", () => {
           state.humanActionTarget = select1.value;
-        }
-        state.humanActionConfirmed = false;
-        saveState();
-        _deps.scheduleAutoNight();
-      });
-      confirmBtn.addEventListener("click", () => {
-        state.humanActionTarget = select1.value;
-        state.humanActionTarget2 = select2.value;
-        if (select1.value === select2.value) {
-          select2.value = pickAlternate(select1.value);
+          if (select1.value === select2.value) {
+            select2.value = pickAlternate(select1.value);
+            state.humanActionTarget2 = select2.value;
+          }
+          state.humanActionConfirmed = false;
+          saveState();
+          _deps.scheduleAutoNight();
+        });
+        select2.addEventListener("change", () => {
           state.humanActionTarget2 = select2.value;
-        }
-        state.humanActionConfirmed = true;
-        saveState();
-        _deps.scheduleAutoNight();
-        renderHumanAction();
-      });
+          if (select1.value === select2.value) {
+            select1.value = pickAlternate(select2.value);
+            state.humanActionTarget = select1.value;
+          }
+          state.humanActionConfirmed = false;
+          saveState();
+          _deps.scheduleAutoNight();
+        });
+        confirmBtn.addEventListener("click", () => {
+          state.humanActionTarget = select1.value;
+          state.humanActionTarget2 = select2.value;
+          if (select1.value === select2.value) {
+            select2.value = pickAlternate(select1.value);
+            state.humanActionTarget2 = select2.value;
+          }
+          state.humanActionConfirmed = true;
+          saveState();
+          _deps.scheduleAutoNight();
+          renderHumanAction();
+        });
+      } else {
+        humanActionBox.innerHTML = `
+        <div class="hint">${role.name}\uFF1A\u8BF7\u9009\u62E9\u76EE\u6807</div>
+        <select id="humanTargetSelect">${targetOptions}</select>
+        <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
+          ${state.humanActionConfirmed ? "\u5DF2\u786E\u8BA4" : "\u786E\u8BA4"}
+        </button>
+      `;
+        const select = humanActionBox.querySelector("#humanTargetSelect");
+        const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
+        select.value = state.humanActionTarget || select.options[0]?.value || "";
+        select.disabled = state.humanActionConfirmed;
+        confirmBtn.disabled = state.humanActionConfirmed;
+        select.addEventListener("change", () => {
+          state.humanActionTarget = select.value;
+          state.humanActionConfirmed = false;
+          saveState();
+          _deps.scheduleAutoNight();
+        });
+        confirmBtn.addEventListener("click", () => {
+          state.humanActionTarget = select.value;
+          state.humanActionConfirmed = true;
+          saveState();
+          _deps.scheduleAutoNight();
+          renderHumanAction();
+        });
+      }
       return;
     }
     humanActionBox.textContent = "\u65E0\u591C\u665A\u884C\u52A8";
@@ -2068,7 +2069,7 @@ ${summaryText}` };
     }
     if (state.ended) {
       title = state.postGameChat ? "\u8D5B\u540E\u804A\u5929" : "\u6E38\u620F\u7ED3\u675F";
-      desc = state.postGameChat ? `\u53EF\u7EE7\u7EED\u53D1\u8A00\u6216\u70B9\u51FB\u201CAI\u8F6E\u8F6C\u201D\u8FDB\u884C\u8D5B\u540E\u4EA4\u6D41\u3002` : "\u4F60\u53EF\u4EE5\u5BFC\u51FA\u590D\u76D8\u4E0E\u8F68\u8FF9\uFF0C\u6216\u91CD\u7F6E\u5F00\u59CB\u4E0B\u4E00\u5C40\u3002";
+      desc = state.postGameChat ? `\u53EF\u7EE7\u7EED\u53D1\u8A00\u6216\u70B9\u51FB"AI\u8F6E\u8F6C"\u8FDB\u884C\u8D5B\u540E\u4EA4\u6D41\u3002` : "\u4F60\u53EF\u4EE5\u5BFC\u51FA\u590D\u76D8\u4E0E\u8F68\u8FF9\uFF0C\u6216\u91CD\u7F6E\u5F00\u59CB\u4E0B\u4E00\u5C40\u3002";
       hint = "\u5EFA\u8BAE\uFF1A\u5148\u5BFC\u51FA\u590D\u76D8\uFF0C\u518D\u91CD\u7F6E\u3002";
       taskTitle.textContent = title;
       taskDesc.textContent = desc;
@@ -2078,11 +2079,11 @@ ${summaryText}` };
     if (state.phase === "night") {
       if (_deps.needsHumanNightAction() && !_deps.isHumanActionReady()) {
         title = "\u8BF7\u5B8C\u6210\u4F60\u7684\u591C\u665A\u884C\u52A8";
-        desc = `\u5728\u201C\u4F60\u7684\u591C\u665A\u884C\u52A8\u201D\u9762\u677F\u4E2D\u9009\u62E9\u76EE\u6807\u5E76\u786E\u8BA4\uFF0C\u7136\u540E\u7B49\u5F85\u7ED3\u7B97\u3002`;
+        desc = `\u5728"\u4F60\u7684\u591C\u665A\u884C\u52A8"\u9762\u677F\u4E2D\u9009\u62E9\u76EE\u6807\u5E76\u786E\u8BA4\uFF0C\u7136\u540E\u7B49\u5F85\u7ED3\u7B97\u3002`;
         hint = "\u672A\u786E\u8BA4\u524D\u4E0D\u4F1A\u81EA\u52A8\u8FDB\u5165\u5929\u4EAE\u3002";
       } else {
         title = "\u7B49\u5F85\u591C\u665A\u7ED3\u7B97";
-        desc = autoNightToggle.checked ? "\u7CFB\u7EDF\u5C06\u81EA\u52A8\u7ED3\u7B97\u591C\u665A\u6D41\u7A0B\u3002" : `\u70B9\u51FB\u201C\u591C\u665A\u7ED3\u7B97\u201D\u63A8\u8FDB\u5230\u5929\u4EAE\u3002`;
+        desc = autoNightToggle.checked ? "\u7CFB\u7EDF\u5C06\u81EA\u52A8\u7ED3\u7B97\u591C\u665A\u6D41\u7A0B\u3002" : `\u70B9\u51FB"\u591C\u665A\u7ED3\u7B97"\u63A8\u8FDB\u5230\u5929\u4EAE\u3002`;
         hint = "\u591C\u665A\u4FE1\u606F\u4F1A\u5728\u5929\u4EAE\u540E\u516C\u5E03\u3002";
       }
       taskTitle.textContent = title;
@@ -2136,7 +2137,7 @@ ${summaryText}` };
         hint = `\u4ECA\u65E5\u63D0\u540D\uFF1A${state.dayNominationCount}`;
       } else if (state.nominationPhase === "reason") {
         title = "\u63D0\u540D\u7406\u7531\u9636\u6BB5";
-        desc = nominee ? `\u56F4\u7ED5\u201C${nominee.name}\u201D\u7684\u63D0\u540D\u7406\u7531\u9648\u8FF0\u4E2D\u3002` : "\u63D0\u540D\u7406\u7531\u9648\u8FF0\u4E2D\u3002";
+        desc = nominee ? `\u56F4\u7ED5"${nominee.name}"\u7684\u63D0\u540D\u7406\u7531\u9648\u8FF0\u4E2D\u3002` : "\u63D0\u540D\u7406\u7531\u9648\u8FF0\u4E2D\u3002";
         hint = "\u516C\u5F00\u53D1\u8A00\u9636\u6BB5\uFF0C\u6CE8\u610F\u4FE1\u606F\u4E00\u81F4\u6027\u3002";
       } else if (state.nominationPhase === "defense") {
         title = "\u88AB\u63D0\u540D\u4EBA\u8FA9\u89E3";
@@ -2144,7 +2145,7 @@ ${summaryText}` };
         hint = "\u8FA9\u89E3\u7ED3\u675F\u540E\u5C06\u8FDB\u5165\u6295\u7968\u3002";
       } else if (state.nominationPhase === "voting") {
         title = humanCanVote ? "\u8F6E\u5230\u4F60\u6295\u7968" : "\u6295\u7968\u8FDB\u884C\u4E2D";
-        desc = nominee ? `\u8BF7\u5BF9\u201C${nominee.name}\u201D\u4F5C\u51FA\u8D5E\u6210\u6216\u53CD\u5BF9\u3002` : "\u8BF7\u5B8C\u6210\u672C\u8F6E\u6295\u7968\u3002";
+        desc = nominee ? `\u8BF7\u5BF9"${nominee.name}"\u4F5C\u51FA\u8D5E\u6210\u6216\u53CD\u5BF9\u3002` : "\u8BF7\u5B8C\u6210\u672C\u8F6E\u6295\u7968\u3002";
         hint = humanCanVote ? "\u5FEB\u6377\u952E\uFF1AY=\u8D5E\u6210\uFF0CN=\u53CD\u5BF9\u3002" : `\u7B49\u5F85\u5176\u4ED6\u73A9\u5BB6\u6295\u7968\uFF08\u5269\u4F59AI\uFF1A${state.pendingAiVotes || 0}\uFF09\u3002`;
       } else {
         title = "\u63D0\u540D\u9636\u6BB5";
@@ -2318,7 +2319,7 @@ ${summaryText}` };
     if (slayerFormatHint) {
       const showSlayerHint = isDiscussion && !state.paused;
       slayerFormatHint.style.display = showSlayerHint ? "" : "none";
-      slayerFormatHint.textContent = showSlayerHint ? `\u730E\u624B\u58F0\u660E\u683C\u5F0F\uFF1A${SLAYER_DECLARATION_TEMPLATE}\uFF08\u4E0D\u7B26\u5408\u683C\u5F0F\u4E0D\u89E6\u53D1\uFF1B\u6BCF\u540D\u73A9\u5BB6\u6BCF\u5C40\u4EC5\u9996\u6B21\u6B64\u683C\u5F0F\u4F1A\u7ED3\u7B97\uFF09` : "";
+      slayerFormatHint.textContent = showSlayerHint ? `\u730E\u624B\u58F0\u660E\u683C\u5F0F\uFF1A${getSlayerDeclarationTemplate()}\uFF08\u4E0D\u7B26\u5408\u683C\u5F0F\u4E0D\u89E6\u53D1\uFF1B\u6BCF\u540D\u73A9\u5BB6\u6BCF\u5C40\u4EC5\u9996\u6B21\u6B64\u683C\u5F0F\u4F1A\u7ED3\u7B97\uFF09` : "";
     }
     if (slayerTemplateBtn) {
       slayerTemplateBtn.style.display = isDiscussion ? "" : "none";
@@ -2327,7 +2328,7 @@ ${summaryText}` };
     sendBtn.disabled = !state.started || !allowPostGameChat && state.ended || chatBlocked;
     humanInput2.disabled = !state.started || !allowPostGameChat && state.ended || chatBlocked;
     if (humanInput2) {
-      humanInput2.placeholder = isDiscussion ? `\u4F60\u53EF\u4EE5\u5728\u8FD9\u91CC\u53D1\u8A00...\uFF08\u730E\u624B\u683C\u5F0F\uFF1A${SLAYER_DECLARATION_TEMPLATE}\uFF09` : "\u4F60\u53EF\u4EE5\u5728\u8FD9\u91CC\u53D1\u8A00...";
+      humanInput2.placeholder = isDiscussion ? `\u4F60\u53EF\u4EE5\u5728\u8FD9\u91CC\u53D1\u8A00...\uFF08\u730E\u624B\u683C\u5F0F\uFF1A${getSlayerDeclarationTemplate()}\uFF09` : "\u4F60\u53EF\u4EE5\u5728\u8FD9\u91CC\u53D1\u8A00...";
     }
     const _canVoice = typeof _deps.canUseVoiceInput === "function" ? _deps.canUseVoiceInput() : false;
     if (voiceBtn2) voiceBtn2.disabled = !_canVoice;
@@ -8193,7 +8194,22 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
     hasRedHerring: true,
     redHerringTriggerRole: "\u5360\u535C\u5E08",
     drunkRole: "\u9152\u9B3C",
-    drunkAppearsAs: "townsfolk"
+    drunkAppearsAs: "townsfolk",
+    tagOptions: [
+      "\u5584\u826F",
+      "\u90AA\u6076",
+      "\u56FE\u7BA1\u5916\u6765\u8005",
+      "\u730E\u624B\u5931\u53BB\u80FD\u529B",
+      "\u50E7\u4FA3\u5B88\u62A4",
+      "\u662F\u9152\u9B3C",
+      "\u88AB\u6076\u9B54\u6740\u6B7B",
+      "\u5E72\u6270\u9879",
+      "\u4E2D\u6BD2",
+      "\u7BA1\u5BB6\u7684\u4E3B\u4EBA",
+      "\u6D17\u8863\u5987\u9547\u6C11",
+      "\u5916\u6765\u8005",
+      "\u81EA\u5B9A\u4E49\u7B14\u8BB0"
+    ]
   };
 
   // js/scripts/bad-moon-rising.js
@@ -8361,7 +8377,28 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
     hasRedHerring: false,
     redHerringTriggerRole: "",
     drunkRole: "",
-    drunkAppearsAs: ""
+    drunkAppearsAs: "",
+    tagOptions: [
+      "\u5584\u826F",
+      "\u90AA\u6076",
+      "\u88AB\u6076\u9B54\u6740\u6B7B",
+      "\u4E2D\u6BD2",
+      "\u9189\u9152",
+      "\u88AB\u4FDD\u62A4",
+      "\u6C34\u624B\u4E0D\u6B7B",
+      "\u65C5\u5E97\u8001\u677F\u4FDD\u62A4",
+      "\u8336\u827A\u5E08\u4FDD\u62A4",
+      "\u5F04\u81E3\u514D\u6B7B",
+      "\u9A71\u9B54\u4EBA\u76EE\u6807",
+      "\u9B54\u9B3C\u4EE3\u8A00\u4EBA\u4FDD\u62A4",
+      "\u523A\u5BA2\u5DF2\u4F7F\u7528",
+      "\u6559\u6388\u5DF2\u4F7F\u7528",
+      "\u4F8D\u81E3\u5DF2\u4F7F\u7528",
+      "\u8D4C\u5F92\u731C\u6D4B",
+      "\u662F\u75AF\u5B50",
+      "\u5916\u6765\u8005",
+      "\u81EA\u5B9A\u4E49\u7B14\u8BB0"
+    ]
   };
 
   // js/scripts/sects-and-violets.js
@@ -8528,7 +8565,26 @@ ${evilHistory}` : "\uFF08\u5C1A\u65E0\u53D1\u8A00\uFF09"}
     hasRedHerring: false,
     redHerringTriggerRole: "",
     drunkRole: "",
-    drunkAppearsAs: ""
+    drunkAppearsAs: "",
+    tagOptions: [
+      "\u5584\u826F",
+      "\u90AA\u6076",
+      "\u88AB\u6076\u9B54\u6740\u6B7B",
+      "\u4E2D\u6BD2",
+      "\u9189\u9152",
+      "\u5973\u5DEB\u8BC5\u5492",
+      "\u6D17\u8111\u5E08\u75AF\u72C2",
+      "\u955C\u50CF\u53CC\u5B50",
+      "\u5584\u826F\u53CC\u5B50",
+      "\u90AA\u6076\u53CC\u5B50",
+      "\u54F2\u5B66\u5BB6\u5DF2\u4F7F\u7528",
+      "\u5973\u88C1\u7F1D\u5DF2\u4F7F\u7528",
+      "\u827A\u672F\u5BB6\u5DF2\u4F7F\u7528",
+      "\u8BFA-\u8FBE\u9CBA\u4E2D\u6BD2",
+      "\u6DA1\u6D41\u4FE1\u606F\u5168\u9519",
+      "\u5916\u6765\u8005",
+      "\u81EA\u5B9A\u4E49\u7B14\u8BB0"
+    ]
   };
 
   // js/scripts/bmr-night.js

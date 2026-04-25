@@ -155,4 +155,10 @@ export const TROUBLE_BREWING = {
 
   drunkRole: "酒鬼",
   drunkAppearsAs: "townsfolk",
+
+  tagOptions: [
+    "善良", "邪恶", "图管外来者", "猎手失去能力", "僧侣守护",
+    "是酒鬼", "被恶魔杀死", "干扰项", "中毒", "管家的主人",
+    "洗衣妇镇民", "外来者", "自定义笔记"
+  ],
 };

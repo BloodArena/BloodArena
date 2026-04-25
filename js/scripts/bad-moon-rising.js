@@ -157,4 +157,12 @@ export const BAD_MOON_RISING = {
   redHerringTriggerRole: "",
   drunkRole: "",
   drunkAppearsAs: "",
+
+  tagOptions: [
+    "善良", "邪恶", "被恶魔杀死", "中毒", "醉酒", "被保护",
+    "水手不死", "旅店老板保护", "茶艺师保护", "弄臣免死",
+    "驱魔人目标", "魔鬼代言人保护", "刺客已使用",
+    "教授已使用", "侍臣已使用", "赌徒猜测",
+    "是疯子", "外来者", "自定义笔记"
+  ],
 };

@@ -1,6 +1,7 @@
 /* ===== UI Helpers & Rendering ===== */
 import { state, saveState, speechActive } from './state.js';
 import { SCRIPT, PLAYER_DISTRIBUTION, MODEL_OPTIONS, MAX_NOMINATIONS_PER_DAY, getSlayerDeclarationTemplate, DEFAULT_MODEL, DEFAULT_DAY_DISCUSSION_MINUTES } from './constants.js';
+import { getCurrentEdition } from './scripts/edition-registry.js';
 import { getRoleById, getApparentRole, getPromptName, playerOptionHtml } from './utils.js';
 import { getPhaseLabel, getDiscussionDurationSeconds } from './prompts.js';
 import { getTokenUsageSummary } from './api.js';
@@ -346,8 +347,12 @@ export function renderHumanAction() {
     humanActionBox.textContent = "无夜晚行动";
     return;
   }
-  const nightActionRoles = new Set(["小恶魔", "投毒者", "僧侣", "管家", "占卜师"]);
-  if (nightActionRoles.has(role.name)) {
+  const ed = getCurrentEdition();
+  const nightRoles = new Set(ed.nightActionRoles || []);
+  const dualTargets = new Set(ed.dualTargetRoles || []);
+  const firstNightExcl = ed.firstNightActionExclusions || {};
+
+  if (nightRoles.has(role.name)) {
     if (state.phase !== "night") {
       humanActionBox.textContent = "夜晚到来后可执行行动。";
       return;
@@ -356,7 +361,13 @@ export function renderHumanAction() {
       humanActionBox.textContent = "你已死亡，无法行动。";
       return;
     }
+    if (firstNightExcl[role.name] && state.nightCount === 1) {
+      humanActionBox.textContent = `首夜${role.name}不执行行动。`;
+      return;
+    }
   }
+
+  // === TB: 小恶魔 special (self-kill allowed) ===
   if (role.name === "小恶魔") {
     if (state.nightCount <= 1) {
       humanActionBox.textContent = "首夜恶魔不执行杀人行动。";
@@ -392,6 +403,8 @@ export function renderHumanAction() {
     });
     return;
   }
+
+  // === TB: 猎手 (day action) ===
   if (role.name === "猎手") {
     if (!human.alive) {
       humanActionBox.textContent = "你已死亡，无法发动猎手技能。";
@@ -408,7 +421,7 @@ export function renderHumanAction() {
     const targets = state.players.filter((p) => p.alive && p.id !== human.id);
     const options = targets.map((p) => playerOptionHtml(p)).join("");
     humanActionBox.innerHTML = `
-      <div class="hint">真实猎手请在此选择目标并点击“开枪”。其他玩家只能用聊天格式宣称开枪。</div>
+      <div class="hint">真实猎手请在此选择目标并点击"开枪"。其他玩家只能用聊天格式宣称开枪。</div>
       <div class="hint" style="margin-top:6px">猎手射击目标：</div>
       <select id="slayerTargetSelect">${options}</select>
       <button class="secondary" id="slayerShootBtn" style="margin-top:8px">开枪</button>
@@ -422,110 +435,103 @@ export function renderHumanAction() {
     });
     return;
   }
-  const allowSelf = role.name === "小恶魔";
-  const baseTargets = role.name === "小恶魔" || role.name === "投毒者"
-    ? state.players.slice()
-    : state.players.filter((p) => p.alive);
-  const filteredTargets = baseTargets.filter((p) => allowSelf || p.id !== human.id);
-  const targetOptions = filteredTargets
-    .map((p) => playerOptionHtml(p))
-    .join("");
-  if (role.name === "僧侣" && state.nightCount === 1) {
-    humanActionBox.textContent = "首夜僧侣不执行守护。";
-    return;
-  }
-  if (role.name === "僧侣" || role.name === "投毒者" || role.name === "管家") {
-    const actionLabel = role.name === "僧侣" ? "守护" : role.name === "投毒者" ? "投毒" : "侍从";
-    humanActionBox.innerHTML = `
-      <div class="hint">请选择目标：</div>
-      <select id="humanTargetSelect">${targetOptions}</select>
-      <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
-        ${state.humanActionConfirmed ? "已确认" : `确认${actionLabel}`}
-      </button>
-    `;
-    const select = humanActionBox.querySelector("#humanTargetSelect");
-    const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
-    select.value = state.humanActionTarget || select.options[0]?.value || "";
-    select.disabled = state.humanActionConfirmed;
-    confirmBtn.disabled = state.humanActionConfirmed;
-    select.addEventListener("change", () => {
-      state.humanActionTarget = select.value;
-      state.humanActionConfirmed = false;
-      saveState();
-      _deps.scheduleAutoNight();
-    });
-    confirmBtn.addEventListener("click", () => {
-      state.humanActionTarget = select.value;
-      state.humanActionConfirmed = true;
-      saveState();
-      _deps.scheduleAutoNight();
-      renderHumanAction();
-    });
-    return;
-  }
-  if (role.name === "占卜师") {
-    const ftTargets = state.players.filter((p) => p.alive);
-    const ftOptions = ftTargets
-      .map((p) => playerOptionHtml(p))
-      .join("");
-    humanActionBox.innerHTML = `
-      <div class="hint">请选择两名目标：</div>
-      <select id="humanTargetSelect">${ftOptions}</select>
-      <select id="humanTargetSelect2" style="margin-top:8px">${ftOptions}</select>
-      <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
-        ${state.humanActionConfirmed ? "已确认" : "确认占卜"}
-      </button>
-    `;
-    const select1 = humanActionBox.querySelector("#humanTargetSelect");
-    const select2 = humanActionBox.querySelector("#humanTargetSelect2");
-    const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
-    const pickAlternate = (current) => {
-      const options = Array.from(select2.options).map((o) => o.value);
-      const alt = options.find((value) => value !== current);
-      return alt || current;
-    };
-    select1.value = state.humanActionTarget || select1.options[0]?.value || "";
-    select2.value = state.humanActionTarget2 || select2.options[1]?.value || pickAlternate(select1.value);
-    if (select1.value === select2.value) {
-      select2.value = pickAlternate(select1.value);
-    }
-    select1.disabled = state.humanActionConfirmed;
-    select2.disabled = state.humanActionConfirmed;
-    confirmBtn.disabled = state.humanActionConfirmed;
-    select1.addEventListener("change", () => {
-      state.humanActionTarget = select1.value;
-      if (select1.value === select2.value) {
-        select2.value = pickAlternate(select1.value);
-        state.humanActionTarget2 = select2.value;
-      }
-      state.humanActionConfirmed = false;
-      saveState();
-      _deps.scheduleAutoNight();
-    });
-    select2.addEventListener("change", () => {
-      state.humanActionTarget2 = select2.value;
-      if (select1.value === select2.value) {
-        select1.value = pickAlternate(select2.value);
+
+  // === Generic night action for all editions ===
+  if (nightRoles.has(role.name)) {
+    const isDualTarget = dualTargets.has(role.name);
+    const allowSelf = role.team === "demon";
+    const baseTargets = role.team === "demon" || role.name === "投毒者"
+      ? state.players.slice()
+      : state.players.filter((p) => p.alive);
+    const filteredTargets = baseTargets.filter((p) => allowSelf || p.id !== human.id);
+    const targetOptions = filteredTargets.map((p) => playerOptionHtml(p)).join("");
+
+    if (isDualTarget) {
+      // Dual-target UI
+      humanActionBox.innerHTML = `
+        <div class="hint">${role.name}：请选择两名目标</div>
+        <select id="humanTargetSelect">${targetOptions}</select>
+        <select id="humanTargetSelect2" style="margin-top:8px">${targetOptions}</select>
+        <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
+          ${state.humanActionConfirmed ? "已确认" : "确认"}
+        </button>
+      `;
+      const select1 = humanActionBox.querySelector("#humanTargetSelect");
+      const select2 = humanActionBox.querySelector("#humanTargetSelect2");
+      const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
+      const pickAlternate = (current) => {
+        const options = Array.from(select2.options).map((o) => o.value);
+        return options.find((value) => value !== current) || current;
+      };
+      select1.value = state.humanActionTarget || select1.options[0]?.value || "";
+      select2.value = state.humanActionTarget2 || select2.options[1]?.value || pickAlternate(select1.value);
+      if (select1.value === select2.value) select2.value = pickAlternate(select1.value);
+      select1.disabled = state.humanActionConfirmed;
+      select2.disabled = state.humanActionConfirmed;
+      confirmBtn.disabled = state.humanActionConfirmed;
+      select1.addEventListener("change", () => {
         state.humanActionTarget = select1.value;
-      }
-      state.humanActionConfirmed = false;
-      saveState();
-      _deps.scheduleAutoNight();
-    });
-    confirmBtn.addEventListener("click", () => {
-      state.humanActionTarget = select1.value;
-      state.humanActionTarget2 = select2.value;
-      if (select1.value === select2.value) {
-        select2.value = pickAlternate(select1.value);
+        if (select1.value === select2.value) {
+          select2.value = pickAlternate(select1.value);
+          state.humanActionTarget2 = select2.value;
+        }
+        state.humanActionConfirmed = false;
+        saveState();
+        _deps.scheduleAutoNight();
+      });
+      select2.addEventListener("change", () => {
         state.humanActionTarget2 = select2.value;
-      }
-      state.humanActionConfirmed = true;
-      saveState();
-      _deps.scheduleAutoNight();
-      renderHumanAction();
-    });
+        if (select1.value === select2.value) {
+          select1.value = pickAlternate(select2.value);
+          state.humanActionTarget = select1.value;
+        }
+        state.humanActionConfirmed = false;
+        saveState();
+        _deps.scheduleAutoNight();
+      });
+      confirmBtn.addEventListener("click", () => {
+        state.humanActionTarget = select1.value;
+        state.humanActionTarget2 = select2.value;
+        if (select1.value === select2.value) {
+          select2.value = pickAlternate(select1.value);
+          state.humanActionTarget2 = select2.value;
+        }
+        state.humanActionConfirmed = true;
+        saveState();
+        _deps.scheduleAutoNight();
+        renderHumanAction();
+      });
+    } else {
+      // Single-target UI
+      humanActionBox.innerHTML = `
+        <div class="hint">${role.name}：请选择目标</div>
+        <select id="humanTargetSelect">${targetOptions}</select>
+        <button class="secondary" id="humanTargetConfirmBtn" style="margin-top:8px">
+          ${state.humanActionConfirmed ? "已确认" : "确认"}
+        </button>
+      `;
+      const select = humanActionBox.querySelector("#humanTargetSelect");
+      const confirmBtn = humanActionBox.querySelector("#humanTargetConfirmBtn");
+      select.value = state.humanActionTarget || select.options[0]?.value || "";
+      select.disabled = state.humanActionConfirmed;
+      confirmBtn.disabled = state.humanActionConfirmed;
+      select.addEventListener("change", () => {
+        state.humanActionTarget = select.value;
+        state.humanActionConfirmed = false;
+        saveState();
+        _deps.scheduleAutoNight();
+      });
+      confirmBtn.addEventListener("click", () => {
+        state.humanActionTarget = select.value;
+        state.humanActionConfirmed = true;
+        saveState();
+        _deps.scheduleAutoNight();
+        renderHumanAction();
+      });
+    }
     return;
   }
+
   humanActionBox.textContent = "无夜晚行动";
 }
 
@@ -620,7 +626,7 @@ export function renderTaskCardStatus() {
   if (state.ended) {
     title = state.postGameChat ? "赛后聊天" : "游戏结束";
     desc = state.postGameChat
-      ? `可继续发言或点击“AI轮转”进行赛后交流。`
+      ? `可继续发言或点击"AI轮转"进行赛后交流。`
       : "你可以导出复盘与轨迹，或重置开始下一局。";
     hint = "建议：先导出复盘，再重置。";
     taskTitle.textContent = title;
@@ -632,13 +638,13 @@ export function renderTaskCardStatus() {
   if (state.phase === "night") {
     if (_deps.needsHumanNightAction() && !_deps.isHumanActionReady()) {
       title = "请完成你的夜晚行动";
-      desc = `在“你的夜晚行动”面板中选择目标并确认，然后等待结算。`;
+      desc = `在"你的夜晚行动"面板中选择目标并确认，然后等待结算。`;
       hint = "未确认前不会自动进入天亮。";
     } else {
       title = "等待夜晚结算";
       desc = autoNightToggle.checked
         ? "系统将自动结算夜晚流程。"
-        : `点击“夜晚结算”推进到天亮。`;
+        : `点击"夜晚结算"推进到天亮。`;
       hint = "夜晚信息会在天亮后公布。";
     }
     taskTitle.textContent = title;
@@ -706,7 +712,7 @@ export function renderTaskCardStatus() {
       hint = `今日提名：${state.dayNominationCount}`;
     } else if (state.nominationPhase === "reason") {
       title = "提名理由阶段";
-      desc = nominee ? `围绕“${nominee.name}”的提名理由陈述中。` : "提名理由陈述中。";
+      desc = nominee ? `围绕"${nominee.name}"的提名理由陈述中。` : "提名理由陈述中。";
       hint = "公开发言阶段，注意信息一致性。";
     } else if (state.nominationPhase === "defense") {
       title = "被提名人辩解";
@@ -714,7 +720,7 @@ export function renderTaskCardStatus() {
       hint = "辩解结束后将进入投票。";
     } else if (state.nominationPhase === "voting") {
       title = humanCanVote ? "轮到你投票" : "投票进行中";
-      desc = nominee ? `请对“${nominee.name}”作出赞成或反对。` : "请完成本轮投票。";
+      desc = nominee ? `请对"${nominee.name}"作出赞成或反对。` : "请完成本轮投票。";
       hint = humanCanVote
         ? "快捷键：Y=赞成，N=反对。"
         : `等待其他玩家投票（剩余AI：${state.pendingAiVotes || 0}）。`;
@@ -928,7 +934,7 @@ export function renderStatus() {
     const showSlayerHint = isDiscussion && !state.paused;
     slayerFormatHint.style.display = showSlayerHint ? "" : "none";
     slayerFormatHint.textContent = showSlayerHint
-      ? `猎手声明格式：${SLAYER_DECLARATION_TEMPLATE}（不符合格式不触发；每名玩家每局仅首次此格式会结算）`
+      ? `猎手声明格式：${getSlayerDeclarationTemplate()}（不符合格式不触发；每名玩家每局仅首次此格式会结算）`
       : "";
   }
   if (slayerTemplateBtn) {
@@ -939,7 +945,7 @@ export function renderStatus() {
   humanInput.disabled = !state.started || (!allowPostGameChat && state.ended) || chatBlocked;
   if (humanInput) {
     humanInput.placeholder = isDiscussion
-      ? `你可以在这里发言...（猎手格式：${SLAYER_DECLARATION_TEMPLATE}）`
+      ? `你可以在这里发言...（猎手格式：${getSlayerDeclarationTemplate()}）`
       : "你可以在这里发言...";
   }
   const _canVoice = typeof _deps.canUseVoiceInput === "function" ? _deps.canUseVoiceInput() : false;
