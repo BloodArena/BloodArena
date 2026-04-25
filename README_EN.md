@@ -138,7 +138,17 @@ providers:
 
 ## 🚀 Starting the Game
 
-### Option 1: Using a `Python` Local Server (Recommended)
+### Option 1: Play Online (Easiest)
+
+No downloads required — just visit our hosted online version:
+
+👉 **[https://bloodarena.github.io/BloodArena/](https://bloodarena.github.io/BloodArena/)**
+
+Once the page loads, enter your `API Key` on the web page and click **"Save Keys"** to start playing.
+
+> 💡 The online version's `model_catalog.yaml` does not contain any valid `API Keys` — you need to enter your own on the page. Just one key is enough to play!
+
+### Option 2: Using a `Python` Local Server
 
 ```bash
 # Run in the project root directory
@@ -155,7 +165,7 @@ Then open in your browser:
 
 > 💡 Using a local server allows the browser to automatically load the `model_catalog.yaml` configuration file.
 
-### Option 2: Open the `HTML` File Directly
+### Option 3: Open the `HTML` File Directly
 
 Simply open the `index.html` file in the project with your browser.
 

@@ -140,7 +140,17 @@ providers:
 
 ## 🚀 启动游戏
 
-### 方法一：使用 `Python` 本地服务器（推荐）
+### 方法一：在线游玩（最简单）
+
+无需下载任何代码，直接访问我们部署的在线版本：
+
+👉 **[https://bloodarena.github.io/BloodArena/](https://bloodarena.github.io/BloodArena/)**
+
+打开网页后，在页面上填写你的 `API Key`，点击 **「保存密钥」** 即可开始游戏。
+
+> 💡 在线版本的 `model_catalog.yaml` 不包含任何有效的 `API Key`，你需要在网页上自行填写。只要填写一个 Key 就能玩！
+
+### 方法二：使用 `Python` 本地服务器
 
 ```bash
 # 在项目根目录下执行
@@ -157,7 +167,7 @@ python3 -m http.server 8000
 
 > 💡 使用本地服务器的好处是浏览器可以自动读取 `model_catalog.yaml` 配置文件。
 
-### 方法二：直接双击打开 `HTML` 文件
+### 方法三：直接双击打开 `HTML` 文件
 
 直接用浏览器打开项目中的 `index.html` 文件。
 
