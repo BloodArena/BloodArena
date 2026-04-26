@@ -151,7 +151,7 @@ export function getKnownApiKeyNames() {
     const keys = lastRawCatalogData.api_keys || lastRawCatalogData.variables || lastRawCatalogData.secrets || {};
     return Object.keys(keys);
   }
-  return ["deepseek", "gemini", "claude", "gpt", "mimo", "openrouter"];
+  return ["deepseek", "gemini", "claude", "gpt", "mimo", "kimi", "zhipu", "minimax", "openrouter"];
 }
 
 export function reapplyApiKeysFromUI(newKeys) {
