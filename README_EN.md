@@ -66,13 +66,14 @@ The following are required for local deployment or running the Benchmark evaluat
 
 4. **At least one LLM `API Key`** (required)
    - Choose one of the following:
-     - **`DeepSeek`** (affordable with good performance): Sign up at [platform.deepseek.com](https://platform.deepseek.com)
+     - **`MiMo`** (great value; also required for TTS voice narration, which is currently free)
+     - **`DeepSeek`**: Sign up at [platform.deepseek.com](https://platform.deepseek.com)
      - **`OpenRouter`** (one key for multiple models, many free models available): Sign up at [openrouter.ai](https://openrouter.ai)
      - **`Gemini`** / **`Claude`** (best overall experience, stable quality)
      - **`Kimi`**: Sign up at [platform.kimi.com](https://platform.kimi.com)
      - **`ZhipuAI GLM`**: Sign up at [open.bigmodel.cn](https://open.bigmodel.cn)
      - **`MiniMax`**: Sign up at [platform.minimaxi.com](https://platform.minimaxi.com)
-     - **`MiMo`** / **`GPT`**: Obtain keys from their respective platforms
+     - **`GPT`**: Sign up at [openai.com/api](https://openai.com/api)
 
 ---
 
@@ -109,7 +110,7 @@ This is the most important step! You need to edit the **`model_catalog.yaml`** f
 
 ```yaml
 api_keys:
-  mimo: "YOUR_MIMO_KEY"              # Key for TTS voice (optional)
+  mimo: "YOUR_MIMO_KEY"              # MiMo API Key (required for TTS voice narration; TTS is currently free)
   deepseek: "YOUR_DEEPSEEK_KEY"   # ← Replace the content in quotes with your DeepSeek API Key
   gemini: "YOUR_GEMINI_KEY"            # Gemini API Key (optional)
   claude: "YOUR_CLAUDE_KEY"            # Claude API Key (optional)

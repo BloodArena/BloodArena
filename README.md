@@ -66,13 +66,14 @@
 
 4. **至少一个大模型 `API Key`**（必需）
    - 推荐选择以下之一：
-     - **`DeepSeek`**（价格便宜）：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
+     - **`MiMo`**（性价比高，且 TTS 语音播报需要 `MiMo` 的 Key，TTS 目前免费）
+     - **`DeepSeek`**：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
      - **`OpenRouter`**（一个 Key 用多个模型，含大量免费模型）：在 [openrouter.ai](https://openrouter.ai) 注册获取
      - **`Gemini` / `Claude`**（整体体验最好，效果稳定）
      - **`Kimi`**：在 [platform.kimi.com](https://platform.kimi.com) 注册获取
      - **`智谱 GLM`**：在 [open.bigmodel.cn](https://open.bigmodel.cn) 注册获取
      - **`MiniMax`**：在 [platform.minimaxi.com](https://platform.minimaxi.com) 注册获取
-     - **`MiMo`** / **`GPT`**
+     - **`GPT`**：在 [openai.com/api](https://openai.com/api) 注册获取
        
 
 ---
@@ -110,7 +111,7 @@ npm install
 
 ```yaml
 api_keys:
-  mimo: "YOUR_MIMO_KEY"              # TTS 语音用的 key（可选）
+  mimo: "YOUR_MIMO_KEY"              # MiMo API Key（TTS 语音播报需要，TTS 目前免费）
   deepseek: "YOUR_DEEPSEEK_KEY"   # ← 把引号里的内容替换成你的 DeepSeek API Key
   gemini: "YOUR_GEMINI_KEY"            # Gemini API Key（可选）
   claude: "YOUR_CLAUDE_KEY"            # Claude API Key（可选）
