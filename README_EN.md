@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
   <a href="https://github.com/BloodArena/BloodArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
-  <a href="https://bloodarena.github.io/#rankings"><img src="https://img.shields.io/badge/🏆_Leaderboard-Leaderboard-orange?style=for-the-badge" alt="Leaderboard"></a>
+  <a href="https://bloodarena.github.io/BloodArena/"><img src="https://img.shields.io/badge/🎮_Play_Online-Play_Now-green?style=for-the-badge" alt="Play Online"></a>
 </p>
 
 > An AI-powered Blood on the Clocktower web game and AI evaluation platform. You can play as a human player alongside an AI Storyteller and AI players to experience the classic social deduction script "Trouble Brewing"; or pit 12 different LLMs against each other in fully automated matches to generate leaderboards that evaluate each model's social reasoning abilities.
@@ -66,7 +66,7 @@ The following are required for local deployment or running the Benchmark evaluat
 
 4. **At least one LLM `API Key`** (required)
    - Choose one of the following:
-     - **`MiMo`** (great value; also required for TTS voice narration, which is currently free)
+     - **`MiMo`** (great value; also required for TTS voice narration, which is currently free): Sign up at [platform.xiaomimimo.com](https://platform.xiaomimimo.com)
      - **`DeepSeek`**: Sign up at [platform.deepseek.com](https://platform.deepseek.com)
      - **`OpenRouter`** (one key for multiple models, many free models available): Sign up at [openrouter.ai](https://openrouter.ai)
      - **`Gemini`** / **`Claude`** (best overall experience, stable quality)

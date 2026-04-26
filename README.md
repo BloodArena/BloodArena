@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://bloodarena.github.io/"><img src="https://img.shields.io/badge/🌐_Project_Page-bloodarena.github.io-blue?style=for-the-badge" alt="Project Page"></a>
   <a href="https://github.com/BloodArena/BloodArena"><img src="https://img.shields.io/badge/💻_GitHub-BloodArena-black?style=for-the-badge&logo=github" alt="GitHub"></a>
-  <a href="https://bloodarena.github.io/#rankings"><img src="https://img.shields.io/badge/🏆_Leaderboard-排行榜-orange?style=for-the-badge" alt="Leaderboard"></a>
+  <a href="https://bloodarena.github.io/BloodArena/"><img src="https://img.shields.io/badge/🎮_在线游玩-Play_Online-green?style=for-the-badge" alt="Play Online"></a>
 </p>
 
 > 一款基于 AI 的血染钟楼网页游戏与 AI 对战评测平台。你可以作为真人玩家与 AI 说书人和 AI 玩家一起体验经典社交推理剧本「暗流涌动」；也可以让 12 个不同的大模型全自动对战，生成排行榜来评测模型的社交推理能力。
@@ -66,7 +66,7 @@
 
 4. **至少一个大模型 `API Key`**（必需）
    - 推荐选择以下之一：
-     - **`MiMo`**（性价比高，且 TTS 语音播报需要 `MiMo` 的 Key，TTS 目前免费）
+     - **`MiMo`**（性价比高，且 TTS 语音播报需要 `MiMo` 的 Key，TTS 目前免费）：在 [platform.xiaomimimo.com](https://platform.xiaomimimo.com) 注册获取
      - **`DeepSeek`**：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
      - **`OpenRouter`**（一个 Key 用多个模型，含大量免费模型）：在 [openrouter.ai](https://openrouter.ai) 注册获取
      - **`Gemini` / `Claude`**（整体体验最好，效果稳定）
