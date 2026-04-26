@@ -21,7 +21,7 @@
 | | Feature | Description |
 |---|---|---|
 | 🎭 | Full Trouble Brewing Script | 13 Townsfolk, 4 Outsiders, 4 Minions, 1 Demon — a faithful recreation of the tabletop experience |
-| 🤖 | Multi-Model AI Players | Supports `DeepSeek`, `Gemini`, `Claude`, `GPT`, `MiMo`, `OpenRouter`, etc. Each AI player can be individually configured with a different model |
+| 🤖 | Multi-Model AI Players | Supports `DeepSeek`, `Gemini`, `Claude`, `GPT`, `MiMo`, `Kimi`, `ZhipuAI GLM`, `MiniMax`, `OpenRouter`, etc. Each AI player can be individually configured with a different model |
 | 🧠 | AI Storyteller | Storyteller decisions are driven by LLMs, intelligently generating information and rulings based on game state — replacing hard-coded logic |
 | 😈 | Evil Team Private Chat | After the first night and before public discussion, the Demon and Minions hold a private chat to coordinate strategies and align their stories |
 | 📋 | Daily AI Summaries | At the end of each day, player summaries are generated in parallel to prevent long games from exceeding the `context` limit, without blocking gameplay |
@@ -67,8 +67,12 @@ The following are required for local deployment or running the Benchmark evaluat
 4. **At least one LLM `API Key`** (required)
    - Choose one of the following:
      - **`DeepSeek`** (affordable with good performance): Sign up at [platform.deepseek.com](https://platform.deepseek.com)
-     - **`OpenRouter`** (one key for multiple models): Sign up at [openrouter.ai](https://openrouter.ai)
-     - **`Gemini`** / **`Claude`** / **`GPT`**: Obtain keys from their respective platforms
+     - **`OpenRouter`** (one key for multiple models, many free models available): Sign up at [openrouter.ai](https://openrouter.ai)
+     - **`Gemini`** / **`Claude`** (best overall experience, stable quality)
+     - **`Kimi`**: Sign up at [platform.kimi.com](https://platform.kimi.com)
+     - **`ZhipuAI GLM`**: Sign up at [open.bigmodel.cn](https://open.bigmodel.cn)
+     - **`MiniMax`**: Sign up at [platform.minimaxi.com](https://platform.minimaxi.com)
+     - **`MiMo`** / **`GPT`**: Obtain keys from their respective platforms
 
 ---
 
@@ -109,8 +113,11 @@ api_keys:
   deepseek: "YOUR_DEEPSEEK_KEY"   # ← Replace the content in quotes with your DeepSeek API Key
   gemini: "YOUR_GEMINI_KEY"            # Gemini API Key (optional)
   claude: "YOUR_CLAUDE_KEY"            # Claude API Key (optional)
-  gpt: "YOUR_GPT_KEY"  # GPT API Key (optional)
-  openrouter: "YOUR_OPENROUTER_KEY"        # OpenRouter API Key (optional)
+  gpt: "YOUR_GPT_KEY"                 # GPT API Key (optional)
+  kimi: "YOUR_KIMI_KEY"               # Kimi API Key (optional)
+  zhipu: "YOUR_ZHIPU_KEY"             # ZhipuAI GLM API Key (optional)
+  minimax: "YOUR_MINIMAX_KEY"         # MiniMax API Key (optional)
+  openrouter: "YOUR_OPENROUTER_KEY"   # OpenRouter API Key (optional)
 ```
 
 3. **Paste your `API Key` into the corresponding quotes**. For example, you can get a DeepSeek API key from [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) and update your configuration file as follows:

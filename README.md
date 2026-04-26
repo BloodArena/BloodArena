@@ -21,7 +21,7 @@
 | | 功能 | 说明 |
 |---|---|---|
 | 🎭 | 完整的暗流涌动剧本 | 13 个镇民、4 个外来者、4 个爪牙、1 个恶魔，完整还原桌游体验 |
-| 🤖 | 多模型 AI 玩家 | 支持 `DeepSeek`、`Gemini`、`Claude`、`GPT`、`MiMo`、`OpenRouter` 等，每个 AI 玩家可单独配置模型 |
+| 🤖 | 多模型 AI 玩家 | 支持 `DeepSeek`、`Gemini`、`Claude`、`GPT`、`MiMo`、`Kimi`、`智谱 GLM`、`MiniMax`、`OpenRouter` 等，每个 AI 玩家可单独配置模型 |
 | 🧠 | AI 说书人 | 说书人决策由大模型驱动，根据游戏局势智能生成信息和裁决，替代硬编码逻辑 |
 | 😈 | 邪恶阵营密聊 | 首夜结束后、公聊前，恶魔与爪牙进行内部密聊，统一口径协调策略 |
 | 📋 | 每日 AI 总结 | 每个白天结束时并行生成玩家总结，防止长局 `context` 超限，不阻塞游戏进程 |
@@ -66,10 +66,13 @@
 
 4. **至少一个大模型 `API Key`**（必需）
    - 推荐选择以下之一：
-     - **`Mimo`**
      - **`DeepSeek`**（价格便宜）：在 [platform.deepseek.com](https://platform.deepseek.com) 注册获取
-     - **`OpenRouter`**（一个 Key 用多个模型）：在 [openrouter.ai](https://openrouter.ai) 注册获取
+     - **`OpenRouter`**（一个 Key 用多个模型，含大量免费模型）：在 [openrouter.ai](https://openrouter.ai) 注册获取
      - **`Gemini` / `Claude`**（整体体验最好，效果稳定）
+     - **`Kimi`**：在 [platform.kimi.com](https://platform.kimi.com) 注册获取
+     - **`智谱 GLM`**：在 [open.bigmodel.cn](https://open.bigmodel.cn) 注册获取
+     - **`MiniMax`**：在 [platform.minimaxi.com](https://platform.minimaxi.com) 注册获取
+     - **`MiMo`** / **`GPT`**
        
 
 ---
@@ -111,8 +114,11 @@ api_keys:
   deepseek: "YOUR_DEEPSEEK_KEY"   # ← 把引号里的内容替换成你的 DeepSeek API Key
   gemini: "YOUR_GEMINI_KEY"            # Gemini API Key（可选）
   claude: "YOUR_CLAUDE_KEY"            # Claude API Key（可选）
-  gpt: "YOUR_GPT_KEY"  # GPT API Key（可选）
-  openrouter: "YOUR_OPENROUTER_KEY"        # OpenRouter API Key（可选）
+  gpt: "YOUR_GPT_KEY"                 # GPT API Key（可选）
+  kimi: "YOUR_KIMI_KEY"               # Kimi API Key（可选）
+  zhipu: "YOUR_ZHIPU_KEY"             # 智谱 GLM API Key（可选）
+  minimax: "YOUR_MINIMAX_KEY"         # MiniMax API Key（可选）
+  openrouter: "YOUR_OPENROUTER_KEY"   # OpenRouter API Key（可选）
 ```
 
 3. **把你拥有的 `API Key` 填进对应的引号里**。例如，你可以在 [https://platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) 获取 DeepSeek 的 API Key，然后按下面的示例修改配置文件：
